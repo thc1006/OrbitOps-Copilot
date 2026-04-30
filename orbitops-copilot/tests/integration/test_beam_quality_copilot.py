@@ -83,6 +83,17 @@ def copilot_scraping(emulator_client: TestClient):
     _set_scraper(_NULL_SCRAPER)
 
 
+@pytest.fixture(autouse=True)
+def reset_copilot_module_state_per_test() -> None:
+    """PR-H-5: defence in depth — reset copilot's module-level scraper to the
+    Null default before EVERY integration test, even those that don't explicitly
+    use ``copilot_scraping``. Guards against pytest reordering, partial-failure
+    leak, or future tests forgetting the cleanup fixture."""
+    from copilot_api.main import _NULL_SCRAPER, _set_scraper
+
+    _set_scraper(_NULL_SCRAPER)
+
+
 # --- happy path: AC-001 ----------------------------------------------------
 
 
@@ -136,14 +147,13 @@ def test_beam_quality_copilot_end_to_end(
     likely_cause = (body["likely_cause"] or "").lower()
     full_text = summary + " " + likely_cause
 
-    # Answer cites the degrading beam by id
-    assert "beam-1" in full_text, f"summary should reference beam-1; got: {full_text!r}"
-    # Answer cites SNR
-    assert "snr" in full_text, f"summary should reference SNR; got: {full_text!r}"
-    # Answer uses degradation-related vocabulary
-    assert any(tok in full_text for tok in ("degrad", "drop", "fell", "below")), (
-        f"summary should describe degradation; got: {full_text!r}"
-    )
+    # AC-001 §Then 1 verbatim: answer must contain `beam-1`, `SNR`, `degrad`
+    # (case-insensitive). PR-H-3 tightened from a fuzzy OR-chain
+    # ("degrad", "drop", "fell", "below") that was more lenient than AC-001
+    # demanded — passing tests gave false sense of compliance against AC-001.
+    assert "beam-1" in full_text, f"AC-001 §Then 1: missing 'beam-1' in {full_text!r}"
+    assert "snr" in full_text, f"AC-001 §Then 1: missing 'SNR' in {full_text!r}"
+    assert "degrad" in full_text, f"AC-001 §Then 1: missing 'degrad' in {full_text!r}"
 
     # Evidence cites orbitops_beam_snr_db with at least one value < 8 dB
     snr_evidence = [
