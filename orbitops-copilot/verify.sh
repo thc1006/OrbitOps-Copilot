@@ -2,14 +2,16 @@
 # verify.sh — local quality gate
 #
 # Runs the same checks as CI:
-#   1. format / lint placeholder
-#   2. unit tests (delegates to test.sh)
-#   3. no-secrets scan
-#   4. JSON schema validation (contracts + sample scenarios)
-#   5. k8s manifest validation (placeholder until Sprint 1)
-#   6. anonymity / forbidden-strings check
+#   1. format / lint  (advisory in Sprint 0 — warns but does not block)
+#   2. unit tests     (delegates to test.sh; blocking)
+#   3. no-secrets scan                                     (blocking)
+#   4. JSON schema validation (contracts + sample scenarios) (blocking)
+#   5. k8s manifest validation (kustomize + kubectl --dry-run) (blocking when tools present)
+#   6. anonymity / forbidden-strings check                 (blocking)
 #
-# Exit non-zero on any failure.
+# Exits non-zero on any blocking failure. Lint findings in gate 1 are
+# advisory (skeleton placeholders won't all be ruff-clean yet) and tighten
+# to blocking once Sprint 1 lands real implementations.
 
 set -euo pipefail
 
@@ -70,7 +72,7 @@ if command -v kustomize >/dev/null 2>&1 && command -v kubectl >/dev/null 2>&1; t
     warn "deploy/k8s/overlays/local/kustomization.yaml not yet present (Sprint 1 task)"
   fi
 else
-  warn "kustomize / kubectl not installed; skipping (will fail in CI)"
+  warn "kustomize / kubectl not installed; skipping locally — CI installs them and will run this gate"
 fi
 
 # ─── 6. anonymity check ─────────────────────────────────
