@@ -14,8 +14,11 @@
 services:
   ntn-metrics-emulator:
     build:
-      context: ../services/ntn-metrics-emulator
-      dockerfile: Dockerfile
+      # Repo root: needed so the Dockerfile can COPY tests/contracts/ which lives
+      # outside services/ntn-metrics-emulator/. Service-only context would error
+      # with "forbidden path outside the build context" on `docker compose build`.
+      context: ..
+      dockerfile: services/ntn-metrics-emulator/Dockerfile
     image: orbitops/ntn-metrics-emulator:0.1.0-dev
     container_name: orbitops-emulator
     ports:

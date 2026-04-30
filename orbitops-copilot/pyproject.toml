@@ -1,0 +1,23 @@
+# Repo-root pyproject.toml — pytest configuration only.
+#
+# This file is NOT a Python package itself. Each service under services/ has
+# its own pyproject.toml that declares its own deps + entry points.
+#
+# Why this exists:
+#   Running `pytest services/ tests/` from the repo root used to fail with
+#   `ModuleNotFoundError: No module named 'tests.test_emulator'` because three
+#   sibling test directories (services/{scenario-generator,ntn-metrics-emulator,
+#   voice-interface}/tests/) all share the package name `tests` and pytest's
+#   default `prepend`/`append` import mode collapses them.
+#
+#   `--import-mode=importlib` makes each test file an isolated module so the
+#   `tests` package name no longer collides. test.sh `cd`s per service and
+#   so was unaffected, but IDEs / CI / pre-commit hooks that recurse from the
+#   root previously errored out.
+#
+# Verify with:
+#   pytest services/ tests/ --collect-only
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+testpaths = ["services", "tests"]
+python_files = ["test_*.py"]
