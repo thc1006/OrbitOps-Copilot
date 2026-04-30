@@ -1,21 +1,36 @@
 global:
   scrape_interval: 5s
   evaluation_interval: 5s
+  external_labels:
+    monitor: orbitops-copilot
 
 scrape_configs:
+  # Primary scrape target: NTN metrics emulator emits orbitops_beam_snr_db,
+  # orbitops_link_latency_ms, orbitops_packet_loss_ratio, orbitops_doppler_residual_hz,
+  # orbitops_handover_state, orbitops_gateway_available, orbitops_anomaly_active.
   - job_name: ntn-metrics-emulator
     metrics_path: /metrics
     static_configs:
       - targets:
-          - "host.docker.internal:8000"   # docker-compose host bridge
-          - "ntn-metrics-emulator:8000"   # in-cluster
+          - "ntn-metrics-emulator:8000"
+        labels:
+          service: ntn-metrics-emulator
 
+  # copilot-api self-metrics (request count, status distribution, etc).
+  # Sprint 1: copilot-api does not yet emit /metrics; included as a forward
+  # placeholder so that adding instrumentation in Sprint 2 is zero-config.
   - job_name: copilot-api
     metrics_path: /metrics
     static_configs:
       - targets:
-          - "host.docker.internal:8001"
           - "copilot-api:8001"
+        labels:
+          service: copilot-api
 
-# rule_files:
-#   - "/etc/prometheus/rules/*.yml"   # Sprint 2 — observability-engineer territory
+  # Self-monitoring.
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - "localhost:9090"
+        labels:
+          service: prometheus

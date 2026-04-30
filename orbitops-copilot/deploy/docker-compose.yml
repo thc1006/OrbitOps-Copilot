@@ -1,11 +1,51 @@
-# OrbitOps Copilot — local dev compose.
-# Sprint 0: only obs stack actually starts; service images are placeholders that
-# return /healthz once Sprint 1 implementations land.
+# OrbitOps Copilot — local dev compose for VS-2 observability slice.
+#
+# Brings up: ntn-metrics-emulator + copilot-api + prometheus + grafana.
+# Pinned to today's stable images (Prom v3.5, Grafana 11.4) — docs/09 future
+# targets (Prom 3.11, Grafana 13) upgrade alongside Sprint 3 dashboard work.
+#
+# Quick-start (from repo root):
+#   docker compose -f deploy/docker-compose.yml up -d
+#   curl http://localhost:8000/healthz   # emulator
+#   curl http://localhost:8001/healthz   # copilot
+#   open http://localhost:9090           # prometheus
+#   open http://localhost:3000           # grafana (admin/admin)
 
 services:
+  ntn-metrics-emulator:
+    build:
+      context: ../services/ntn-metrics-emulator
+      dockerfile: Dockerfile
+    image: orbitops/ntn-metrics-emulator:0.1.0-dev
+    container_name: orbitops-emulator
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz').read()"]
+      interval: 5s
+      timeout: 2s
+      retries: 6
+
+  copilot-api:
+    build:
+      context: ../services/copilot-api
+      dockerfile: Dockerfile
+    image: orbitops/copilot-api:0.1.0-dev
+    container_name: orbitops-copilot
+    depends_on:
+      ntn-metrics-emulator:
+        condition: service_healthy
+    ports:
+      - "8001:8001"
+    environment:
+      COPILOT_LLM_PROVIDER: mock
+      ORBITOPS_EMULATOR_METRICS_URL: http://ntn-metrics-emulator:8000/metrics
+
   prometheus:
-    image: prom/prometheus:v3.11.3
+    image: prom/prometheus:v3.5.0
     container_name: orbitops-prometheus
+    depends_on:
+      - ntn-metrics-emulator
     ports:
       - "9090:9090"
     volumes:
@@ -13,54 +53,35 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.retention.time=24h"
+      - "--web.enable-lifecycle"
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:13.0.1
+    image: grafana/grafana:11.4.0
     container_name: orbitops-grafana
-    depends_on: [prometheus]
+    depends_on:
+      - prometheus
     ports:
       - "3000:3000"
     environment:
+      GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
     volumes:
       - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     restart: unless-stopped
 
-  ntn-metrics-emulator:
-    # Sprint 0: image not yet built; this entry is documented for Sprint 1.
-    image: orbitops/ntn-metrics-emulator:0.0.1-dev
-    container_name: orbitops-emulator
-    profiles: ["sprint1"]
-    ports:
-      - "8000:8000"
-    environment:
-      ORBITOPS_SCENARIO_PATH: /scenarios/beam-degradation.json
-      ORBITOPS_TICK_SECONDS: "1"
-    volumes:
-      - ../packages/scenarios:/scenarios:ro
-    restart: unless-stopped
-
-  copilot-api:
-    image: orbitops/copilot-api:0.0.1-dev
-    container_name: orbitops-copilot
-    profiles: ["sprint1"]
-    depends_on: [ntn-metrics-emulator, prometheus]
-    ports:
-      - "8001:8001"
-    environment:
-      COPILOT_LLM_PROVIDER: mock
-    restart: unless-stopped
-
+  # Sprint 1 UI — built from source; mock-mode when copilot-api unreachable.
   digital-twin-ui:
-    image: orbitops/digital-twin-ui:0.0.1-dev
+    profiles: ["ui"]
+    image: nginx:alpine
     container_name: orbitops-ui
-    profiles: ["sprint1"]
-    depends_on: [copilot-api]
+    depends_on:
+      - copilot-api
     ports:
       - "5173:80"
-    environment:
-      VITE_API_BASE_URL: http://localhost:8001
-    restart: unless-stopped
+    volumes:
+      - ../services/digital-twin-ui/dist:/usr/share/nginx/html:ro
