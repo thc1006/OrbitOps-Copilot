@@ -41,14 +41,14 @@ sequenceDiagram
 
   U->>UI: "Which beam is degrading?"
   UI->>API: POST /ask
-  API->>PR: PromQL: orbitops_snr_db, latency, packet_loss
+  API->>PR: PromQL: orbitops_beam_snr_db, orbitops_link_latency_ms, orbitops_packet_loss_ratio
   PR-->>API: time-series snapshot
   API->>API: build evidence block
   API->>LLM: chat(messages with {evidence}, schema)
   LLM-->>API: JSON answer (validated)
   API->>API: validate vs copilot-response.schema.json
-  API-->>UI: 200 + {answer, evidence, status}
-  UI-->>U: render answer + evidence
+  API-->>UI: 200 + {summary, likely_cause, evidence, recommended_actions, status}
+  UI-->>U: render summary + evidence + recommended_actions
 ```
 
 ## Sequence — UC2 runbook-flow
@@ -62,14 +62,14 @@ sequenceDiagram
   participant LOGS as mock log store
   participant LLM as LLM provider
 
-  U->>UI: "Generate runbook" for anomaly_id=ho-001
-  UI->>API: POST /runbook {anomaly_id}
-  API->>PR: PromQL: handover_failures_total, pod_health, doppler_residual
+  U->>UI: "Generate runbook" for anomaly_type=handover_failure
+  UI->>API: POST /runbook {anomaly_type, metrics_snapshot}
+  API->>PR: PromQL: orbitops_handover_state, orbitops_gateway_available, orbitops_doppler_residual_hz
   API->>LOGS: tail mock-logs by anomaly_id
   API->>LLM: chat with structured 5-step prompt
-  LLM-->>API: JSON 5-step runbook
-  API-->>UI: runbook + evidence
-  UI-->>U: collapsible runbook + JSON evidence viewer
+  LLM-->>API: JSON recommended_actions
+  API-->>UI: {summary, likely_cause, evidence, recommended_actions, risk_if_ignored, confidence, unknowns}
+  UI-->>U: collapsible recommended_actions + JSON evidence viewer
 ```
 
 ## Component boundaries

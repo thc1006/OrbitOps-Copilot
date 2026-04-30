@@ -25,4 +25,4 @@
 ## Failure modes（必須測試）
 
 - 若 emulator 未啟動：copilot 回 `INSUFFICIENT_EVIDENCE`，不得幻想資料。
-- 若 user prompt 含 jailbreak 字串：回應仍須 evidence-grounded、不暴露 system prompt。
+- 若 user prompt 含 jailbreak 字串：回應仍須 evidence-grounded、不暴露 system prompt（細節見 AC-003.3）。
