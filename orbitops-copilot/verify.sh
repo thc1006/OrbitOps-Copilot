@@ -43,16 +43,23 @@ if [ -x scripts/check-tdd-discipline.sh ]; then
 fi
 
 # ─── 1c. anonymity author allowlist (advisory; per docs/reviews/security-review.md S-2) ──
+# IMPORTANT (R-3 fix): we DO NOT allowlist @users.noreply.github.com because
+# GitHub's noreply form is `<id>+<handle>@users.noreply.github.com` — the
+# user's GitHub handle is encoded in the local-part. Allowlisting it would
+# silently miss the very leak this gate is designed to catch.
+# The only allowed author identity is *@orbitops.local (project anon alias).
 if git rev-parse --git-dir >/dev/null 2>&1; then
-  bad_authors=$(git log --all --format='%ae' 2>/dev/null \
+  bad_authors=$(git log --all --format='%an <%ae>' 2>/dev/null \
     | sort -u \
-    | grep -vE '@orbitops\.local$' \
-    | grep -vE '@users\.noreply\.github\.com$' \
+    | grep -vE '<[^>]*@orbitops\.local>$' \
     || true)
   if [ -n "$bad_authors" ]; then
-    while IFS= read -r email; do
-      [ -z "$email" ] && continue
-      printf "${YELLOW}[verify warn]${RESET} non-anon git author found: %s — see docs/reviews/security-review.md S-1\n" "$email"
+    while IFS= read -r entry; do
+      [ -z "$entry" ] && continue
+      # Redact the actual identity in the WARN line so the warning itself
+      # does not introduce a forbidden string into CI logs.
+      domain=$(printf '%s' "$entry" | sed -E 's/.*@([^>]+)>.*/\1/')
+      printf "${YELLOW}[verify warn]${RESET} non-anon git author detected (domain=%s) — see docs/reviews/security-review.md S-1\n" "$domain"
     done <<< "$bad_authors"
   fi
 fi

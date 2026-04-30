@@ -110,7 +110,19 @@ No supply-chain surprise. `pip-audit` / `npm audit` in CI would be a Sprint 2 ha
 
 ## Auto-applied this PR
 
-**Anonymity author-allowlist advisory in `verify.sh`**: scan `git log --all --format='%ae'` for unique author emails; warn (do not fail) on any address not matching `*@orbitops.local`. Pure additive; on baseline + this branch, will print one WARN line for the existing leaked initial commit so the operator sees the residual risk on every `make verify`. Guides them to fix S-1 / S-2 explicitly.
+**Anonymity author-allowlist advisory in `verify.sh`** (gate 1c): scan `git log --all --format='%ae'` for unique author emails; warn (do not fail) on any address not matching `*@orbitops.local`. Pure additive; on baseline + this branch, prints one WARN line per non-anon author so the operator sees the residual risk on every `make verify`.
+
+**Fix-up applied during self-review (R-3)**: initial draft of gate 1c also allowlisted `*@users.noreply.github.com` — this was unsafe because GitHub's noreply form is `<id>+<handle>@users.noreply.github.com` (handle leaks). The fix narrows the allowlist to **only** `<*>@orbitops.local`. The leaked initial-commit author is now correctly caught.
+
+The WARN line emits only the domain (`users.noreply.github.com`), not the full email — so the warning itself does not introduce a forbidden string into CI logs.
+
+## Self-review (R-1 / R-2 / R-3) found during /review pass
+
+- **R-1**: `check-tdd-discipline.sh` regex `^red[\(:[:space:]]` was malformed (POSIX `[:space:]` only works inside `[[:space:]]`). Fixed to `^red[[:space:]:(]`.
+- **R-2**: `((red_count++)) || true` is brittle under `set -euo pipefail`. Replaced with `red_count=$((red_count + 1))`.
+- **R-3**: gate 1c initially allowlisted `noreply.github.com` — false reassurance. Tightened to `*@orbitops.local` only.
+
+All three fixes verified by re-running `make verify`: TDD gate now fires on its own branch (1 commit, 0 red); author gate now warns on the actual leak.
 
 ## Outstanding (open, owner-only)
 
