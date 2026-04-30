@@ -37,6 +37,36 @@ else
   warn "ruff not installed; run 'make bootstrap'"
 fi
 
+# ─── 1b. TDD discipline (advisory; per docs/reviews/tdd-audit.md I-3) ──
+if [ -x scripts/check-tdd-discipline.sh ]; then
+  scripts/check-tdd-discipline.sh
+fi
+
+# ─── 1c. anonymity author allowlist (advisory; per docs/reviews/security-review.md S-2) ──
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  bad_authors=$(git log --all --format='%ae' 2>/dev/null \
+    | sort -u \
+    | grep -vE '@orbitops\.local$' \
+    | grep -vE '@users\.noreply\.github\.com$' \
+    || true)
+  if [ -n "$bad_authors" ]; then
+    while IFS= read -r email; do
+      [ -z "$email" ] && continue
+      printf "${YELLOW}[verify warn]${RESET} non-anon git author found: %s — see docs/reviews/security-review.md S-1\n" "$email"
+    done <<< "$bad_authors"
+  fi
+fi
+
+# ─── 1d. claims audit (advisory; per docs/reviews/runspace-claims-audit.md I-10) ──
+marketing=$(grep -rIlE '\b(seamless|seamlessly|production[ -]?ready|fully[ -]?integrated|enterprise[ -]?grade|state[ -]?of[ -]?the[ -]?art|industry[ -]?leading)\b' \
+  --include='*.md' README.md docs/ 2>/dev/null | grep -v 'docs/reviews/' | grep -v 'docs/adr/' || true)
+if [ -n "$marketing" ]; then
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    printf "${YELLOW}[verify warn]${RESET} claims-audit: marketing word in %s — review per docs/reviews/runspace-claims-audit.md\n" "$f"
+  done <<< "$marketing"
+fi
+
 # ─── 2. unit tests ──────────────────────────────────────
 info "2/6 unit tests (graceful)"
 ./test.sh
