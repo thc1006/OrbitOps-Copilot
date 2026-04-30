@@ -14,7 +14,7 @@ OrbitOps Copilot 是「**B5G/NTN 低軌地面站雲原生 operations digital twi
 
 ## 2. Non-negotiable constraints
 
-1. **匿名性**：所有 commit、文件、UI、影片、簡報禁止露出團隊名稱、學校、個人姓名、Logo、可識別 git author / e-mail / Slack handle / 內部 URL。`scripts/check-no-secrets.sh` 與 CI 會阻擋。
+1. **匿名性（範圍：投件交付物）**：RunSpace 投件 zip / pitch deck / 影片 / 簡報，以及 zip 內附帶的 `docs/`、UI 截圖、demo 錄製，禁止露出**真實姓名、學校、團隊名稱、Logo、學校 e-mail、私密 URL**。`scripts/check-no-secrets.sh` 與 CI 對 source 檔案掃描這些字串。Git workflow（commit author / committer / commit message / PR title）使用真實 GitHub 帳號（`thc1006` + GitHub noreply email），不在匿名範圍——RunSpace 規定限於提交檔內容，不要求 repo 隱藏 GitHub identity。
 2. **不過度承諾**：禁止把 demo 說成「真 Ka-band beam steering」「真 SDR OTA」「真 OAI/srsRAN NTN full stack」「完整 O2 IMS lifecycle」。文件需明示「P0 為 metrics emulator」與「P2 才接 Sionna RT/AODT/真 RAN stack」。
 3. **Evidence-first LLM**：copilot-api 任何 `/ask` `/explain` `/runbook` 回應必含 `evidence` 區塊（metrics_used / logs_used / scenario_id / timestamp / confidence）。無 evidence 時回 `INSUFFICIENT_EVIDENCE`，**不得自由幻想**。
 4. **不硬綁單一 LLM 廠商**：以 OpenAI-compatible 介面為抽象，相容 Ollama / vLLM / LM Studio / 任何相容端點。
@@ -85,13 +85,15 @@ OrbitOps Copilot 是「**B5G/NTN 低軌地面站雲原生 operations digital twi
 
 ---
 
-## 7. Anonymous competition submission rules
+## 7. Submission anonymization rules
 
-1. Repo author / committer e-mail 用 anonymized 別名（`anon@orbitops.local`）或 GitHub noreply。
-2. 文件、簡報、影片旁白皆不出現 team / school / 姓名 / Logo / 內部 URL。
-3. 截圖前先把 OS 工具列、瀏覽器分頁、`whoami` 等資訊裁掉。
-4. `scripts/check-no-secrets.sh` 維護一份「禁字白名單」（自填於 `.secrets-baseline.txt`，但**不入 git**）。
-5. RunSpace 提交檔（zip / pdf）一律掃描 metadata（`exiftool`），確認無作者欄位。
+> 範圍：**RunSpace 投件交付物**——zip 包、pitch deck PDF、demo 影片、提交說明、zip 內 `docs/`、UI 截圖、影片旁白。**不**包含 git workflow（git author/committer/commit message/PR title 用真實 GitHub 帳號 `thc1006` + GitHub noreply email `84045975+thc1006@users.noreply.github.com`）。
+
+1. 投件交付物中的文件、簡報、影片旁白皆不出現**真實姓名、學校全稱與縮寫、學校 e-mail、團隊名稱、Logo、內部 URL**。具體禁字模式由 `scripts/check-no-secrets.sh` 維護。
+2. 截圖前把 OS 工具列、瀏覽器分頁、`whoami` 輸出、Slack/Linear UI 等可識別介面裁掉。
+3. `scripts/check-no-secrets.sh` 在 pre-commit + CI 對 source 檔案內容掃描禁字（school、school e-mail、AKID、private key），**不**掃 git metadata。本機自填的禁字白名單放 `.secrets-baseline.txt`（不入 git）。
+4. RunSpace 提交檔（zip / pdf / mp4）打包前跑 metadata 清洗：`exiftool -all= file.pdf`、`zip -X` 去 extra fields、影片用 `ffmpeg -map_metadata -1` 重編。
+5. 真實姓名（即帳號擁有者中文本名）即使在 git author 為 `thc1006` 的情況下，**仍不得**寫進任何被打包進 zip 的 source / docs / UI string——因為 zip 是公開審查物。
 
 ---
 
@@ -158,7 +160,7 @@ make package-zip          # produce orbitops-copilot.zip (excluding venv/node_mo
 - `make verify` 全綠。
 - 受影響 service 至少多一個測試（綠燈）。
 - 文件：若 API/scenario schema 變動，同步更新 `docs/02_architecture.md` 或 `services/<svc>/README.md`。
-- Commit message 不含 team / school / 姓名。
+- Commit message 不含真實姓名 / school / 團隊名（GitHub handle `thc1006` OK）。
 - Pre-commit hook 通過（含 `scripts/check-no-secrets.sh`）。
 - 若涉及版本號：先跑 `verify.sh`（會比對 GitHub Releases / PyPI）。
 
@@ -199,7 +201,7 @@ make package-zip          # produce orbitops-copilot.zip (excluding venv/node_mo
 - `main` 永遠綠；功能在 `feat/<spec-id>-<slug>` 分支；fix 在 `fix/<issue>-<slug>`；docs 在 `docs/<slug>`。
 - PR title：`[SPEC-NNN] <imperative summary>`；body 須引用對應 SPEC / AC / ADR。
 - PR 須通過 `make verify` + CI；缺少 spec / AC 自動 reject。
-- PR commit message 不得含 team / school / 個人姓名。
+- PR commit message 不得含**真實姓名** / school / 團隊名；GitHub handle `thc1006` 與 noreply email 視同 GitHub identity 可保留。
 
 ---
 
