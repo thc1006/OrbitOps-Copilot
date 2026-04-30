@@ -1,0 +1,58 @@
+# Repo-root .dockerignore
+#
+# Build context for ntn-metrics-emulator is the repo root (PR #23) so the
+# Dockerfile can COPY tests/contracts/. Without this file, every
+# `docker compose build` would tar the entire ~193 MB tree (mostly
+# .venv + node_modules) and bust the layer cache on unrelated edits.
+#
+# Order: broadest first, then specific exceptions.
+
+# VCS / IDE
+.git
+.github
+.gitignore
+.gitattributes
+.idea
+.vscode
+
+# Python virtualenvs / caches / build artefacts
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.ruff_cache
+.mypy_cache
+**/*.egg-info
+dist
+build
+
+# Node / frontend
+**/node_modules
+services/digital-twin-ui/dist
+
+# Local-only state
+.env
+.env.*
+!.env.example
+.claude/CLAUDE.local.md
+.claude/settings.local.json
+secrets
+*.pem
+*.key
+*.crt
+tmp
+
+# Logs
+*.log
+
+# Docs / agent prompts (not needed in any image)
+docs
+.claude/agents
+.claude/skills
+.claude/commands
+
+# OS
+.DS_Store
+Thumbs.db
