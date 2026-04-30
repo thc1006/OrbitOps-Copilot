@@ -35,12 +35,14 @@ def main() -> int:
     scenario_schema = load(CONTRACTS / "scenario.schema.json")
     metrics_schema = load(CONTRACTS / "metrics.schema.json")
     copilot_schema = load(CONTRACTS / "copilot-response.schema.json")
+    gs_profile_schema = load(CONTRACTS / "groundstation-profile.schema.json")
 
     # 1. self-validate the schemas themselves
     for name, schema in (
         ("scenario.schema.json", scenario_schema),
         ("metrics.schema.json", metrics_schema),
         ("copilot-response.schema.json", copilot_schema),
+        ("groundstation-profile.schema.json", gs_profile_schema),
     ):
         try:
             jsonschema.Draft202012Validator.check_schema(schema)
@@ -150,6 +152,25 @@ def main() -> int:
     # was detected — masking real failures in CI logs.
     if ac_count > 0 and ac_drift_failures == 0:
         print(f"  ok   AC drift:    no v1 paths in {ac_count} AC files")
+
+    # 7. groundstation-profile: validate the example shipped in the kpt stub
+    gs_example = (
+        ROOT
+        / "packages"
+        / "nephio-stubs"
+        / "orbitops-groundstation-package"
+        / "groundstation-profile.example.json"
+    )
+    if gs_example.is_file():
+        try:
+            jsonschema.validate(load(gs_example), gs_profile_schema)
+            print(f"  ok   gs-profile:   {gs_example.relative_to(ROOT)}")
+        except jsonschema.ValidationError as exc:
+            print(f"  FAIL gs-profile:   {gs_example.relative_to(ROOT)}: {exc.message}", file=sys.stderr)
+            failed += 1
+    else:
+        print(f"  FAIL gs-profile:   missing {gs_example.relative_to(ROOT)}", file=sys.stderr)
+        failed += 1
 
     if failed:
         print(f"\nvalidate_schemas: {failed} failure(s)", file=sys.stderr)
