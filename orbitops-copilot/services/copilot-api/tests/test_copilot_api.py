@@ -103,6 +103,50 @@ def test_ask_in_domain_question_with_no_evidence_returns_insufficient(
     assert body["evidence"]["time_window_seconds"] == 60
 
 
+def test_ask_with_time_window_seconds_adds_sprint1_disclaimer(
+    client: TestClient,
+) -> None:
+    """PR-H-2: time_window_seconds is descriptive (echoed in evidence) but
+    the Sprint-1 scraper does not actually filter by range. To prevent silent
+    semantic drift ('user thinks it filtered, response says nothing'), /ask
+    must append a clear disclaimer to the unknowns whenever the caller passed
+    a non-None time_window_seconds — both on INSUFFICIENT and ok paths."""
+    r = client.post(
+        "/ask",
+        json={
+            "question": "Which beam is degrading?",
+            "time_window_seconds": 60,
+        },
+    )
+    body = r.json()
+    assert body["status"] == "INSUFFICIENT_EVIDENCE"  # NullScraper default
+    unknowns_text = " ".join(body["unknowns"]).lower()
+    assert "time_window_seconds=60" in unknowns_text
+    assert "sprint" in unknowns_text or "promql" in unknowns_text or "snapshot" in unknowns_text
+
+
+def test_ask_without_time_window_does_not_add_disclaimer(client: TestClient) -> None:
+    """If the caller did NOT pass time_window_seconds, /ask must not add
+    the disclaimer — keeps unknowns clean for the common case."""
+    r = client.post("/ask", json={"question": "Which beam is degrading?"})
+    body = r.json()
+    unknowns_text = " ".join(body["unknowns"]).lower()
+    assert "time_window_seconds=" not in unknowns_text
+
+
+def test_ask_refused_path_does_not_add_disclaimer(client: TestClient) -> None:
+    """REFUSED responses skip the time_window disclaimer because they
+    don't carry evidence anyway — clutter only confuses the user."""
+    r = client.post(
+        "/ask",
+        json={"question": "What is the weather in Tokyo today?", "time_window_seconds": 60},
+    )
+    body = r.json()
+    assert body["status"] == "REFUSED"
+    unknowns_text = " ".join(body["unknowns"]).lower()
+    assert "time_window_seconds=" not in unknowns_text
+
+
 # --- /explain: no evidence path --------------------------------------------
 
 
