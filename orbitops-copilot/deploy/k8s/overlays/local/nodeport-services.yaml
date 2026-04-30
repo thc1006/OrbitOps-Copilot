@@ -1,0 +1,50 @@
+# Local-only: expose services via NodePort so kind extraPortMappings can
+# reach the host. NEVER use this overlay against a non-local cluster — base
+# services are ClusterIP for production safety.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ntn-metrics-emulator-nodeport
+  labels:
+    app.kubernetes.io/name: ntn-metrics-emulator
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: ntn-metrics-emulator
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      nodePort: 30080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: copilot-api-nodeport
+  labels:
+    app.kubernetes.io/name: copilot-api
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: copilot-api
+  ports:
+    - name: http
+      port: 8001
+      targetPort: 8001
+      nodePort: 30081
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: digital-twin-ui-nodeport
+  labels:
+    app.kubernetes.io/name: digital-twin-ui
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: digital-twin-ui
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      nodePort: 30073

@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orbitops-scenarios
+  labels:
+    app.kubernetes.io/component: scenarios
+data:
+  # Scenario JSONs are produced by services/scenario-generator and committed
+  # to packages/scenarios/. We embed beam-degradation here so the demo flow
+  # runs out-of-the-box without any volume mount of the host filesystem.
+  beam-degradation.json: |
+    {
+      "scenario_id": "beam-degradation-001",
+      "start_time": "2026-04-30T12:00:00Z",
+      "duration_seconds": 600,
+      "satellite_id": "b5g-1a",
+      "ground_station_id": "gs-tw-01",
+      "beams": [
+        {"beam_id": "beam-1", "boresight_az_deg": 120.0, "boresight_el_deg": 45.0, "hpbw_deg": 3.5},
+        {"beam_id": "beam-2", "boresight_az_deg": 150.0, "boresight_el_deg": 50.0, "hpbw_deg": 3.5},
+        {"beam_id": "beam-3", "boresight_az_deg": 180.0, "boresight_el_deg": 35.0, "hpbw_deg": 3.5}
+      ],
+      "events": [
+        {"t_offset_seconds": 60, "type": "snr_drop", "target": "beam-1", "duration_seconds": 90, "magnitude_db": 6.0}
+      ],
+      "expected_anomaly": {
+        "type": "snr_drop",
+        "target": "beam-1",
+        "keywords": ["beam-1", "snr", "degrad", "elevation"]
+      }
+    }
