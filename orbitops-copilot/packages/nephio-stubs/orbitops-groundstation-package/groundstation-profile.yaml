@@ -1,0 +1,56 @@
+# Sample ground-station profile shipped with the Nephio kpt stub package.
+# This file IS NOT a Nephio CR — it is a profile descriptor consumed by:
+#   - operators / RunSpace evaluators reading the package
+#   - tests/contracts/groundstation-profile.schema.json (verify.sh gate 4)
+#
+# When a real Nephio Porch / O2 IMS pipeline is wired in (see
+# docs/future/nephio-o2ims-integration.md), this file becomes the
+# input to a fn-gen pipeline that emits OCloud Registration +
+# ProvisioningRequest CRs. Today it is a static stub.
+apiVersion: orbitops.local/v1alpha1
+kind: GroundStationProfile
+metadata:
+  name: gs-tw-01
+  annotations:
+    config.kubernetes.io/local-config: "true"
+    orbitops.local/sprint: "1"
+    orbitops.local/status: "stub"
+spec:
+  station_id: gs-tw-01
+  location:
+    lat: 24.78
+    lon: 120.99
+    alt_m: 50
+    country_code: TW
+  supported_bands:
+    - Ka
+    - Ku
+  beam_profiles:
+    - beam_id: beam-1
+      band: Ka
+      boresight_az_deg: 120.0
+      boresight_el_deg: 45.0
+      hpbw_deg: 3.5
+      max_eirp_dbw: 55.0
+    - beam_id: beam-2
+      band: Ka
+      boresight_az_deg: 150.0
+      boresight_el_deg: 50.0
+      hpbw_deg: 3.5
+      max_eirp_dbw: 55.0
+    - beam_id: beam-3
+      band: Ka
+      boresight_az_deg: 180.0
+      boresight_el_deg: 35.0
+      hpbw_deg: 3.5
+      max_eirp_dbw: 55.0
+  gateway_profiles:
+    - gateway_id: gateway-pod-1
+      role: primary
+      throughput_mbps: 500
+    - gateway_id: gateway-pod-2
+      role: backup
+      throughput_mbps: 300
+  observability_endpoints:
+    prometheus_url: http://prometheus.orbitops.svc.cluster.local:9090
+    grafana_url: http://grafana.orbitops.svc.cluster.local:3000
