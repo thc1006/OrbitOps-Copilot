@@ -112,6 +112,40 @@ def main() -> int:
         print(f"  FAIL copilot:      fixture: {exc.message}", file=sys.stderr)
         failed += 1
 
+    # 6. AC drift detector: acceptance docs must not reference v1 paths.
+    #    Catches the recurring "schema migrated, AC text not updated" leak
+    #    (CR-1 from R3 review: AC-001 §Then 4 still said evidence.confidence).
+    AC_DIR = ROOT / "docs" / "acceptance"
+    forbidden_v1_paths = (
+        ("evidence.confidence", "v1: confidence moved to top level in v2"),
+        ("orbitops_snr_db{", "v1: renamed to orbitops_beam_snr_db in v2"),
+        ("orbitops_latency_ms{", "v1: renamed to orbitops_link_latency_ms in v2"),
+        ("anomaly_injection[", "v1: scenario field renamed to events[] in v2"),
+        ("expected_runbook_keywords", "v1: replaced by expected_anomaly.keywords in v2"),
+    )
+    for ac_file in sorted(AC_DIR.glob("AC-*.md")):
+        text = ac_file.read_text(encoding="utf-8")
+        # Skip lines that are themselves ADR / migration notes (legitimate
+        # mentions of v1 paths in historical context).
+        scanned_lines = [
+            line for line in text.splitlines()
+            if "v1:" not in line and "ADR-007" not in line and "migration" not in line.lower()
+        ]
+        scanned_text = "\n".join(scanned_lines)
+        for needle, why in forbidden_v1_paths:
+            if needle in scanned_text:
+                print(
+                    f"  FAIL AC drift:    {ac_file.relative_to(ROOT)}: "
+                    f"references v1 path {needle!r} ({why})",
+                    file=sys.stderr,
+                )
+                failed += 1
+    if failed == 0 or all("AC drift" not in str(_) for _ in []):
+        # Print ok line only if we actually scanned (at least one AC file)
+        ac_count = len(list(AC_DIR.glob("AC-*.md")))
+        if ac_count > 0:
+            print(f"  ok   AC drift:    no v1 paths in {ac_count} AC files")
+
     if failed:
         print(f"\nvalidate_schemas: {failed} failure(s)", file=sys.stderr)
         return 1
