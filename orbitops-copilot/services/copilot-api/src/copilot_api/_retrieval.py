@@ -43,18 +43,37 @@ class MetricsScraper(Protocol):
 
 
 class HttpMetricsScraper:
-    """Production scraper: HTTP GET against an emulator URL."""
+    """Production scraper: HTTP GET against an emulator URL.
+
+    Content-Type guard (PR-H-1): refuses anything other than `text/plain`
+    so a misconfigured URL pointing at an HTML 200-OK page (a Nginx default,
+    a load-balancer auth wall, a wrong path) raises a clear error rather
+    than silently parsing zero metrics — the latter would surface to the
+    user as 'no degraded metrics' and obscure the real misconfiguration.
+    """
+
+    PROMETHEUS_CONTENT_TYPE_PREFIX = "text/plain"
 
     def __init__(self, url: str, *, timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS) -> None:
         self.url = url
         self.timeout_seconds = timeout_seconds
 
     def scrape(self) -> str:
-        import httpx  # lazy: avoid pulling httpx into import path of NullScraper users
+        import httpx
 
         with httpx.Client(timeout=self.timeout_seconds) as client:
             r = client.get(self.url)
             r.raise_for_status()
+            # RFC 7231 §3.1.1.1: media-type is case-insensitive. Normalize
+            # before prefix-check so 'Text/Plain; charset=utf-8' is accepted.
+            content_type = r.headers.get("content-type", "").lower().strip()
+            if not content_type.startswith(self.PROMETHEUS_CONTENT_TYPE_PREFIX):
+                raise ValueError(
+                    f"Expected Prometheus exposition (Content-Type: text/plain*) "
+                    f"from {self.url!r}; got Content-Type: {content_type!r}. "
+                    f"Verify ORBITOPS_EMULATOR_METRICS_URL points at /metrics, "
+                    f"not at the service root."
+                )
             return r.text
 
 

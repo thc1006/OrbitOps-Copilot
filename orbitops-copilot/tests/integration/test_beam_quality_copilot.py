@@ -240,3 +240,148 @@ def test_no_scraper_configured_returns_insufficient(copilot_client: TestClient) 
         "scrape" in u.lower() or "explain" in u.lower() or "configure" in u.lower()
         for u in body["unknowns"]
     ), body["unknowns"]
+
+
+# --- PR-H-1: scraper hardening ------------------------------------------
+
+
+def test_emulator_unreachable_returns_insufficient(copilot_client: TestClient) -> None:
+    """HttpMetricsScraper pointed at a closed port must surface as
+    INSUFFICIENT_EVIDENCE (not crash, not 500) and the unknowns must mention
+    a connection-level cause so operators can debug."""
+    from copilot_api._retrieval import HttpMetricsScraper
+    from copilot_api.main import _NULL_SCRAPER, _set_scraper
+
+    _set_scraper(HttpMetricsScraper("http://127.0.0.1:1/metrics", timeout_seconds=0.2))
+    try:
+        r = copilot_client.post("/ask", json={"question": "Which beam is degrading?"})
+        body = r.json()
+        assert r.status_code == 200
+        assert body["status"] == "INSUFFICIENT_EVIDENCE"
+        unknowns_text = " ".join(body["unknowns"]).lower()
+        assert any(
+            tok in unknowns_text
+            for tok in ("connect", "scrape", "metrics", "timeout")
+        ), body["unknowns"]
+    finally:
+        _set_scraper(_NULL_SCRAPER)
+
+
+def test_wrong_url_html_response_returns_insufficient_with_content_type_hint(
+    copilot_client: TestClient,
+) -> None:
+    """If the URL points at a 200-OK HTML page (e.g., the emulator service
+    root '/' instead of '/metrics'), the Content-Type guard must trip and
+    /ask's unknowns must hint at content-type or path misconfiguration —
+    NOT the misleading 'no degraded metrics' message."""
+    from copilot_api.main import _NULL_SCRAPER, _set_scraper
+
+    class _HtmlScraperStub:
+        """Stub that simulates HttpMetricsScraper hitting a wrong URL whose
+        response is HTML; the Content-Type guard raises ValueError."""
+
+        def scrape(self) -> str:
+            raise ValueError(
+                "Expected Prometheus exposition (Content-Type: text/plain*) "
+                "from 'http://127.0.0.1:9999/'; got Content-Type: 'text/html'. "
+                "Verify ORBITOPS_EMULATOR_METRICS_URL points at /metrics."
+            )
+
+    _set_scraper(_HtmlScraperStub())
+    try:
+        r = copilot_client.post("/ask", json={"question": "Which beam is degrading?"})
+        body = r.json()
+        assert body["status"] == "INSUFFICIENT_EVIDENCE"
+        unknowns_text = " ".join(body["unknowns"]).lower()
+        assert (
+            "content-type" in unknowns_text
+            or "text/html" in unknowns_text
+            or "/metrics" in unknowns_text
+        ), body["unknowns"]
+    finally:
+        _set_scraper(_NULL_SCRAPER)
+
+
+def test_http_scraper_rejects_html_content_type_unit() -> None:
+    """Unit-level guard: HttpMetricsScraper.scrape() raises ValueError when
+    Content-Type is not text/plain*. Stubs httpx via sys.modules patching
+    so we don't need a real listener."""
+    import sys
+    import types
+
+    from copilot_api._retrieval import HttpMetricsScraper
+
+    fake_httpx = types.SimpleNamespace()
+
+    class _FakeResponse:
+        def __init__(self) -> None:
+            self.headers = {"content-type": "text/html; charset=utf-8"}
+            self.text = "<html>oops</html>"
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class _FakeClient:
+        def __init__(self, *_a, **_k) -> None: ...
+        def __enter__(self) -> "_FakeClient":
+            return self
+        def __exit__(self, *_a) -> None:
+            return None
+        def get(self, _url: str) -> _FakeResponse:
+            return _FakeResponse()
+
+    fake_httpx.Client = _FakeClient
+    saved = sys.modules.get("httpx")
+    sys.modules["httpx"] = fake_httpx  # type: ignore[assignment]
+    try:
+        with pytest.raises(ValueError, match="text/plain"):
+            HttpMetricsScraper("http://example.invalid/").scrape()
+    finally:
+        if saved is not None:
+            sys.modules["httpx"] = saved
+        else:
+            del sys.modules["httpx"]
+
+
+def test_http_scraper_accepts_uppercase_content_type_unit() -> None:
+    """RFC 7231 §3.1.1.1: media-type is case-insensitive. A server returning
+    'Text/Plain; charset=utf-8' (capitalized) must be accepted, not rejected.
+    This lock-step test guards against a regression where the guard does a
+    naive case-sensitive startswith()."""
+    import sys
+    import types
+
+    from copilot_api._retrieval import HttpMetricsScraper
+
+    fake_httpx = types.SimpleNamespace()
+    EXPOSITION = "# HELP orbitops_beam_snr_db SNR\n# TYPE orbitops_beam_snr_db gauge\norbitops_beam_snr_db{beam_id=\"beam-1\"} 6.5\n"
+
+    class _FakeResponse:
+        def __init__(self) -> None:
+            # Capitalized + leading whitespace; both must be normalized.
+            self.headers = {"content-type": " Text/Plain; version=0.0.4; charset=utf-8"}
+            self.text = EXPOSITION
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class _FakeClient:
+        def __init__(self, *_a, **_k) -> None: ...
+        def __enter__(self) -> "_FakeClient":
+            return self
+        def __exit__(self, *_a) -> None:
+            return None
+        def get(self, _url: str) -> _FakeResponse:
+            return _FakeResponse()
+
+    fake_httpx.Client = _FakeClient
+    saved = sys.modules.get("httpx")
+    sys.modules["httpx"] = fake_httpx  # type: ignore[assignment]
+    try:
+        body = HttpMetricsScraper("http://example.invalid/").scrape()
+        assert body == EXPOSITION
+    finally:
+        if saved is not None:
+            sys.modules["httpx"] = saved
+        else:
+            del sys.modules["httpx"]
