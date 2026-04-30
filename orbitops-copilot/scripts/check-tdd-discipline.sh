@@ -41,10 +41,14 @@ fi
 
 count=${#COMMITS[@]}
 red_count=0
+# Match commit messages starting with `red:` `red(SPEC-NNN):` `red ` `red[`
+# or `test(...):` containing `fail`. Plain bash =~ regex; keep it simple.
+RED_RE='^red[[:space:]:(]'
+TEST_FAIL_RE='^test\(.*\):.*fail'
 for line in "${COMMITS[@]}"; do
   msg="${line#* }"
-  if [[ "$msg" =~ ^red[\(:[:space:]] ]] || [[ "$msg" =~ ^test\(.*\):.*fail ]]; then
-    ((red_count++)) || true
+  if [[ "$msg" =~ $RED_RE ]] || [[ "$msg" =~ $TEST_FAIL_RE ]]; then
+    red_count=$((red_count + 1))
   fi
 done
 
