@@ -1,0 +1,86 @@
+{
+  "title": "OrbitOps Overview",
+  "uid": "orbitops-overview",
+  "schemaVersion": 41,
+  "version": 2,
+  "tags": ["orbitops", "ntn", "b5g"],
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Beam SNR (dB)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "orbitops_beam_snr_db",
+          "legendFormat": "{{ beam_id }}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Link latency (ms)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        { "refId": "A", "expr": "orbitops_link_latency_ms", "legendFormat": "{{ beam_id }}" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Doppler residual (Hz)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        { "refId": "A", "expr": "orbitops_doppler_residual_hz", "legendFormat": "{{ beam_id }}" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Active anomalies",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        { "refId": "A", "expr": "sum(orbitops_anomaly_active)" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Packet loss ratio",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "targets": [
+        { "refId": "A", "expr": "orbitops_packet_loss_ratio", "legendFormat": "{{ beam_id }}" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Handover state (0=stable, 1=preparing, 2=failure)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "targets": [
+        { "refId": "A", "expr": "orbitops_handover_state", "legendFormat": "{{ beam_id }}" }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Gateway availability",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 6 },
+      "targets": [
+        { "refId": "A", "expr": "orbitops_gateway_available", "legendFormat": "{{ gateway_id }}" }
+      ]
+    }
+  ]
+}

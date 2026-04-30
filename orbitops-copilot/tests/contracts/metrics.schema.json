@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orbitops.local/schemas/metrics.schema.json",
+  "title": "OrbitOps Metrics Snapshot (v2)",
+  "description": "Schema for one tick of emulator output. Maps directly to Prometheus exposition. v2 names per docs/contracts/metrics.md.",
+  "type": "object",
+  "required": ["scenario_id", "tick_t", "metrics"],
+  "additionalProperties": false,
+  "properties": {
+    "scenario_id": { "type": "string" },
+    "tick_t": { "type": "number", "description": "seconds since scenario.start_time" },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "labels", "value"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "orbitops_beam_snr_db",
+              "orbitops_beam_sinr_db",
+              "orbitops_link_latency_ms",
+              "orbitops_packet_loss_ratio",
+              "orbitops_doppler_residual_hz",
+              "orbitops_handover_state",
+              "orbitops_gateway_available",
+              "orbitops_anomaly_active"
+            ]
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          },
+          "value": { "type": "number" },
+          "unit": { "type": "string" }
+        }
+      }
+    }
+  }
+}

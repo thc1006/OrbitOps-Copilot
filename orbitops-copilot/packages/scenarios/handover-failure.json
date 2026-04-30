@@ -1,0 +1,53 @@
+{
+  "beams": [
+    {
+      "beam_id": "beam-1",
+      "boresight_az_deg": 110.0,
+      "boresight_el_deg": 40.0,
+      "hpbw_deg": 3.5
+    },
+    {
+      "beam_id": "beam-2",
+      "boresight_az_deg": 140.0,
+      "boresight_el_deg": 55.0,
+      "hpbw_deg": 3.5
+    },
+    {
+      "beam_id": "beam-3",
+      "boresight_az_deg": 170.0,
+      "boresight_el_deg": 30.0,
+      "hpbw_deg": 3.5
+    }
+  ],
+  "duration_seconds": 600,
+  "events": [
+    {
+      "duration_seconds": 60,
+      "t_offset_seconds": 90,
+      "target": "beam-1",
+      "type": "handover_failure"
+    },
+    {
+      "duration_seconds": 30,
+      "magnitude_hz": 1500.0,
+      "t_offset_seconds": 90,
+      "target": "beam-1",
+      "type": "doppler_spike"
+    }
+  ],
+  "expected_anomaly": {
+    "keywords": [
+      "handover",
+      "beam-1",
+      "beam-2",
+      "doppler",
+      "fallback"
+    ],
+    "target": "beam-1",
+    "type": "handover_failure"
+  },
+  "ground_station_id": "gs-tw-01",
+  "satellite_id": "b5g-1a",
+  "scenario_id": "handover-failure-001",
+  "start_time": "2026-04-30T13:00:00Z"
+}

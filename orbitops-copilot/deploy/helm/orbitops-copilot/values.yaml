@@ -1,0 +1,40 @@
+global:
+  namespace: orbitops
+
+emulator:
+  image:
+    repository: orbitops/ntn-metrics-emulator
+    tag: "0.0.1-dev"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    port: 8000
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+  scenario:
+    path: /scenarios/beam-degradation.json
+
+copilot:
+  image:
+    repository: orbitops/copilot-api
+    tag: "0.0.1-dev"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    port: 8001
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "1000m"
+      memory: "512Mi"
+  llm:
+    provider: mock
+    openaiBaseUrl: ""
+    openaiModel: ""

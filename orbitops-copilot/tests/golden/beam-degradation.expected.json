@@ -1,0 +1,46 @@
+{
+  "beams": [
+    {
+      "beam_id": "beam-1",
+      "boresight_az_deg": 120.0,
+      "boresight_el_deg": 45.0,
+      "hpbw_deg": 3.5
+    },
+    {
+      "beam_id": "beam-2",
+      "boresight_az_deg": 150.0,
+      "boresight_el_deg": 50.0,
+      "hpbw_deg": 3.5
+    },
+    {
+      "beam_id": "beam-3",
+      "boresight_az_deg": 180.0,
+      "boresight_el_deg": 35.0,
+      "hpbw_deg": 3.5
+    }
+  ],
+  "duration_seconds": 600,
+  "events": [
+    {
+      "duration_seconds": 90,
+      "magnitude_db": 6.0,
+      "t_offset_seconds": 60,
+      "target": "beam-1",
+      "type": "snr_drop"
+    }
+  ],
+  "expected_anomaly": {
+    "keywords": [
+      "beam-1",
+      "snr",
+      "degrad",
+      "elevation"
+    ],
+    "target": "beam-1",
+    "type": "snr_drop"
+  },
+  "ground_station_id": "gs-tw-01",
+  "satellite_id": "b5g-1a",
+  "scenario_id": "beam-degradation-001",
+  "start_time": "2026-04-30T12:00:00Z"
+}

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ntn-metrics-emulator
+  labels:
+    app.kubernetes.io/name: ntn-metrics-emulator
+spec:
+  selector:
+    app.kubernetes.io/name: ntn-metrics-emulator
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
+  type: ClusterIP

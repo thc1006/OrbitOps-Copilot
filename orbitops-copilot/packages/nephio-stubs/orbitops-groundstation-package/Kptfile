@@ -1,0 +1,14 @@
+apiVersion: kpt.dev/v1
+kind: Kptfile
+metadata:
+  name: orbitops-groundstation-package
+  annotations:
+    config.kubernetes.io/local-config: "true"
+info:
+  description: |
+    OrbitOps Copilot ground-station kpt package (stub).
+    Demonstrates Nephio R5 GitOps shape; not a functional O2 IMS / FOCOM deployment.
+    See ADR-005 for rationale.
+pipeline:
+  mutators: []
+  validators: []

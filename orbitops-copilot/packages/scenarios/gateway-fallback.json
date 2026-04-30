@@ -1,0 +1,45 @@
+{
+  "beams": [
+    {
+      "beam_id": "beam-1",
+      "boresight_az_deg": 120.0,
+      "boresight_el_deg": 45.0,
+      "hpbw_deg": 3.5
+    },
+    {
+      "beam_id": "beam-2",
+      "boresight_az_deg": 150.0,
+      "boresight_el_deg": 50.0,
+      "hpbw_deg": 3.5
+    }
+  ],
+  "duration_seconds": 600,
+  "events": [
+    {
+      "duration_seconds": 120,
+      "t_offset_seconds": 30,
+      "target": "gateway-pod-1",
+      "type": "gateway_outage"
+    },
+    {
+      "duration_seconds": 60,
+      "t_offset_seconds": 30,
+      "target": "beam-1",
+      "type": "packet_loss_spike"
+    }
+  ],
+  "expected_anomaly": {
+    "keywords": [
+      "gateway",
+      "fallback",
+      "pod_health",
+      "failover"
+    ],
+    "target": "gateway-pod-1",
+    "type": "gateway_outage"
+  },
+  "ground_station_id": "gs-tw-01",
+  "satellite_id": "b5g-1a",
+  "scenario_id": "gateway-fallback-001",
+  "start_time": "2026-04-30T14:00:00Z"
+}

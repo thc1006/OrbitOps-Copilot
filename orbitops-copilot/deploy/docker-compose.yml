@@ -1,0 +1,66 @@
+# OrbitOps Copilot — local dev compose.
+# Sprint 0: only obs stack actually starts; service images are placeholders that
+# return /healthz once Sprint 1 implementations land.
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.11.3
+    container_name: orbitops-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=24h"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.0.1
+    container_name: orbitops-grafana
+    depends_on: [prometheus]
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    restart: unless-stopped
+
+  ntn-metrics-emulator:
+    # Sprint 0: image not yet built; this entry is documented for Sprint 1.
+    image: orbitops/ntn-metrics-emulator:0.0.1-dev
+    container_name: orbitops-emulator
+    profiles: ["sprint1"]
+    ports:
+      - "8000:8000"
+    environment:
+      ORBITOPS_SCENARIO_PATH: /scenarios/beam-degradation.json
+      ORBITOPS_TICK_SECONDS: "1"
+    volumes:
+      - ../packages/scenarios:/scenarios:ro
+    restart: unless-stopped
+
+  copilot-api:
+    image: orbitops/copilot-api:0.0.1-dev
+    container_name: orbitops-copilot
+    profiles: ["sprint1"]
+    depends_on: [ntn-metrics-emulator, prometheus]
+    ports:
+      - "8001:8001"
+    environment:
+      COPILOT_LLM_PROVIDER: mock
+    restart: unless-stopped
+
+  digital-twin-ui:
+    image: orbitops/digital-twin-ui:0.0.1-dev
+    container_name: orbitops-ui
+    profiles: ["sprint1"]
+    depends_on: [copilot-api]
+    ports:
+      - "5173:80"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8001
+    restart: unless-stopped

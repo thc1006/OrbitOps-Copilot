@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ntn-metrics-emulator
+  labels:
+    app.kubernetes.io/name: ntn-metrics-emulator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ntn-metrics-emulator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ntn-metrics-emulator
+    spec:
+      containers:
+        - name: emulator
+          image: orbitops/ntn-metrics-emulator:0.0.1-dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+            limits:   { cpu: "500m", memory: "256Mi" }
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8000 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8000 }
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          env:
+            - name: ORBITOPS_SCENARIO_PATH
+              value: "/scenarios/beam-degradation.json"

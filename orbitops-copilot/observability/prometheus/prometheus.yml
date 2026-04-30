@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: ntn-metrics-emulator
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - "host.docker.internal:8000"   # docker-compose host bridge
+          - "ntn-metrics-emulator:8000"   # in-cluster
+
+  - job_name: copilot-api
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - "host.docker.internal:8001"
+          - "copilot-api:8001"
+
+# rule_files:
+#   - "/etc/prometheus/rules/*.yml"   # Sprint 2 — observability-engineer territory

@@ -1,0 +1,17 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: orbitops
+servers: 1
+agents: 0
+ports:
+  - port: 30000:30000
+    nodeFilters: [server:0]
+  - port: 30001:30001
+    nodeFilters: [server:0]
+options:
+  k3s:
+    extraArgs:
+      - arg: --disable=traefik
+        nodeFilters: [server:*]
+# Verify before install (2026-04-30): k3d v5.8.3.
