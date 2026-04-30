@@ -42,6 +42,9 @@ info "2/6 unit tests (graceful)"
 # ─── 3. no-secrets scan ─────────────────────────────────
 info "3/6 no-secrets scan"
 if [ -x scripts/check-no-secrets.sh ]; then
+  # First prove the gate is not a placebo (regression for Copilot R3 review
+  # finding A: previous version silently passed even when leaks existed).
+  scripts/check-no-secrets.sh --self-test
   scripts/check-no-secrets.sh
   ok "no secrets / no anonymity leaks detected"
 else
