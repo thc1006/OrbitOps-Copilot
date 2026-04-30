@@ -53,6 +53,13 @@ else
   fail "scripts/check-no-secrets.sh missing or non-executable"
 fi
 
+# ─── 3b. observability stack static check ───────────────
+if [ -x scripts/check-observability.sh ]; then
+  info "3b/6 observability stack static check"
+  scripts/check-observability.sh >/dev/null
+  ok "prometheus.yml + Grafana provisioning + dashboard panels valid"
+fi
+
 # ─── 4. JSON schema validation ──────────────────────────
 info "4/6 JSON schema validation (contracts + sample scenarios)"
 if command -v python3 >/dev/null 2>&1; then
