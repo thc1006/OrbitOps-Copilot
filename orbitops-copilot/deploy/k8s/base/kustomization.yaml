@@ -7,7 +7,9 @@ labels:
       app.kubernetes.io/part-of: orbitops-copilot
 resources:
   - namespace.yaml
+  - scenario-configmap.yaml
   - emulator-deployment.yaml
   - emulator-service.yaml
   - copilot-deployment.yaml
   - copilot-service.yaml
+  - ui-deployment.yaml

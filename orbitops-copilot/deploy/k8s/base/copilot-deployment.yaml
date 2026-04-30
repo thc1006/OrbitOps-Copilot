@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: copilot
-          image: orbitops/copilot-api:0.0.1-dev
+          image: orbitops/copilot-api:0.1.0-dev
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8001
@@ -35,3 +35,5 @@ spec:
           env:
             - name: COPILOT_LLM_PROVIDER
               value: "mock"
+            - name: ORBITOPS_EMULATOR_METRICS_URL
+              value: "http://ntn-metrics-emulator:8000/metrics"

@@ -60,11 +60,14 @@ fi
 # ─── 5. k8s manifest validation ─────────────────────────
 info "5/6 k8s manifest validation"
 if command -v kustomize >/dev/null 2>&1 && command -v kubectl >/dev/null 2>&1; then
-  if [ -f deploy/k8s/overlays/local/kustomization.yaml ]; then
+  if [ -x scripts/k8s-smoke-test.sh ]; then
+    scripts/k8s-smoke-test.sh >/dev/null
+    ok "k8s static smoke (manifests + invariants)"
+  elif [ -f deploy/k8s/overlays/local/kustomization.yaml ]; then
     kustomize build deploy/k8s/overlays/local | kubectl apply --dry-run=client -f - >/dev/null
     ok "kustomize + kubectl --dry-run passed"
   else
-    warn "deploy/k8s/overlays/local/kustomization.yaml not yet present (Sprint 1 task)"
+    warn "deploy/k8s/overlays/local/kustomization.yaml not yet present"
   fi
 else
   warn "kustomize / kubectl not installed; skipping (will fail in CI)"

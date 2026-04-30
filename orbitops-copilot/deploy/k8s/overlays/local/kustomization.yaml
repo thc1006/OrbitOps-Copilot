@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: orbitops
 resources:
   - ../../base
+  - nodeport-services.yaml
 patches:
   - target:
       kind: Deployment
