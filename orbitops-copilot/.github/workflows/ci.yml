@@ -84,14 +84,20 @@ jobs:
             echo "k8s overlay not yet present (Sprint 0); will tighten in Sprint 1."
           fi
 
-  docker-build-dryrun:
-    name: docker build (dry-run; sprint 1+)
+  docker-build:
+    name: docker compose build (emulator + copilot)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: |
-          for f in services/*/Dockerfile; do
-            if [ -f "$f" ]; then
-              echo "would build $f (sprint 1+)"
-            fi
-          done
+      - name: validate compose config
+        # Catches malformed YAML, undeclared volumes, dangling depends_on,
+        # and missing build contexts.
+        run: docker compose -f deploy/docker-compose.yml config --quiet
+      - name: build ntn-metrics-emulator
+        # Real build — locks in the PR #23 fix (build context = repo root,
+        # `COPY tests/contracts` must resolve). Without this gate the previous
+        # broken `COPY ../../tests/contracts` could regress invisibly and
+        # only surface at the first live demo.
+        run: docker compose -f deploy/docker-compose.yml build ntn-metrics-emulator
+      - name: build copilot-api
+        run: docker compose -f deploy/docker-compose.yml build copilot-api

@@ -84,6 +84,22 @@ else
   pending "digital-twin-ui — package.json or vitest not yet declared"
 fi
 
+# ─── 4b. root-level pytest discovery smoke ──────────
+# Locks in the PR #23 fix: pytest from repo root must collect without
+# `ModuleNotFoundError: No module named 'tests.test_*'` (three sibling
+# `tests` packages used to collapse under default import mode).
+hdr "root-level pytest discovery (importlib mode)"
+PYTEST_DISC="$(command -v pytest 2>/dev/null || echo .venv/bin/pytest)"
+if [ -x "$PYTEST_DISC" ] || command -v "$PYTEST_DISC" >/dev/null 2>&1; then
+  if "$PYTEST_DISC" services/ tests/ --collect-only -q >/dev/null 2>&1; then
+    ok "pytest collects from repo root (importlib mode)"
+  else
+    err "pytest collection from repo root failed — check root pyproject.toml"
+  fi
+else
+  pending "pytest not installed; cannot verify discovery"
+fi
+
 # ─── 5. integration / k8s smoke ─────────────────────
 hdr "tests/integration & tests/k8s-smoke"
 PYTEST_BIN_INT="$(command -v pytest 2>/dev/null || echo .venv/bin/pytest)"
