@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: emulator
-          image: orbitops/ntn-metrics-emulator:0.0.1-dev
+          image: orbitops/ntn-metrics-emulator:0.1.0-dev
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
@@ -35,3 +35,11 @@ spec:
           env:
             - name: ORBITOPS_SCENARIO_PATH
               value: "/scenarios/beam-degradation.json"
+          volumeMounts:
+            - name: scenarios
+              mountPath: /scenarios
+              readOnly: true
+      volumes:
+        - name: scenarios
+          configMap:
+            name: orbitops-scenarios
