@@ -5,7 +5,7 @@
 | 0:00–0:20 | Title + map of Taiwan with LEO satellite trajectory | "Taiwan's B5G LEO program will fly its first Ka-band satellite around 2027. Payload partners are public — but the ground-station operations toolchain is not." |
 | 0:20–0:40 | Cloud icon + Kubernetes badge | "OrbitOps Copilot is a cloud-native operations digital twin: Kubernetes (kind/k3d), Prometheus, Grafana, FastAPI, React, CesiumJS — and an evidence-grounded LLM copilot." |
 | 0:40–1:10 | UC1 walkthrough on screen | "We load `beam-degradation.json`. The emulator emits SNR, SINR, latency, packet loss, Doppler residual, elevation, handover state. We ask: 'which beam is degrading and why?'" |
-| 1:10–1:30 | Copilot panel showing evidence JSON | "The copilot replies, citing orbitops_snr_db{beam_id='beam-1'}=4.2 dB, elevation=12°. Every answer carries an evidence block — no hallucinations allowed." |
+| 1:10–1:30 | Copilot panel showing evidence JSON | "The copilot replies, citing orbitops_beam_snr_db{beam_id='beam-1'}=6.5 dB. Every response carries an evidence block (metrics_used + recommended_actions + unknowns) — no hallucinations allowed." |
 | 1:30–1:50 | UC2 — handover failure + pod health drop | "Now a handover failure plus a gateway pod going unhealthy. We click Generate Runbook." |
 | 1:50–2:10 | 5-step runbook in collapsible UI | "Five steps: what, why, action, risk, next observation window. Backed by the same evidence pipeline." |
 | 2:10–2:30 | Mermaid arch + boundary callouts | "The architecture is honest about its boundaries: simulation today, real ray-traced channels tomorrow, real RAN stack the day after." |
