@@ -24,7 +24,9 @@ PAT_PRIV_KEY='-----BEGIN [A-Z ]*PRIVATE KEY-----'
 # Anonymity leaks (school / personal identifiers)
 PAT_SCHOOL='\b(NCTU|NYCU|NTU|NCKU|NTHU|NTUST|NCU|NTUT|NSYSU|NCHU)\b'
 PAT_EMAIL_AT_SCHOOL='@[a-z]+\.(nctu|nycu|ntu|ncku|nthu|ntust)\.edu\.tw'
-PAT_PERSONAL='(thc1006|hctsai1006|hctsai)'
+# GitHub handle `thc1006` allowed per CLAUDE.md §7; still flag school-email
+# local-part variants because those connect back to a school address.
+PAT_PERSONAL='(hctsai1006|hctsai)'
 # Common dev e-mails
 PAT_EMAIL_GMAIL='[a-zA-Z0-9._%+-]+@gmail\.com'
 

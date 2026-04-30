@@ -72,7 +72,9 @@ fi
 
 # ─── 6. anonymity check ─────────────────────────────────
 info "6/6 anonymity / forbidden-strings check"
-forbidden_pat="(NCTU|NYCU|NTU|NCKU|NTHU|NTUST|hctsai|thc1006|hctsai1006|cs\\.nctu\\.edu\\.tw|@gmail\\.com)"
+# GitHub handle `thc1006` is allowed (CLAUDE.md §7); still block school /
+# school-email local-part / school domain / personal gmail.
+forbidden_pat="(NCTU|NYCU|NTU|NCKU|NTHU|NTUST|hctsai|hctsai1006|cs\\.nctu\\.edu\\.tw|@gmail\\.com)"
 hits=$(grep -RIE -l "$forbidden_pat" \
   --include="*.md" --include="*.json" --include="*.yml" --include="*.yaml" \
   --include="*.py" --include="*.ts" --include="*.tsx" --include="*.js" \
