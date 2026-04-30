@@ -4,7 +4,8 @@ version = "0.0.1.dev0"
 description = "OrbitOps NTN scenario generator (Sprint 0 skeleton)."
 requires-python = ">=3.11"
 dependencies = [
-  "pydantic>=2.13",
+  # Sprint 1 currently builds scenarios as raw dicts validated by JSON Schema.
+  # Add pydantic when type-safe domain objects land (planned for Sprint 2).
   "jsonschema>=4.0",
 ]
 
