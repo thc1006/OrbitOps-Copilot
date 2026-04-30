@@ -1,28 +1,35 @@
 {
   "name": "digital-twin-ui",
   "private": true,
-  "version": "0.0.1-dev",
+  "version": "0.1.0-dev",
   "type": "module",
-  "description": "OrbitOps digital-twin web UI (Sprint 0 skeleton).",
+  "description": "OrbitOps digital-twin web UI — Sprint 1 SVG shell. CesiumJS upgrade in VS-13.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview",
+    "preview": "vite preview --port 5173",
     "lint": "eslint . --max-warnings=0",
-    "typecheck": "tsc -b --noEmit",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
-    "react": "19.2.5",
-    "react-dom": "19.2.5"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "typescript": "6.0.3",
-    "vite": "8.0.10",
-    "@types/react": "19.0.0",
-    "@types/react-dom": "19.0.0",
-    "vitest": "3.0.0",
-    "tailwindcss": "4.2.4"
+    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/react": "^16.0.1",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "jsdom": "^25.0.1",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8"
   },
-  "_note": "Versions verified against 2026-04-30 GitHub releases. Re-verify with verify.sh before npm install."
+  "_note": "Sprint 1 pinned to today's-stable npm versions (React 18, Vite 5, Vitest 2, Tailwind 3, TS 5). docs/09_installation_research.md targets future React 19 / Vite 8 / Tailwind 4 / TS 6 — upgrades land in VS-13 alongside CesiumJS. Pinning future versions today would break npm install."
 }

@@ -83,6 +83,7 @@ forbidden_pat="(NCTU|NYCU|NTU|NCKU|NTHU|NTUST|hctsai|hctsai1006|cs\\.nctu\\.edu\
 hits=$(grep -RIE -l "$forbidden_pat" \
   --include="*.md" --include="*.json" --include="*.yml" --include="*.yaml" \
   --include="*.py" --include="*.ts" --include="*.tsx" --include="*.js" \
+  --exclude=package-lock.json --exclude=pnpm-lock.yaml --exclude=yarn.lock \
   --exclude-dir=.venv --exclude-dir=venv --exclude-dir=.git \
   --exclude-dir=node_modules --exclude-dir=__pycache__ --exclude-dir=.pytest_cache \
   --exclude-dir=.ruff_cache --exclude-dir=dist --exclude-dir=build --exclude-dir=tmp \

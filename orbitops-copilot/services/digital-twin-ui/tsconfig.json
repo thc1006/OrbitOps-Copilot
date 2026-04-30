@@ -13,7 +13,9 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "isolatedModules": true,
-    "types": ["vitest/globals"]
+    "useDefineForClassFields": true,
+    "resolveJsonModule": true,
+    "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
-  "include": ["src", "vitest.config.ts"]
+  "include": ["src", "vite.config.ts", "vitest.config.ts"]
 }

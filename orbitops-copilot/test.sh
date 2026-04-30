@@ -70,18 +70,18 @@ done
 
 # ─── 4. UI tests ────────────────────────────────────
 hdr "services/digital-twin-ui (vitest)"
-if [ -f services/digital-twin-ui/package.json ]; then
-  if grep -q '"vitest"' services/digital-twin-ui/package.json 2>/dev/null; then
-    if (cd services/digital-twin-ui && npx --no-install vitest run --reporter=verbose 2>/dev/null); then
+if [ -f services/digital-twin-ui/package.json ] && grep -q '"vitest"' services/digital-twin-ui/package.json; then
+  if [ -d services/digital-twin-ui/node_modules ]; then
+    if (cd services/digital-twin-ui && npm test --silent 2>&1 | tail -5); then
       ok "ui vitest"
     else
-      pending "digital-twin-ui — vitest not yet wired (Sprint 1 task)"
+      err "ui vitest failed"
     fi
   else
-    pending "digital-twin-ui — vitest not yet declared in package.json"
+    pending "digital-twin-ui — node_modules missing; run 'cd services/digital-twin-ui && npm install'"
   fi
 else
-  pending "digital-twin-ui — package.json not yet created (Sprint 1 task S1-06)"
+  pending "digital-twin-ui — package.json or vitest not yet declared"
 fi
 
 # ─── 5. integration / k8s smoke ─────────────────────
