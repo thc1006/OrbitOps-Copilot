@@ -1,0 +1,16 @@
+apiVersion: v2
+name: orbitops-copilot
+description: OrbitOps Copilot — operations digital twin for B5G LEO ground stations.
+type: application
+version: 0.0.1-dev
+appVersion: "0.0.1-dev"
+keywords:
+  - ntn
+  - leo
+  - operations
+  - digital-twin
+  - 3gpp-rel-19
+home: https://orbitops.local
+maintainers:
+  - name: orbitops-copilot-contributors
+# Verified for Helm v4.1.4 (2026-04-09). Re-verify with `helm version` before install.

@@ -1,0 +1,22 @@
+[project]
+name = "copilot-api"
+version = "0.0.1.dev0"
+description = "OrbitOps evidence-grounded LLM copilot API (Sprint 0 skeleton)."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.136",
+  "uvicorn>=0.46",
+  "pydantic>=2.13",
+  "httpx>=0.28",
+  "prometheus-client>=0.25",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=9.0", "ruff>=0.15"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

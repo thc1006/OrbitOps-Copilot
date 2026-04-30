@@ -1,0 +1,66 @@
+# Secrets
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+*.crt
+*.p12
+.secrets-baseline.txt
+
+# Claude Code local
+.claude/settings.local.json
+.claude/CLAUDE.local.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+htmlcov/
+.coverage
+coverage.xml
+
+# Node
+node_modules/
+.npm/
+.pnp.*
+dist/
+.vite/
+.tsbuildinfo
+*.tsbuildinfo
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.zip
+!packages/scenarios/*.json
+build/
+out/
+
+# Demo outputs
+tmp/
+*.mp4
+*.png
+!docs/**/*.png
+
+# K8s
+kubeconfig
+.kube/
+
+# Docker
+.docker/

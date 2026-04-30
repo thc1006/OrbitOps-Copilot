@@ -1,0 +1,97 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify (lint + schema + secrets + manifest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - name: bootstrap python
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install ruff pytest jsonschema pyyaml
+      - name: install kustomize
+        run: |
+          curl -sLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.8.1/kustomize_v5.8.1_linux_amd64.tar.gz
+          tar -xzf kustomize.tar.gz
+          sudo mv kustomize /usr/local/bin/
+      - name: install kubectl
+        uses: azure/setup-kubectl@v4
+        with: { version: "v1.35.4" }
+      - name: chmod +x scripts
+        run: chmod +x verify.sh test.sh scripts/*.sh
+      - name: ./verify.sh
+        run: |
+          source .venv/bin/activate
+          ./verify.sh
+
+  lint-only:
+    name: ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - run: pip install ruff==0.15.12
+      - run: ruff check services/ scripts/ tests/ || true
+
+  no-secrets:
+    name: anonymity / secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: chmod +x scripts/check-no-secrets.sh
+      - run: scripts/check-no-secrets.sh
+
+  schema-validate:
+    name: schema validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - run: pip install jsonschema
+      - run: python scripts/validate_schemas.py
+
+  k8s-manifest:
+    name: k8s manifest validate (dry-run)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install kustomize
+        run: |
+          curl -sLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.8.1/kustomize_v5.8.1_linux_amd64.tar.gz
+          tar -xzf kustomize.tar.gz
+          sudo mv kustomize /usr/local/bin/
+      - uses: azure/setup-kubectl@v4
+        with: { version: "v1.35.4" }
+      - run: |
+          if [ -f deploy/k8s/overlays/local/kustomization.yaml ]; then
+            kustomize build deploy/k8s/overlays/local | kubectl apply --dry-run=client -f -
+          else
+            echo "k8s overlay not yet present (Sprint 0); will tighten in Sprint 1."
+          fi
+
+  docker-build-dryrun:
+    name: docker build (dry-run; sprint 1+)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          for f in services/*/Dockerfile; do
+            if [ -f "$f" ]; then
+              echo "would build $f (sprint 1+)"
+            fi
+          done

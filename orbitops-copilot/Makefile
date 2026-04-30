@@ -1,0 +1,100 @@
+# OrbitOps Copilot — Makefile
+# All targets idempotent; long-form flags; no destructive defaults.
+
+SHELL := /usr/bin/env bash
+.SHELLFLAGS := -eu -o pipefail -c
+.DEFAULT_GOAL := help
+
+ROOT := $(shell pwd)
+VENV := .venv
+PY   := $(VENV)/bin/python
+PIP  := $(VENV)/bin/pip
+
+# ---------- Help ----------
+.PHONY: help
+help:
+	@awk 'BEGIN {FS = ":.*##"; printf "Targets:\n"} /^[a-zA-Z_-]+:.*?##/ {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+# ---------- Bootstrap ----------
+.PHONY: bootstrap
+bootstrap: ## Create venv + install Python tooling + Node deps (placeholder for now)
+	python3 -m venv $(VENV)
+	$(PIP) install --upgrade pip
+	$(PIP) install ruff pytest jsonschema pyyaml
+	@echo "[bootstrap] Python venv ready at $(VENV)"
+	@echo "[bootstrap] Node deps will be installed by service-level make targets in Sprint 1+."
+
+.PHONY: install-deps
+install-deps: bootstrap ## Per-service deps (placeholder until Sprint 1 services land)
+	@echo "[install-deps] services unimplemented in Sprint 0; targets activate in Sprint 1."
+
+# ---------- Quality gates ----------
+.PHONY: lint
+lint: ## ruff (Python) + ESLint (TS) placeholders
+	@if [ -x "$(PY)" ]; then \
+	  $(VENV)/bin/ruff check services/ scripts/ tests/ --no-cache || true; \
+	else \
+	  echo "[lint] venv not found; run 'make bootstrap' first."; \
+	fi
+	@echo "[lint] ESLint will be wired when digital-twin-ui ships in Sprint 1."
+
+.PHONY: typecheck
+typecheck: ## tsc -b (frontend) + mypy (optional)
+	@echo "[typecheck] tsc -b placeholder until Sprint 1 UI lands."
+	@echo "[typecheck] mypy optional; run separately if needed."
+
+.PHONY: test
+test: ## pytest + vitest (delegates to ./test.sh which is graceful about missing tests)
+	./test.sh
+
+.PHONY: verify
+verify: ## Full local CI: lint + schema + secrets + manifest validate
+	./verify.sh
+
+# ---------- Dev ----------
+.PHONY: dev-up
+dev-up: ## docker compose up (services + obs stack)
+	docker compose -f deploy/docker-compose.yml up -d --remove-orphans
+
+.PHONY: dev-down
+dev-down: ## docker compose down
+	docker compose -f deploy/docker-compose.yml down --remove-orphans
+
+.PHONY: demo
+demo: ## End-to-end golden demo (requires dev-up first)
+	scripts/run-demo.sh
+
+# ---------- K8s ----------
+.PHONY: kind-up
+kind-up: ## Create local kind cluster
+	kind create cluster --name orbitops --config deploy/kind/cluster.yaml
+
+.PHONY: kind-down
+kind-down: ## Destroy local kind cluster
+	kind delete cluster --name orbitops
+
+.PHONY: k8s-apply
+k8s-apply: ## Apply Kustomize overlay (local)
+	kustomize build deploy/k8s/overlays/local | kubectl apply --dry-run=client -f -
+	@echo "[k8s-apply] dry-run OK; remove --dry-run=client when ready."
+
+.PHONY: k8s-smoke
+k8s-smoke: ## K8s smoke tests
+	@echo "[k8s-smoke] placeholder: implement in Sprint 1 (S1-09)."
+
+# ---------- Schema / contracts ----------
+.PHONY: schema-check
+schema-check: ## Validate sample scenarios against scenario.schema.json
+	$(PY) scripts/validate_schemas.py
+
+# ---------- Packaging ----------
+.PHONY: package-zip
+package-zip: ## Produce orbitops-copilot.zip (excludes venv/node_modules/.git)
+	scripts/package-zip.sh
+
+# ---------- Cleaning ----------
+.PHONY: clean
+clean: ## Clean venv + caches (does NOT touch git)
+	rm -rf $(VENV) .pytest_cache .ruff_cache __pycache__ tmp/
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	@echo "[clean] done."

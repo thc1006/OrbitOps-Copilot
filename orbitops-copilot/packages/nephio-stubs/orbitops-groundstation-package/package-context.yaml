@@ -1,0 +1,12 @@
+apiVersion: kpt.dev/v1
+kind: ConfigMap
+metadata:
+  name: orbitops-groundstation
+  annotations:
+    config.kubernetes.io/local-config: "true"
+data:
+  ground-station-id: "gs-tw-01"
+  band: "Ka"
+  payload-mode: "transparent"
+  notes: |
+    Stub context only — real Nephio CRDs (OCloud Registration, ProvisioningRequest) wired in P2.

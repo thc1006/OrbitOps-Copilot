@@ -1,0 +1,28 @@
+{
+  "name": "digital-twin-ui",
+  "private": true,
+  "version": "0.0.1-dev",
+  "type": "module",
+  "description": "OrbitOps digital-twin web UI (Sprint 0 skeleton).",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "react": "19.2.5",
+    "react-dom": "19.2.5"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3",
+    "vite": "8.0.10",
+    "@types/react": "19.0.0",
+    "@types/react-dom": "19.0.0",
+    "vitest": "3.0.0",
+    "tailwindcss": "4.2.4"
+  },
+  "_note": "Versions verified against 2026-04-30 GitHub releases. Re-verify with verify.sh before npm install."
+}

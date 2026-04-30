@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orbitops.local/schemas/scenario.schema.json",
+  "title": "OrbitOps NTN Scenario",
+  "description": "Schema v2 (Sprint 1 amendment): flatter top-level fields per implementer prompt; preserves AC-001 invariants (scenario_id=beam-degradation-001, snr_drop on beam-1 at t+60s, magnitude 6 dB, duration 90s).",
+  "type": "object",
+  "required": [
+    "scenario_id",
+    "start_time",
+    "duration_seconds",
+    "satellite_id",
+    "ground_station_id",
+    "beams",
+    "events",
+    "expected_anomaly"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "scenario_id": { "type": "string", "pattern": "^[a-z0-9-]{3,64}$" },
+    "start_time": { "type": "string", "format": "date-time" },
+    "duration_seconds": { "type": "integer", "exclusiveMinimum": 0 },
+    "satellite_id": { "type": "string", "minLength": 1 },
+    "ground_station_id": { "type": "string", "minLength": 1 },
+    "beams": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["beam_id"],
+        "additionalProperties": false,
+        "properties": {
+          "beam_id": { "type": "string", "minLength": 1 },
+          "boresight_az_deg": { "type": "number", "minimum": 0, "maximum": 360 },
+          "boresight_el_deg": { "type": "number", "minimum": 0, "maximum": 90 },
+          "hpbw_deg": { "type": "number", "exclusiveMinimum": 0, "maximum": 30 }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["t_offset_seconds", "type", "target", "duration_seconds"],
+        "additionalProperties": false,
+        "properties": {
+          "t_offset_seconds": { "type": "number", "minimum": 0 },
+          "type": {
+            "type": "string",
+            "enum": [
+              "snr_drop",
+              "handover_failure",
+              "doppler_spike",
+              "gateway_outage",
+              "packet_loss_spike"
+            ]
+          },
+          "target": { "type": "string", "minLength": 1 },
+          "duration_seconds": { "type": "number", "exclusiveMinimum": 0 },
+          "magnitude_db": { "type": "number" },
+          "magnitude_hz": { "type": "number" }
+        }
+      }
+    },
+    "expected_anomaly": {
+      "type": "object",
+      "required": ["type", "target", "keywords"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "target": { "type": "string", "minLength": 1 },
+        "keywords": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}
