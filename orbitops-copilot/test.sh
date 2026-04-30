@@ -34,15 +34,19 @@ fi
 
 # ─── 2. golden expected sanity ─────────────────────
 hdr "tests/golden (expected JSONs parse)"
-for f in tests/golden/*.expected.json; do
-  if [ -f "$f" ]; then
-    if python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f" >/dev/null 2>&1; then
-      ok "$f parses"
-    else
-      err "$f failed to parse"
+if ! command -v python3 >/dev/null 2>&1; then
+  pending "tests/golden — python3 missing; run 'make bootstrap'"
+else
+  for f in tests/golden/*.expected.json; do
+    if [ -f "$f" ]; then
+      if python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f" >/dev/null 2>&1; then
+        ok "$f parses"
+      else
+        err "$f failed to parse"
+      fi
     fi
-  fi
-done
+  done
+fi
 
 # ─── 3. Python unit tests per service ──────────────
 hdr "services/*/tests (pytest)"
