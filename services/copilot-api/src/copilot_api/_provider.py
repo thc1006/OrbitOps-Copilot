@@ -56,6 +56,8 @@ class FakeLLMProvider:
             return self._handover_failure_analysis(evidence)
         if anomaly_type == "gateway_outage":
             return self._gateway_outage_analysis(evidence)
+        if anomaly_type == "doppler_compensation_warning":
+            return self._doppler_compensation_warning_analysis(evidence)
         return self._unknown_anomaly(anomaly_type)
 
     # --- canned analyses --------------------------------------------------
@@ -245,6 +247,82 @@ class FakeLLMProvider:
             "unknowns": [
                 "Backup gateway rated capacity vs current traffic.",
                 "Whether the outage is local or upstream-induced.",
+            ],
+        }
+
+    @staticmethod
+    def _doppler_compensation_warning_analysis(evidence: Evidence) -> dict[str, Any]:
+        """G8 — residual Doppler exceeded the warning threshold (default 2 kHz).
+        Per 3GPP TS 38.821 + TR 38.811 (NTN channel), the gNB's two-stage
+        compensation should keep residual below ≈10% of subcarrier-spacing;
+        a sustained excursion above 2 kHz at SCS=30 kHz threatens demod margin.
+
+        Most operationally-actionable causes:
+            - ephemeris drift (epochTime / t-Service expired)
+            - PLL/FLL loop loss (RF-front-end alarm)
+            - mis-tuned pre-comp model after a recent satellite station-keeping burn
+        """
+        relevant = [
+            m
+            for m in evidence.metrics_used
+            if m.name == "orbitops_doppler_residual_hz"
+        ]
+        if not relevant:
+            return FakeLLMProvider._no_relevant_evidence(
+                "doppler_compensation_warning",
+                "orbitops_doppler_residual_hz exceeding the warning threshold (2 kHz)",
+            )
+        worst = max(relevant, key=lambda m: abs(m.value))
+        return {
+            "summary": (
+                f"Residual Doppler on {worst.labels.get('beam_id', '?')} reached "
+                f"{worst.value:.0f} Hz, above the 2 kHz compensation-warning gate."
+            ),
+            "likely_cause": (
+                "Residual Doppler beyond the warning gate normally indicates one of: "
+                "(1) ephemeris drift — the predicted satellite vector used by pre-comp "
+                "has aged past its validity window; (2) compensation-loop loss; "
+                "(3) a post-station-keeping pre-comp model mismatch. NR demod loses "
+                "margin once residual exceeds ~10% of SCS; sustained excursion "
+                "increases BLER on the affected beam."
+            ),
+            "recommended_actions": [
+                {
+                    "step": 1,
+                    "title": "Refresh ephemeris",
+                    "body": (
+                        "Push the latest TLE/SP3 to the gNB pre-comp module and "
+                        "force a re-tune of the Doppler model. Verify the "
+                        "epochTime / t-Service IEs are still inside the validity window."
+                    ),
+                },
+                {
+                    "step": 2,
+                    "title": "Inspect compensation-loop health",
+                    "body": (
+                        "Check the gNB's CFO-tracking loop: PLL/FLL lock indicator, "
+                        "Doppler-tracking-error variance over the last pass."
+                    ),
+                },
+                {
+                    "step": 3,
+                    "title": "Watch the next pass at the same elevation",
+                    "body": (
+                        "If residual stays above 2 kHz on the recurring pass, "
+                        "escalate to the satellite operator for a station-keeping "
+                        "log review."
+                    ),
+                },
+            ],
+            "risk_if_ignored": (
+                "Sustained residual > 2 kHz on Ka-band SCS=30 kHz reduces demod margin; "
+                "BLER rises and high-throughput services degrade. The link is not "
+                "yet down, but is one event away."
+            ),
+            "confidence": 0.65,
+            "unknowns": [
+                "Whether the loop excursion is local to one beam or system-wide.",
+                "Recent satellite station-keeping burn schedule.",
             ],
         }
 

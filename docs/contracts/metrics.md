@@ -41,6 +41,7 @@ scenario `start_time`); it does **not** wait wall-clock.
 | 6 | `orbitops_handover_state` | Gauge | `beam_id` | enum | 0,1,2 | 0 = stable; 1 = preparing; 2 = failure. Set to 2 when a `handover_failure` event targeting `beam_id` is active. |
 | 7 | `orbitops_gateway_available` | Gauge | `gateway_id` | 0 / 1 | {0,1} | 1 = healthy; 0 = unavailable. Set to 0 during `gateway_outage` events targeting that gateway. |
 | 8 | `orbitops_anomaly_active` | Gauge | `type` | 0 / 1 | {0,1} | 1 if any active event has `type == <type>` at current `t`. One Gauge instance per known event-type label. |
+| 9 | `orbitops_beam_elevation_deg` | Gauge | `beam_id` | deg | 0 … 90 | Per-beam elevation angle. Sin-shaped over `scenario.duration_seconds`: `peak · sin(π·t/T_pass)`, clamped to `[0, 90]`. Peak from optional `scenario.satellite.pass_peak_elevation_deg` (default 55°). Sprint-1 simplification of full SGP4; defensible for ~600 km LEO passes per 3GPP TR 38.811 §6. |
 
 `type` label of `orbitops_anomaly_active` ∈ `{snr_drop, handover_failure, doppler_spike, gateway_outage, packet_loss_spike}`.
 
@@ -117,6 +118,29 @@ This contract supersedes the v1 names from earlier draft:
 | `orbitops_handover_failures_total` | (removed; covered by `orbitops_handover_state` + `orbitops_anomaly_active`) |
 | `orbitops_elevation_deg` | (removed; folded into baseline SNR) |
 | (none) | `orbitops_gateway_available` (new) |
+| (none) | `orbitops_beam_elevation_deg` (new in G7; replaces removed v1 `orbitops_elevation_deg` with explicit per-beam labelling) |
 
 The Grafana dashboard JSON (`observability/grafana/dashboards/orbitops-overview.json`)
-will be updated to match in a follow-up slice (VS-2).
+covers all 9 metrics above (panels 1–8 — anomaly_active is folded into the
+"Active anomalies" stat panel; elevation is panel 8 added in PR #34).
+The static check `scripts/check-observability.sh` enforces this — adding a
+new metric here without a panel will fail CI.
+
+## 8. Copilot anomaly classification
+
+`copilot-api`'s `_retrieval.classify()` consumes the same evidence and assigns
+one anomaly type per request. Priority (highest first; first match wins).
+Source-of-truth = `services/copilot-api/src/copilot_api/_retrieval.py`.
+
+| Priority | `anomaly_type` | Trigger metric | Notes |
+|---|---|---|---|
+| 1 | `snr_drop` | `orbitops_beam_snr_db < 8.0` (any beam) | AC-001 link-adaptation threshold. Most operationally severe. |
+| 2 | `handover_failure` | `orbitops_handover_state ≥ 2` (state-machine "failure") | |
+| 3 | `gateway_outage` | `orbitops_gateway_available < 0.5` (i.e. = 0) | |
+| 4 | `doppler_compensation_warning` | `|orbitops_doppler_residual_hz| > 2000.0` | G8: 10% of NR SCS=30 kHz is the ceiling (~3 kHz); 2 kHz is the conservative early-warning gate beneath it (3GPP TS 38.821 §6 + TR 38.811 §6). |
+| — | `unknown` | none of the above | LLM provider returns the `_no_relevant_evidence` shape. |
+
+`doppler_compensation_warning` is a copilot-side classification — it does NOT
+correspond to a producer-emitted `orbitops_anomaly_active{type=...}` series
+(the producer only flags scenario-injected events). It is derived from raw
+`orbitops_doppler_residual_hz` magnitude crossing the 2 kHz gate.

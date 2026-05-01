@@ -81,6 +81,25 @@
       "targets": [
         { "refId": "A", "expr": "orbitops_gateway_available", "legendFormat": "{{ gateway_id }}" }
       ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Beam elevation (deg)",
+      "description": "Per-beam elevation angle. Sin-shaped over scenario.duration_seconds; peak from scenario.satellite.pass_peak_elevation_deg (default 55°). Source: orbitops_beam_elevation_deg.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "degree",
+          "min": 0,
+          "max": 90
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "orbitops_beam_elevation_deg", "legendFormat": "{{ beam_id }}" }
+      ]
     }
   ]
 }

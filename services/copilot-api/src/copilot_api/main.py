@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from . import _grounding, _retrieval
 from ._provider import FakeLLMProvider, LLMProvider
@@ -50,6 +51,24 @@ app.add_middleware(
     allow_methods=["POST", "GET", "OPTIONS"],
     allow_headers=["*"],
     allow_credentials=False,
+)
+
+# G6 — Prometheus exposition. The instrumentator binds to the global
+# `prometheus_client.REGISTRY`, so `/metrics` exposes BOTH:
+#   * its own RED-style HTTP metrics (http_requests_total{handler,method,status},
+#     http_request_duration_seconds, http_requests_inprogress)
+#   * the default process / GC / platform collectors that prometheus_client
+#     auto-registers on import (process_*, python_gc_*, python_info)
+# That's intentional — it's the canonical FastAPI Prom contract. Future PRs
+# adding custom counters via `prometheus_client.Counter(...)` without an
+# explicit registry will also surface here. Kept on the global registry for
+# parity with how third-party FastAPI services typically scrape. The
+# `/metrics` endpoint is registered before the routes below so it can't be
+# accidentally shadowed by a later @app.get definition.
+Instrumentator().instrument(app).expose(
+    app,
+    endpoint="/metrics",
+    include_in_schema=False,  # don't pollute /docs with the exposition route
 )
 
 _SYSTEM_PROMPT = (

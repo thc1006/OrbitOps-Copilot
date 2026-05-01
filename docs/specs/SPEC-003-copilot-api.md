@@ -93,6 +93,20 @@ output_schema: copilot-response.schema.json
 - AC-S003-3：runbook 必為 5 step，順序固定（What/Why/Action/Risk/Next）。
 - AC-S003-4：模型回應 JSON 解析失敗 → retry 1 次 → 仍失敗 → degrade 為 `INSUFFICIENT_EVIDENCE`，不向使用者顯示原始錯誤訊息。
 - AC-S003-5：`temperature ≤ 0.3` 啟用；`/providers` 列出 ≥ 1 ready provider。
+- AC-S003-6（G6）：`GET /metrics` 回 200，`Content-Type: text/plain`，body 含 `http_requests_total`（prometheus-fastapi-instrumentator 7.x 預設 RED metrics）。Prom scrape job `copilot-api` 取得。
+- AC-S003-7（G8）：`_retrieval.classify()` 對 `|orbitops_doppler_residual_hz| > 2000.0`（≈10% NR SCS=30 kHz；3GPP TS 38.821 §6 + TR 38.811 §6）回 `doppler_compensation_warning`，priority 低於 `snr_drop` / `handover_failure` / `gateway_outage`。`FakeLLMProvider._doppler_compensation_warning_analysis` 提供 3-step runbook（refresh ephemeris / inspect CFO loop / next-pass watch）。
+
+### 8.1 Anomaly classification registry（`_retrieval.classify()` 輸出）
+
+Source-of-truth = `services/copilot-api/src/copilot_api/_retrieval.py` constants `SNR_DROP_THRESHOLD_DB`, `HANDOVER_FAILURE_STATE`, `DOPPLER_RESIDUAL_WARNING_HZ`.
+
+| Priority | `anomaly_type` | Trigger | Producer source | Spec ref |
+|---|---|---|---|---|
+| 1 | `snr_drop` | `orbitops_beam_snr_db < 8.0` (AC-001 link-adaptation threshold) | scenario `snr_drop` event | AC-001 |
+| 2 | `handover_failure` | `orbitops_handover_state ≥ 2` (state-machine "failure") | scenario `handover_failure` event | AC-002 |
+| 3 | `gateway_outage` | `orbitops_gateway_available < 0.5` (i.e. = 0) | scenario `gateway_outage` event | AC-002 |
+| 4 | `doppler_compensation_warning` | `|orbitops_doppler_residual_hz| > 2000.0` (≈⅔ of the 10%-SCS=30 kHz operational ceiling — conservative early-warning gate) | derived（無對應 producer event；可由 `doppler_spike` 觸發） | G8 / 本 SPEC §8 |
+| — | `unknown` | 以上皆非 | — | `_no_relevant_evidence` |
 
 ## 9. Test strategy
 

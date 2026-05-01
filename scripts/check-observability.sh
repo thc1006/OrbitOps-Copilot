@@ -64,6 +64,7 @@ ok "$DASH parses"
 # once in a panel target expression.
 REQUIRED=(
   "orbitops_beam_snr_db"
+  "orbitops_beam_elevation_deg"
   "orbitops_link_latency_ms"
   "orbitops_packet_loss_ratio"
   "orbitops_doppler_residual_hz"
