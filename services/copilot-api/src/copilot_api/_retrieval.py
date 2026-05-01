@@ -10,14 +10,20 @@ in-process scraper. Keeping this behind a Protocol means:
   network, no docker-compose required for CI)
 
 The classifier converts a Prometheus exposition into ``MetricCitation`` list
-plus an inferred ``anomaly_type``. Heuristic priority (most-impactful first):
+plus an inferred ``anomaly_type``. Heuristic priority (most-impactful first;
+mutually exclusive — first match wins, others ignored):
 
-1. ``orbitops_beam_snr_db < 8`` → ``snr_drop``       (matches AC-001 threshold)
-2. ``orbitops_handover_state >= 2``                  → ``handover_failure``
-3. ``orbitops_gateway_available == 0``               → ``gateway_outage``
+1. ``orbitops_beam_snr_db < 8``                       → ``snr_drop``                     (AC-001 threshold)
+2. ``orbitops_handover_state >= 2``                   → ``handover_failure``             (AC-002)
+3. ``orbitops_gateway_available < 0.5``               → ``gateway_outage``               (AC-002)
+4. ``|orbitops_doppler_residual_hz| > 2000.0``        → ``doppler_compensation_warning`` (G8; ~⅔ of the 10%-SCS=30 kHz ceiling per 3GPP TS 38.821 / TR 38.811)
 
 If none triggers, returns ``([], None)`` and /ask degrades to
 ``INSUFFICIENT_EVIDENCE``. We **never** invent an anomaly type.
+
+Cross-references for the priority registry:
+  - docs/contracts/metrics.md §8
+  - docs/specs/SPEC-003-copilot-api.md §8.1
 """
 
 from __future__ import annotations

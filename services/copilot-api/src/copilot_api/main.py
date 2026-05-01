@@ -53,11 +53,18 @@ app.add_middleware(
     allow_credentials=False,
 )
 
-# G6 — Prometheus exposition. Default request-counter / latency-histogram
-# / in-progress gauge are written to the global prometheus_client.REGISTRY.
-# (copilot-api has no other custom registry, so the global is fine.) The
+# G6 — Prometheus exposition. The instrumentator binds to the global
+# `prometheus_client.REGISTRY`, so `/metrics` exposes BOTH:
+#   * its own RED-style HTTP metrics (http_requests_total{handler,method,status},
+#     http_request_duration_seconds, http_requests_inprogress)
+#   * the default process / GC / platform collectors that prometheus_client
+#     auto-registers on import (process_*, python_gc_*, python_info)
+# That's intentional — it's the canonical FastAPI Prom contract. Future PRs
+# adding custom counters via `prometheus_client.Counter(...)` without an
+# explicit registry will also surface here. Kept on the global registry for
+# parity with how third-party FastAPI services typically scrape. The
 # `/metrics` endpoint is registered before the routes below so it can't be
-# accidentally shadowed.
+# accidentally shadowed by a later @app.get definition.
 Instrumentator().instrument(app).expose(
     app,
     endpoint="/metrics",

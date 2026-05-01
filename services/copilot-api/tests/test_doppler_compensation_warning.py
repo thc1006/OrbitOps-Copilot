@@ -16,9 +16,11 @@ This test fails until:
 The ordering matters: snr_drop > handover_failure > gateway_outage >
 doppler_compensation_warning. A Ka-band LEO at 600 km has ~±25 kHz
 peak residual when uncompensated; the gNB's compensation loop normally
-keeps it inside a few-kHz envelope. Per 3GPP TR 38.821 §6.1.x guidance
-we trip the warning at residual > 5_000 Hz (defensible Sprint-1 default;
-revisit when research returns).
+keeps it inside a few-kHz envelope. Per 3GPP TS 38.821 §6 + TR 38.811 §6
+NTN guidance, NR demod margin caps residual CFO at ~10% of the SCS, so
+for SCS=30 kHz the operational ceiling is ~3 kHz; we trip the warning
+at residual > 2_000 Hz as a conservative early-warning gate beneath
+that ceiling. Source-of-truth = `_retrieval.DOPPLER_RESIDUAL_WARNING_HZ`.
 """
 
 from __future__ import annotations

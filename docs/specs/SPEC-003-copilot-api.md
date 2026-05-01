@@ -98,12 +98,14 @@ output_schema: copilot-response.schema.json
 
 ### 8.1 Anomaly classification registry（`_retrieval.classify()` 輸出）
 
+Source-of-truth = `services/copilot-api/src/copilot_api/_retrieval.py` constants `SNR_DROP_THRESHOLD_DB`, `HANDOVER_FAILURE_STATE`, `DOPPLER_RESIDUAL_WARNING_HZ`.
+
 | Priority | `anomaly_type` | Trigger | Producer source | Spec ref |
 |---|---|---|---|---|
-| 1 | `snr_drop` | `orbitops_beam_snr_db < 5.0` | scenario `snr_drop` event | AC-001 |
-| 2 | `handover_failure` | `orbitops_handover_state ≥ 1` 或 `orbitops_anomaly_active{type=handover_failure}=1` | scenario `handover_failure` event | AC-002 |
-| 3 | `gateway_outage` | `orbitops_gateway_available = 0` 或 `orbitops_anomaly_active{type=gateway_outage}=1` | scenario `gateway_outage` event | AC-002 |
-| 4 | `doppler_compensation_warning` | `|orbitops_doppler_residual_hz| > 2000.0` | derived（無對應 producer event；可由 `doppler_spike` 觸發） | G8 / 本 SPEC §8 |
+| 1 | `snr_drop` | `orbitops_beam_snr_db < 8.0` (AC-001 link-adaptation threshold) | scenario `snr_drop` event | AC-001 |
+| 2 | `handover_failure` | `orbitops_handover_state ≥ 2` (state-machine "failure") | scenario `handover_failure` event | AC-002 |
+| 3 | `gateway_outage` | `orbitops_gateway_available < 0.5` (i.e. = 0) | scenario `gateway_outage` event | AC-002 |
+| 4 | `doppler_compensation_warning` | `|orbitops_doppler_residual_hz| > 2000.0` (≈⅔ of the 10%-SCS=30 kHz operational ceiling — conservative early-warning gate) | derived（無對應 producer event；可由 `doppler_spike` 觸發） | G8 / 本 SPEC §8 |
 | — | `unknown` | 以上皆非 | — | `_no_relevant_evidence` |
 
 ## 9. Test strategy

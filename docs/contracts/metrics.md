@@ -121,19 +121,23 @@ This contract supersedes the v1 names from earlier draft:
 | (none) | `orbitops_beam_elevation_deg` (new in G7; replaces removed v1 `orbitops_elevation_deg` with explicit per-beam labelling) |
 
 The Grafana dashboard JSON (`observability/grafana/dashboards/orbitops-overview.json`)
-will be updated to match in a follow-up slice (VS-2).
+covers all 9 metrics above (panels 1–8 — anomaly_active is folded into the
+"Active anomalies" stat panel; elevation is panel 8 added in PR #34).
+The static check `scripts/check-observability.sh` enforces this — adding a
+new metric here without a panel will fail CI.
 
 ## 8. Copilot anomaly classification
 
 `copilot-api`'s `_retrieval.classify()` consumes the same evidence and assigns
-one anomaly type per request. Priority (highest first; first match wins):
+one anomaly type per request. Priority (highest first; first match wins).
+Source-of-truth = `services/copilot-api/src/copilot_api/_retrieval.py`.
 
 | Priority | `anomaly_type` | Trigger metric | Notes |
 |---|---|---|---|
-| 1 | `snr_drop` | `orbitops_beam_snr_db < 5.0` (any beam) | Most operationally severe. |
-| 2 | `handover_failure` | `orbitops_handover_state ≥ 1` or `orbitops_anomaly_active{type=handover_failure}=1` | |
-| 3 | `gateway_outage` | `orbitops_gateway_available = 0` or `orbitops_anomaly_active{type=gateway_outage}=1` | |
-| 4 | `doppler_compensation_warning` | `|orbitops_doppler_residual_hz| > 2000.0` | G8: ~10% of NR SCS=30 kHz (3GPP TS 38.821 / TR 38.811). |
+| 1 | `snr_drop` | `orbitops_beam_snr_db < 8.0` (any beam) | AC-001 link-adaptation threshold. Most operationally severe. |
+| 2 | `handover_failure` | `orbitops_handover_state ≥ 2` (state-machine "failure") | |
+| 3 | `gateway_outage` | `orbitops_gateway_available < 0.5` (i.e. = 0) | |
+| 4 | `doppler_compensation_warning` | `|orbitops_doppler_residual_hz| > 2000.0` | G8: 10% of NR SCS=30 kHz is the ceiling (~3 kHz); 2 kHz is the conservative early-warning gate beneath it (3GPP TS 38.821 §6 + TR 38.811 §6). |
 | — | `unknown` | none of the above | LLM provider returns the `_no_relevant_evidence` shape. |
 
 `doppler_compensation_warning` is a copilot-side classification — it does NOT

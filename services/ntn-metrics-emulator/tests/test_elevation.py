@@ -6,9 +6,11 @@ shipped without it; this test fails until _compute.py exposes
 corresponding Prometheus gauge per beam.
 
 Constraints driven by the emulator's role:
-  - elevation must stay in [0, 90] deg (geometry; below-0 is invisible)
+  - elevation must stay in [0, 90] deg (geometry; below-0 is invisible,
+    above-zenith is impossible — both bounds enforced in elevation_deg)
   - across a pass it should rise → peak → fall (sin-shaped is enough for Sprint-1)
-  - peak elevation is configurable via scenario.satellite (default ~60°)
+  - peak elevation is configurable via scenario.satellite.pass_peak_elevation_deg
+    (default 55°, schema-bounded ≤ 90°; matches docs/contracts/metrics.md row 9)
   - sample shape: orbitops_beam_elevation_deg{beam_id="<id>"}
 
 Per CLAUDE.md §12.2 this red commit must land before the green impl.
