@@ -17,6 +17,7 @@ from typing import Any
 # Defaults below cover the Sprint-1 beam-degradation preset.
 DEFAULT_PASS_PEAK_ELEVATION_DEG = 55.0
 ELEVATION_FLOOR_DEG = 0.0  # geometric floor; sin gives this naturally at endpoints
+ELEVATION_CEILING_DEG = 90.0  # geometric ceiling = zenith; enforced regardless of input peak
 
 EVENT_TYPES: tuple[str, ...] = (
     "snr_drop",
@@ -75,7 +76,12 @@ def elevation_deg(scenario: dict[str, Any], t: int) -> float:
     to 55°, matching a moderate-quality TASA-style ~600 km LEO pass at a
     mid-latitude ground station).
 
-    Returns a value in [0, peak] (geometry: never negative).
+    Returns a value clamped to ``[0, 90]`` (geometric bounds; zenith = 90°).
+    The upper clamp is defense-in-depth — the JSON schema rejects
+    ``pass_peak_elevation_deg > 90`` at /scenario/load, but this function
+    is also reachable from in-memory test fixtures and future multi-satellite
+    code paths that bypass the schema. The metrics contract
+    (docs/contracts/metrics.md §3 row 9) is enforced HERE.
     """
     duration = float(scenario.get("duration_seconds", 600))
     if duration <= 0:
@@ -85,7 +91,8 @@ def elevation_deg(scenario: dict[str, Any], t: int) -> float:
     # Clamp t into [0, duration]; sin would still give 0 at the endpoints
     # but a hard clamp keeps the value well-defined for late ticks.
     t_clamped = max(0.0, min(float(t), duration))
-    return max(ELEVATION_FLOOR_DEG, peak * math.sin(math.pi * t_clamped / duration))
+    raw = peak * math.sin(math.pi * t_clamped / duration)
+    return max(ELEVATION_FLOOR_DEG, min(ELEVATION_CEILING_DEG, raw))
 
 
 def compute(scenario: dict[str, Any], t: int) -> dict[str, list[tuple[dict[str, str], float]]]:
