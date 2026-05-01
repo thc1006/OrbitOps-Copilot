@@ -113,7 +113,8 @@ if command -v kustomize >/dev/null 2>&1 && command -v kubectl >/dev/null 2>&1; t
     scripts/k8s-smoke-test.sh >/dev/null
     ok "k8s static smoke (manifests + invariants)"
   elif [ -f deploy/k8s/overlays/local/kustomization.yaml ]; then
-    kustomize build deploy/k8s/overlays/local | kubectl apply --dry-run=client -f - >/dev/null
+    kustomize build deploy/k8s/overlays/local \
+      | kubectl apply --dry-run=client --validate=false -f - >/dev/null
     ok "kustomize + kubectl --dry-run passed"
   else
     warn "deploy/k8s/overlays/local/kustomization.yaml not yet present"

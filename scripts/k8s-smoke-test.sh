@@ -25,8 +25,12 @@ say "static: kustomize build + kubectl --dry-run=client"
 command -v kustomize >/dev/null || die "missing kustomize"
 command -v kubectl >/dev/null   || die "missing kubectl"
 kustomize build deploy/k8s/overlays/local \
-  | kubectl apply --dry-run=client -f - >/dev/null
+  | kubectl apply --dry-run=client --validate=false -f - >/dev/null
 ok "manifests render and pass kubectl --dry-run=client"
+# --validate=false skips server-side OpenAPI fetch; otherwise kubectl 1.35.x
+# dials localhost:8080 looking for an apiserver and fails on machines
+# without a cluster (e.g. CI runner). YAML parse + kustomize render still
+# happen below; kubeconform (if installed) covers schema validation.
 
 if command -v kubeconform >/dev/null 2>&1; then
   say "static: kubeconform schema validation"

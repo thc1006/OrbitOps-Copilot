@@ -21,7 +21,16 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
+          # Tooling not pinned per-service.
           .venv/bin/pip install ruff pytest jsonschema pyyaml
+          # Install each Python service in editable mode so its declared
+          # runtime deps (fastapi, pydantic, prometheus-client, httpx)
+          # land in the venv. Without this, test.sh hits
+          # `ModuleNotFoundError: No module named 'fastapi'` on import.
+          .venv/bin/pip install \
+            -e services/scenario-generator \
+            -e services/ntn-metrics-emulator \
+            -e services/copilot-api
       - name: install kustomize
         run: |
           curl -sLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.8.1/kustomize_v5.8.1_linux_amd64.tar.gz
@@ -78,8 +87,13 @@ jobs:
       - uses: azure/setup-kubectl@v4
         with: { version: "v1.35.4" }
       - run: |
+          # `--validate=false` skips server-side OpenAPI validation. Without
+          # it, kubectl 1.35.x tries to fetch the schema from a (non-existent)
+          # apiserver at localhost:8080 and fails. We still get YAML structural
+          # parse + kustomize render validation, which is what this gate is for.
           if [ -f deploy/k8s/overlays/local/kustomization.yaml ]; then
-            kustomize build deploy/k8s/overlays/local | kubectl apply --dry-run=client -f -
+            kustomize build deploy/k8s/overlays/local \
+              | kubectl apply --dry-run=client --validate=false -f -
           else
             echo "k8s overlay not yet present (Sprint 0); will tighten in Sprint 1."
           fi
