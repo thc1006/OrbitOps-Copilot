@@ -143,7 +143,9 @@ def _with_time_window_note(req: AskRequest, response: CopilotResponse) -> Copilo
     disclaimer to ``unknowns`` so the response doesn't silently pretend the
     window was honoured. REFUSED responses skip this — they don't carry
     evidence anyway."""
-    if req.time_window_seconds is None or response.status == "REFUSED":
+    # 0 is treated as "not set" — semantically equivalent to None and avoids
+    # the awkward "time_window_seconds=0 was accepted but not honoured" note.
+    if not req.time_window_seconds or response.status == "REFUSED":
         return response
     response.unknowns.append(
         _TIME_WINDOW_SPRINT1_DISCLAIMER.format(n=req.time_window_seconds)

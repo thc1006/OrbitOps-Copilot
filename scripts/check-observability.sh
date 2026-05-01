@@ -68,6 +68,7 @@ REQUIRED=(
   "orbitops_packet_loss_ratio"
   "orbitops_doppler_residual_hz"
   "orbitops_handover_state"
+  "orbitops_gateway_available"
   "orbitops_anomaly_active"
 )
 for metric in "${REQUIRED[@]}"; do

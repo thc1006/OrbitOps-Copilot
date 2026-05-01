@@ -28,13 +28,29 @@ def list_scenarios() -> list[str]:
 
 
 def _find_schema() -> Path | None:
-    candidates = [
-        Path.cwd() / "tests" / "contracts" / "scenario.schema.json",
-        Path(__file__).resolve().parents[4] / "tests" / "contracts" / "scenario.schema.json",
-    ]
-    for p in candidates:
+    """Locate scenario.schema.json. Lookup order:
+    1. ``ORBITOPS_CONTRACTS_DIR`` env var (point at any tests/contracts/ root)
+    2. cwd-relative ``tests/contracts/scenario.schema.json``
+    3. Walk upward from this file looking for ``tests/contracts/`` (handles
+       editable installs at any depth — replaces fragile parents[4]).
+    """
+    import os
+
+    env_dir = os.environ.get("ORBITOPS_CONTRACTS_DIR", "").strip()
+    if env_dir:
+        p = Path(env_dir) / "scenario.schema.json"
         if p.is_file():
             return p
+
+    cwd_path = Path.cwd() / "tests" / "contracts" / "scenario.schema.json"
+    if cwd_path.is_file():
+        return cwd_path
+
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        candidate = parent / "tests" / "contracts" / "scenario.schema.json"
+        if candidate.is_file():
+            return candidate
     return None
 
 

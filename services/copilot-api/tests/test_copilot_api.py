@@ -147,6 +147,56 @@ def test_ask_refused_path_does_not_add_disclaimer(client: TestClient) -> None:
     assert "time_window_seconds=" not in unknowns_text
 
 
+def test_ask_with_time_window_seconds_zero_does_not_add_disclaimer(
+    client: TestClient,
+) -> None:
+    """time_window_seconds=0 is semantically equivalent to None — caller
+    means 'no window'. A disclaimer saying '0 was accepted but not honoured'
+    is awkward and unhelpful; treat 0 as not-set."""
+    r = client.post(
+        "/ask",
+        json={"question": "Which beam is degrading?", "time_window_seconds": 0},
+    )
+    body = r.json()
+    unknowns_text = " ".join(body["unknowns"]).lower()
+    assert "time_window_seconds=" not in unknowns_text
+
+
+def test_ask_with_time_window_seconds_adds_disclaimer_on_ok_path(
+    client: TestClient,
+) -> None:
+    """The disclaimer must also appear on the ok path — earlier coverage
+    only exercised INSUFFICIENT_EVIDENCE / REFUSED. Stub the scraper so /ask
+    classifies snr_drop and returns status=ok, then assert the disclaimer is
+    present and the time_window value is interpolated."""
+    from copilot_api.main import _NULL_SCRAPER, _set_scraper
+
+    class _SnrDropScraper:
+        def scrape(self) -> str:
+            return (
+                "# HELP orbitops_beam_snr_db SNR\n"
+                "# TYPE orbitops_beam_snr_db gauge\n"
+                'orbitops_beam_snr_db{beam_id="beam-1"} 6.5\n'
+            )
+
+    _set_scraper(_SnrDropScraper())
+    try:
+        r = client.post(
+            "/ask",
+            json={
+                "question": "Which beam is degrading and why?",
+                "time_window_seconds": 90,
+            },
+        )
+        body = r.json()
+        assert body["status"] == "ok", body
+        unknowns_text = " ".join(body["unknowns"]).lower()
+        assert "time_window_seconds=90" in unknowns_text, body["unknowns"]
+        assert "sprint" in unknowns_text or "snapshot" in unknowns_text or "promql" in unknowns_text
+    finally:
+        _set_scraper(_NULL_SCRAPER)
+
+
 # --- /explain: no evidence path --------------------------------------------
 
 

@@ -141,7 +141,7 @@ def classify(
                         timestamp=timestamp,
                     )
                 )
-            elif sample.name == "orbitops_gateway_available" and sample.value == 0.0:
+            elif sample.name == "orbitops_gateway_available" and sample.value < 0.5:
                 gw_down.append(
                     MetricCitation(
                         name=sample.name,
