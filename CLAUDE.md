@@ -80,7 +80,7 @@ OrbitOps Copilot 是「**B5G/NTN 低軌地面站雲原生 operations digital twi
 - `scripts/check-no-secrets.sh` 在 pre-commit + CI 雙處執行；偵測 AKID / private key header / `.env` patterns / team-name 白名單。**Trust boundary**：`docs/reviews/` 與 `docs/adr/` 被 secrets scan 完整 exempt（review/ADR 文件本身就會引用禁字描述問題，否則會 self-trip）。所以這兩個資料夾的內容必須由作者親自把關——不要把真實洩漏材料貼進 review docs，placeholder（`<OWNER>`、`<real-name-redacted>`）才是正確做法。
 - LLM prompt-injection note：copilot-api 對所有 user-supplied 字串套 sanitization；prompt 模板不直接拼接（用 placeholder + JSON schema）。
 - MCP security note：本骨架預設**不啟用任何 MCP server**；如需啟用，先以 read-only stdio 模式檢視，禁止 long-lived token 直接寫入 `.mcp.json`。
-- Hooks 僅做 lint / format / test / secrets-scan；**禁止** 自動刪檔、自動 push、自動上傳。
+- Hooks 僅做 lint / format / test / secrets-scan / 阻擋型 gate / advisory 提醒；**禁止** 自動刪檔、自動 push、自動上傳。實作見 `.claude/hooks/`：5 個 script 對應 6 條紀律規則（block .env write / pre-commit secrets+tests gate / protect SDD/ADR/AC paths / ruff format on edit / remind `make verify` at end of turn）。詳見 `.claude/hooks/README.md`。
 - 模型權重 / 大檔由 `.gitignore` 排除；以 HF Hub link + `pyproject.toml` 描述。
 
 ---

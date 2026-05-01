@@ -24,7 +24,7 @@
       "Bash(scripts/dev-down.sh)",
       "Bash(scripts/run-demo.sh)",
       "Bash(scripts/check-no-secrets.sh:*)",
-      "Bash(scripts/package-zip.sh)",
+      "Bash(scripts/k8s-smoke-test.sh:*)",
       "Bash(python3 scripts/validate_schemas.py)",
       "Bash(python3 scripts/generate-scenarios.py:*)",
       "Bash(pytest:*)",
@@ -79,10 +79,57 @@
   "env": {
     "ORBITOPS_PROJECT_ROOT": "${PWD}"
   },
-  "_hooks_note": "Hooks intentionally minimal. Permission `deny` rules already block destructive Bash; running heavyweight scans (check-no-secrets / verify.sh) on every Write/Edit is wasteful — those are gated at pre-commit (git hook) and CI instead. If you re-introduce hooks, remember PreToolUse handlers receive JSON via stdin, not via $CLAUDE_TOOL_INPUT env var.",
+  "_hooks_note": "Hooks live under `.claude/hooks/*.sh`. Each receives the tool input as JSON via stdin (NOT via $CLAUDE_TOOL_INPUT env var). Per CLAUDE.md §6, hooks only do: lint / format / test / secrets-scan / advisory reminders / blocking gate. They do NOT auto-delete, auto-push, or auto-upload. Exit 0=allow, 2=hard block (PreToolUse only).",
   "hooks": {
-    "PreToolUse": [],
-    "PostToolUse": [],
-    "UserPromptSubmit": []
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/block-env-write.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/protect-critical-paths.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/pre-commit-checks.sh",
+            "timeout": 90
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/format-on-edit.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/remind-verify.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
   }
 }
