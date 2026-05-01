@@ -32,6 +32,8 @@
 | ID | Vertical Slice | 切到的層 | 估 |
 |---|---|---|---|
 | VS-6 | Kubernetes real-apply smoke | Kustomize（移除 `--dry-run`）→ kind cluster → curl `/healthz` 從 cluster 內 | 1d |
+| VS-7 | `make k8s-reload-observability` 防 obs ConfigMap 漂移 | Makefile 多一個 target = `kustomize build … \| kubectl apply -f -` + `kubectl rollout restart deploy/{grafana,prometheus}`；任何 PR 改 `observability/**` 後跑一次。Driver: PR #34 elevation panel 漂移事件（live ConfigMap 7 panel vs git 8 panel；docs/reviews/demo-path-audit-2026-05-01.md 有完整紀錄） | 0.5d |
+| VS-8 | UI「Ready for Copilot」affordance | Scenarios 頁多一個 "Load + tick into anomaly" 一鍵 button，避免 demo 時 evaluator 漏跑 step 1+2 看到 INSUFFICIENT_EVIDENCE 誤以為 Copilot 壞掉。Driver: 同上 audit 文件「UX nit」段。或退而求其次更新 `docs/08_demo_script_3min.md` 寫死 4-step click flow。 | 0.5–1d |
 
 ## Sprint 2（P0 完整 + P1 起步 — 6 vertical slices）
 
