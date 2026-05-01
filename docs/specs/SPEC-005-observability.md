@@ -10,18 +10,18 @@
 
 ## 1. User story
 
-> 作為 ground-station operator，我想要在 Grafana 看到 beam SNR / SINR / latency / Doppler / handover state / pod health 一頁就懂；當 anomaly 注入後 30 秒內可見變化——**這樣我** 不必背 PromQL 就能知道 sandbox 正在發生什麼。
+> 作為 ground-station operator，我想要在 Grafana 看到 beam SNR / SINR / latency / Doppler / handover state / beam elevation / pod health 一頁就懂；當 anomaly 注入後 30 秒內可見變化——**這樣我** 不必背 PromQL 就能知道 sandbox 正在發生什麼。
 
 ## 2. Problem
 
-emulator 暴露了 10 個 metric，但沒人看就沒價值。一頁有意義的 dashboard 是 demo 與整合測試的視覺骨幹；同時 copilot-api 的 `evidence.metrics_used` / `logs_used` 都需要這條 obs pipeline 餵食。
+emulator 暴露 9 個 `orbitops_*` metric（snr/sinr/latency/loss/doppler/ho_state/gateway/anomaly_active/elevation；完整契約見 `docs/contracts/metrics.md` §3）+ copilot-api 自身的 RED metrics（PR #34 G6），但沒人看就沒價值。一頁有意義的 dashboard 是 demo 與整合測試的視覺骨幹；同時 copilot-api 的 `evidence.metrics_used` / `logs_used` 都需要這條 obs pipeline 餵食。
 
 ## 3. Scope
 
 - **Sprint 1（VS-2）**：Prometheus 3.11.3 scrape config + Grafana 13.0.1 dashboard JSON + provisioning。
 - **Sprint 2（VS-10）**：Loki 3.7.1 mock-logs integration + Tempo（optional）。
 - 30 秒 anomaly visibility SLA。
-- Dashboard 一頁含：pass timeline、beam SNR/SINR、latency、packet loss、Doppler residual、handover state、active anomalies、pod health。
+- Dashboard 一頁含：pass timeline、beam SNR/SINR、latency、packet loss、Doppler residual、handover state、active anomalies、gateway availability、beam elevation（`orbitops_beam_elevation_deg`，PR #34 G7 加入；panel id=8）、pod health。`scripts/check-observability.sh` REQUIRED list 是這份 dashboard 的 contract gate — 任何新 metric 必須同時加入該 list 才會 CI-pass。
 
 ## 4. Non-scope
 

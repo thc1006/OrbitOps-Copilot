@@ -61,8 +61,11 @@
 | `orbitops_handover_state` | Gauge | `beam_id` | enum (0/1/2) |
 | `orbitops_gateway_available` | Gauge | `gateway_id` | 0/1 |
 | `orbitops_anomaly_active` | Gauge | `type` | 0/1 |
+| `orbitops_beam_elevation_deg` | Gauge | `beam_id` | deg (0..90) |
 
 完整定義 / 範圍 / event→metric mapping 見 `docs/contracts/metrics.md`。
+
+`orbitops_beam_elevation_deg` 由 G7（PR #34）加入：sin-shaped over `scenario.duration_seconds`，peak 由 optional `scenario.satellite.pass_peak_elevation_deg` 決定（預設 55°，schema-bounded ≤ 90°）。`elevation_deg()` 在 producer 端強制 clamp 到 `[0, 90]` 以滿足 metrics-contract 上界（見 `_compute.ELEVATION_CEILING_DEG`）。
 
 **HTTP API**（單數路徑，加 `/scenario/tick` 取代背景 tick loop 以利 deterministic 測試）：
 
