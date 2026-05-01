@@ -21,30 +21,50 @@ warn() { printf "${Y}  ●${X} %s\n" "$*"; }
 die()  { printf "${R}  ✗${X} %s\n" "$*" >&2; exit 1; }
 
 # ── static (always) ───────────────────────────────────────────────
-say "static: kustomize build + kubectl --dry-run=client"
+# Design: this gate must work *without a kubernetes cluster* (CI runner
+# has none). `kubectl apply --dry-run=client` (kubectl 1.35.x) needs the
+# apiserver for resource-type recognition even with `--validate=false`.
+#   - kustomize build       : rendering correctness (always required)
+#   - python yaml.safe_load : YAML structural integrity (always required)
+#   - kubeconform           : schema validation (recommended; warn if missing)
+#   - kubectl --dry-run     : opt-in extra check IFF a cluster is reachable
+say "static: kustomize build"
 command -v kustomize >/dev/null || die "missing kustomize"
-command -v kubectl >/dev/null   || die "missing kubectl"
-kustomize build deploy/k8s/overlays/local \
-  | kubectl apply --dry-run=client --validate=false -f - >/dev/null
-ok "manifests render and pass kubectl --dry-run=client"
-# --validate=false skips server-side OpenAPI fetch; otherwise kubectl 1.35.x
-# dials localhost:8080 looking for an apiserver and fails on machines
-# without a cluster (e.g. CI runner). YAML parse + kustomize render still
-# happen below; kubeconform (if installed) covers schema validation.
-
-if command -v kubeconform >/dev/null 2>&1; then
-  say "static: kubeconform schema validation"
-  kustomize build deploy/k8s/overlays/local | kubeconform -strict -summary -
-  ok "kubeconform clean"
-else
-  warn "kubeconform not installed; install for stricter schema checks (optional)"
-fi
-
-# ── manifest invariants ───────────────────────────────────────────
-say "static: manifest invariants"
 TMP_RENDER=$(mktemp)
 trap 'rm -f "$TMP_RENDER"' EXIT
 kustomize build deploy/k8s/overlays/local > "$TMP_RENDER"
+ok "kustomize rendered $(wc -l < "$TMP_RENDER") lines"
+
+say "static: yaml.safe_load_all"
+command -v python3 >/dev/null 2>&1 \
+  || die "missing python3 (run 'make bootstrap' to provision a project venv)"
+python3 -c "import yaml" >/dev/null 2>&1 \
+  || die "missing python module: pyyaml (pip install pyyaml, or run 'make bootstrap')"
+python3 -c "import yaml,sys; list(yaml.safe_load_all(open(sys.argv[1])))" "$TMP_RENDER"
+ok "all rendered docs parse as YAML"
+
+if command -v kubeconform >/dev/null 2>&1; then
+  say "static: kubeconform schema validation"
+  kubeconform -strict -summary "$TMP_RENDER"
+  ok "kubeconform clean"
+else
+  warn "kubeconform not installed; install for stricter schema checks"
+fi
+
+# Optional kubectl dry-run — only if a cluster is reachable. Catches a few
+# extra schema errors the offline tools miss but cannot be required in CI
+# where no cluster exists.
+if command -v kubectl >/dev/null 2>&1 \
+   && kubectl version --request-timeout=2s >/dev/null 2>&1; then
+  say "static: kubectl --dry-run=client (cluster reachable)"
+  kubectl apply --dry-run=client -f "$TMP_RENDER" >/dev/null
+  ok "kubectl --dry-run accepted"
+fi
+
+# ── manifest invariants ───────────────────────────────────────────
+# Reuses TMP_RENDER from above (was previously re-rendered, wasting cycles
+# AND clobbering the trap registration).
+say "static: manifest invariants"
 
 python3 - "$TMP_RENDER" <<'PY'
 import sys, yaml
