@@ -1,433 +1,333 @@
-你是一位「資深學術研究員 + Staff 級雲原生電信系統架構師 + AI-RAN/NTN 研發工程師 + Claude Code 專案骨架設計專家」。
-
-你的任務是：根據 2026 年 04 月最新公開資訊，為一個 RunSpace Innovation Challenge 參賽專案設計「突破性」但可落地的開發方案，並產出一個完整專案骨架壓縮檔。
-
-專案名稱：
-OrbitOps Copilot: A Cloud-Native Operations Twin for B5G LEO Ground Stations
-
-中文名稱：
-軌道運維副駕：B5G 低軌地面站的雲原生運維數位孿生與 AI 決策支援
-
-核心概念：
-以 Kubernetes + Nephio/GitOps 建立 B5G/NTN 低軌地面站運維訓練與整合測試 sandbox，結合 Omniverse/AODT-style digital twin、RAN/NTN metrics emulator、Prometheus/Grafana 與 LLM Copilot，展示 beam quality anomaly、handover/fallback event、Doppler/latency/SNR 異常解釋與 runbook generation。
-
-請你務必上網查找 2026 年 04 月可得的最新公開資訊，並優先查以下官方或高品質來源：
-1. TASA Beyond 5G LEO Satellite Program 官方資料；
-2. CesiumAstro 與 TASA 2025/04 B5G 合約；
-3. YTTEK 2026/01 加入 TASA B5G LEO 計畫的官方/新聞資料；
-4. 3GPP Release 19 NTN regenerative payload、Release 20 roadmap；
-5. Nephio R5 / O-RAN O2 IMS / FOCOM / OAI Core and RAN testbed 官方文件；
-6. NVIDIA Aerial、Aerial Omniverse Digital Twin、AI Aerial、Sionna / Sionna RT；
-7. srsRAN、OpenAirInterface、UERANSIM、free5GC、Open5GS 等可用於 RAN/NTN-style emulator 的開源專案；
-8. Prometheus、Grafana、OpenTelemetry、Loki、Tempo、VictoriaMetrics 等 observability stack；
-9. LLM ops / local inference 方案：vLLM、Ollama、llama.cpp、NVIDIA NeMo / Canary-Qwen、Whisper/faster-whisper、Qwen、Llama、Gemma、Kimi 等；
-10. Claude Code 官方文件：best practices、CLAUDE.md/memory、subagents、hooks、settings.json、skills、slash commands、MCP、GitHub Actions。
-
-注意：
-- 不要憑印象寫版本號。所有版本號、安裝指令、repo URL、Helm chart、container image、模型名稱、API、CRD 名稱都必須先查證。
-- 若無法確認最新版本，請在文件中標示「需安裝前再次確認」，並提供查證指令。
-- 不要把 Isaac Sim 說成真正的 RAN ray-tracing 核心。請區分：
-  - AODT / Sionna RT / ray tracing：無線與 beam/channel 模擬概念；
-  - Isaac Sim / Omniverse：3D 場景與數位孿生視覺層；
-  - CesiumJS / Three.js：web-based satellite pass、地面站、beam coverage 視覺化。
-- 不要承諾真 Ka-band beam steering、真 SDR OTA、真 OAI/srsRAN NTN full stack。第一版 MVP 必須可在 7–14 天內完成。
-- 第一版只做「metrics emulator + digital twin UI + LLM copilot + K8s deployment」。
-- 專案不能在提交文件中暴露團隊名稱、學校、個人姓名、Logo 或可識別資訊，因為 RunSpace 有匿名化規定。
-
-請分三大階段完成工作。
-
-====================
-Phase 1：深入調研與技術路線報告
-====================
-
-請產出 `docs/00_research_2026_04.md`，內容包含：
-
-1. Executive Summary
-   - 用 5–8 點說明 OrbitOps Copilot 為何是 RunSpace 高潛力題目。
-   - 明確說明它不是泛 AI chatbot，也不是普通 Grafana dashboard，而是 B5G/NTN 地面站 operations twin。
-
-2. 2026 最新趨勢查核
-   - TASA B5G LEO 計畫；
-   - CesiumAstro / TASA 1A；
-   - YTTEK / TASA 1B；
-   - 3GPP Rel-19 NTN regenerative payload；
-   - 3GPP Rel-20 roadmap；
-   - NVIDIA Aerial / AODT / AI-RAN；
-   - Nephio R5 / O-RAN O2 IMS / FOCOM；
-   - open-source RAN/5GC/observability/LLM stack。
-   每一項都要附來源、日期、可信度、以及對本專案的影響。
-
-3. 競品與替代方案分析
-   至少比較：
-   - AWS Ground Station；
-   - Azure Orbital；
-   - SatNOGS；
-   - Open Cosmos / CGI Insula-like ground segment；
-   - NVIDIA AODT；
-   - 傳統地面站訓練/測試工具；
-   - 一般 observability platform。
-   請說明 OrbitOps Copilot 的差異化：
-   - B5G/NTN domain workflow；
-   - cloud-native deployable sandbox；
-   - beam/handover/anomaly operations twin；
-   - LLM explanation + runbook；
-   - 可作為教育訓練、整合測試、pre-field validation 工具。
-
-4. 技術可行性分析
-   請將功能分成：
-   - P0：7 天內必做；
-   - P1：14–30 天可做；
-   - P2：決賽或長期研究；
-   - 不做：第一版不碰的高風險項目。
-
-5. RunSpace 評分對齊
-   請用官方 Innovation Category 30/30/30/10 評估：
-   - Relevance to Space；
-   - Problem Solving；
-   - Future Impact；
-   - Business Feasibility。
-   也請附上若採用 35/25/20/20 實作組標準時的對照評分。
-
-====================
-Phase 2：突破性產品設計與系統架構
-====================
-
-請產出以下文件：
-
-`docs/01_product_strategy.md`
-內容包含：
-- Problem statement；
-- Target users；
-- Jobs-to-be-done；
-- 2 個核心 use case；
-- 不做的功能；
-- MVP 定義；
-- Demo story；
-- 90 秒影片腳本；
-- 3 分鐘英文字幕影片腳本；
-- 10 頁英文 RunSpace 初審簡報大綱。
-
-核心 use case 僅限兩個：
-
-Use Case 1：Beam Quality Copilot
-- 系統模擬 LEO satellite pass、ground station、3 個 candidate beam；
-- 指標包含 SNR/SINR、latency、packet loss、Doppler residual、elevation angle、handover timer；
-- 使用者可用文字或語音詢問：「Which beam is degrading and why?」
-- Copilot 需以 metrics + logs 解釋 beam degradation，並提供操作建議。
-
-Use Case 2：Handover / Fallback Anomaly Explanation
-- 系統模擬 handover failure、gateway failover、Doppler compensation warning；
-- Kubernetes pod / service / config profile 的狀態要能被觀察；
-- Copilot 產生 runbook：
-  1. What happened?
-  2. Why it matters?
-  3. Recommended action.
-  4. Risk if ignored.
-  5. Next observation window or fallback profile.
-
-`docs/02_architecture.md`
-內容包含：
-- Mermaid 架構圖；
-- Sequence diagram；
-- Data flow；
-- Component boundaries；
-- Security boundary；
-- LLM boundary；
-- Simulation vs real integration boundary；
-- 如何未來接 SDR-in-the-loop、OAI/srsRAN、Nephio O2 IMS、AODT/Sionna RT。
-
-建議架構：
-
-[scenario-generator]
-  產生 satellite pass、beam profile、handover event、anomaly injection。
-
-[ntn-metrics-emulator]
-  產生 SNR、SINR、latency、packet loss、Doppler residual、beam_id、handover_state、gateway_id、pod_health。
-
-[metrics-exporter]
-  暴露 Prometheus metrics。
-
-[prometheus + grafana]
-  收集與展示 metrics。
-
-[digital-twin-ui]
-  用 CesiumJS 或 Three.js 顯示衛星、地面站、beam、handover、異常事件。
-
-[copilot-api]
-  FastAPI 或 Node.js API，從 Prometheus/Loki/mock logs 取資料，呼叫 LLM 產生 anomaly explanation 與 runbook。
-
-[voice-interface optional]
-  faster-whisper / Whisper / Canary-Qwen ASR，把語音轉文字。
-
-[k8s manifests / helm]
-  讓整套 demo 可以部署到 local kind/k3d/minikube 或遠端 Kubernetes。
-
-`docs/03_breakthrough_directions.md`
-請提出 5 個「突破性但分階段可落地」的開發方向：
-1. NTN operations twin；
-2. AI-RAN beam/handover copilot；
-3. GitOps/Nephio intent-to-sandbox deployment；
-4. Closed-loop anomaly explanation and rollback recommendation；
-5. Future SDR-in-the-loop / AODT/Sionna RT integration。
-
-每個方向都要包含：
-- 技術背景；
-- 為何是 2026 前沿；
-- 開源工具；
-- 實作路線；
-- MVP；
-- 風險；
-- 驗證方式；
-- RunSpace 簡報亮點。
-
-`docs/04_technical_decisions.md`
-用 ADR 格式記錄技術選型：
-- 為什麼第一版用 metrics emulator 而不直接上 OAI/srsRAN NTN full stack；
-- 為什麼第一版用 CesiumJS/Three.js 而不是完整 Isaac Sim；
-- 為什麼用 Prometheus/Grafana；
-- 為什麼 LLM copilot 要 RAG over metrics/logs，不可自由幻想；
-- 為什麼 Nephio 第一版只做 GitOps package stub，而不是完整 O2 IMS lifecycle。
-
-`docs/05_validation_plan.md`
-定義測試與驗證：
-- Unit tests；
-- API tests；
-- Simulation golden scenarios；
-- Demo replay tests；
-- Metrics correctness tests；
-- LLM output grounding tests；
-- Kubernetes deployment smoke tests；
-- Security checks；
-- Anonymous submission checklist。
-
-====================
-Phase 3：產出完整專案骨架與壓縮檔
-====================
-
-請建立一個 repo 骨架，資料夾名稱：
-`orbitops-copilot/`
-
-專案必須包含：
-
-1. 根目錄文件
-- `README.md`
-- `CLAUDE.md`
-- `AGENTS.md`
-- `CONTRIBUTING.md`
-- `LICENSE`
-- `Makefile`
-- `verify.sh`
-- `test.sh`
-- `.env.example`
-- `.gitignore`
-- `PROJECT_STATUS.md`
-
-2. Claude Code 專用資料夾
-- `.claude/settings.json`
-- `.claude/commands/research.md`
-- `.claude/commands/plan.md`
-- `.claude/commands/implement.md`
-- `.claude/commands/test.md`
-- `.claude/commands/review.md`
-- `.claude/commands/demo.md`
-- `.claude/agents/researcher.md`
-- `.claude/agents/architect.md`
-- `.claude/agents/k8s-platform-engineer.md`
-- `.claude/agents/ran-ntn-engineer.md`
-- `.claude/agents/observability-engineer.md`
-- `.claude/agents/llm-copilot-engineer.md`
-- `.claude/agents/security-reviewer.md`
-- `.claude/skills/orbitops-research/SKILL.md`
-- `.claude/skills/k8s-demo/SKILL.md`
-- `.claude/skills/runspace-pitch/SKILL.md`
-
-CLAUDE.md 必須包含：
-- Project mission；
-- Non-negotiable constraints；
-- Architecture principles；
-- Coding rules；
-- Testing rules；
-- Security and privacy rules；
-- Anonymous competition submission rules；
-- Commands；
-- Current MVP scope；
-- Forbidden scope；
-- Definition of done。
-
-AGENTS.md 必須說明每個 agent 的角色、輸入、輸出、不可做的事、交付標準。
-
-`.claude/settings.json` 請採安全保守設定，不要預設允許危險 shell 命令。可以設定 hooks，但 hooks 必須只做格式檢查、測試、lint、禁止提交秘密資訊，不能自動刪檔或上傳資料。
-
-3. docs/
-- `docs/00_research_2026_04.md`
-- `docs/01_product_strategy.md`
-- `docs/02_architecture.md`
-- `docs/03_breakthrough_directions.md`
-- `docs/04_technical_decisions.md`
-- `docs/05_validation_plan.md`
-- `docs/06_runspace_pitch_outline.md`
-- `docs/07_demo_script_90s.md`
-- `docs/08_demo_script_3min.md`
-- `docs/09_installation_research.md`
-- `docs/10_links.md`
-
-4. services/
-請建立可逐步實作的服務骨架：
-
-- `services/scenario-generator/`
-  - Python package
-  - 產生 satellite pass / beam / anomaly scenario JSON
-  - 提供 sample scenarios
-
-- `services/ntn-metrics-emulator/`
-  - Python FastAPI 或 Go service
-  - 暴露 Prometheus metrics endpoint `/metrics`
-  - 可注入 anomaly
-
-- `services/copilot-api/`
-  - FastAPI 或 Node.js
-  - 提供 `/ask`, `/explain`, `/runbook`, `/healthz`
-  - 先用 mock LLM provider interface，保留 Ollama/vLLM/OpenAI-compatible endpoint adapter
-  - 嚴格要求回答必須引用 metrics/log evidence，不可憑空回答
-
-- `services/digital-twin-ui/`
-  - React + Vite + TypeScript
-  - CesiumJS 或 Three.js 擇一
-  - 顯示 satellite pass、ground station、beam、handover state、anomaly banner、copilot panel
-
-- `services/voice-interface/`
-  - optional
-  - 提供 faster-whisper / local ASR 的接口 stub
-
-5. deploy/
-- `deploy/k8s/base/`
-- `deploy/k8s/overlays/local/`
-- `deploy/helm/orbitops-copilot/`
-- `deploy/docker-compose.yml`
-- `deploy/kind/cluster.yaml`
-- `deploy/k3d/cluster.yaml`
-
-6. observability/
-- `observability/prometheus/prometheus.yml`
-- `observability/grafana/dashboards/orbitops-overview.json`
-- `observability/grafana/provisioning/`
-- `observability/loki/` optional
-
-7. packages/
-- `packages/scenarios/beam-degradation.json`
-- `packages/scenarios/handover-failure.json`
-- `packages/scenarios/gateway-fallback.json`
-- `packages/nephio-stubs/README.md`
-- `packages/nephio-stubs/orbitops-groundstation-package/`
-
-8. tests/
-- unit tests
-- integration tests
-- golden scenario tests
-- k8s smoke tests
-
-9. scripts/
-- `scripts/bootstrap.sh`
-- `scripts/install-deps.sh`
-- `scripts/dev-up.sh`
-- `scripts/dev-down.sh`
-- `scripts/run-demo.sh`
-- `scripts/generate-scenarios.py`
-- `scripts/check-no-secrets.sh`
-- `scripts/package-zip.sh`
-
-10. GitHub Actions
-- `.github/workflows/ci.yml`
-  - lint
-  - unit tests
-  - typecheck
-  - build
-  - docker build dry-run
-  - k8s manifest validation
-  - no-secrets check
-
-11. 最後請產生：
-- `orbitops-copilot.zip`
-- 其中必須包含完整 repo 骨架、docs、scripts、Claude Code config、agents、skills、commands。
-- 請列出壓縮檔內的檔案樹。
-- 請提供安裝與啟動指令。
-- 請提供下一步給 Claude Code 的 5 個任務 prompt。
-
-====================
-技術實作要求
-====================
-
-請優先用這種可快速落地的 stack：
-
-Frontend:
-- React + Vite + TypeScript
-- Tailwind
-- CesiumJS 或 Three.js
-- Recharts 或 lightweight charting
-
-Backend:
-- Python 3.11+ / 3.12+
-- FastAPI
-- Pydantic
-- Prometheus client
-- httpx
-- pytest
-- ruff
-- mypy optional
-
-LLM:
-- 先用 OpenAI-compatible local endpoint adapter
-- 支援 Ollama / vLLM / LM Studio / remote OpenAI-compatible endpoint
-- 不要硬綁單一 commercial API
-- LLM output 必須有 evidence block，例如：
-  - metrics used
-  - logs used
-  - scenario ID
-  - timestamp
-  - confidence
-
-Kubernetes:
-- local: kind 或 k3d
-- manifests: kustomize
-- optional: Helm chart
-- observability: Prometheus + Grafana
-- Nephio: first version only stubs / package-style docs，勿假裝完整 O2 IMS integration 已完成
-
-Security:
-- 不要 commit secrets
-- `.env.example` only
-- check-no-secrets script
-- LLM prompt injection note
-- MCP security note
-- no destructive hooks
-
-Testing:
-- `make test`
-- `make verify`
-- `./verify.sh`
-- `./test.sh`
-- Every generated service must have at least minimal test coverage.
-
-====================
-輸出格式要求
-====================
-
-請用繁體中文撰寫研究與策略文件；程式碼註解可用英文。README 可中英混合。
-
-請最終輸出：
-1. 研究摘要；
-2. 已建立的檔案樹；
-3. 每個重要文件的摘要；
-4. 安裝方式；
-5. Demo 啟動方式；
-6. 測試方式；
-7. 壓縮檔連結或路徑；
-8. 下一步開發任務列表。
-
-請務必：
-- 對每個外部事實加上來源；
-- 不要捏造版本；
-- 不要過度承諾真 NTN full stack；
-- 不要把視覺化 demo 說成已接真 Ka-band/RF；
-- 不要在匿名競賽文件中露出團隊、學校、姓名、Logo 或任何可識別資訊；
-- 所有設計都要能在 7–14 天內做出 P0 demo。
+# CLAUDE.md — OrbitOps Copilot
+
+> 本檔為 Claude Code 的專案記憶，所有 agent 與貢獻者於每次工作前必讀。
+
+---
+
+## 1. Project mission
+
+OrbitOps Copilot 是「**B5G/NTN 低軌地面站雲原生 operations digital twin + LLM Copilot**」沙箱。輸入是 satellite pass / beam / handover / Doppler / SNR / pod_health 等域內訊號；輸出是 anomaly explanation 與 runbook。每一個 LLM 回答必須附上 metrics / logs evidence block。
+
+定位：**不是泛 AI chatbot，不是普通 Grafana dashboard**；是 NTN ground-station 運維訓練 / 整合測試 / pre-field validation 工具。
+
+---
+
+## 2. Non-negotiable constraints
+
+1. **匿名性（範圍：投件交付物）**：RunSpace 投件 zip / pitch deck / 影片 / 簡報，以及 zip 內附帶的 `docs/`、UI 截圖、demo 錄製，禁止露出**真實姓名、學校、團隊名稱、Logo、學校 e-mail、私密 URL**。`scripts/check-no-secrets.sh` 與 CI 對 source 檔案掃描這些字串。Git workflow（commit author / committer / commit message / PR title）使用真實 GitHub 帳號（`thc1006` + GitHub noreply email），不在匿名範圍——RunSpace 規定限於提交檔內容，不要求 repo 隱藏 GitHub identity。
+2. **不過度承諾**：禁止把 demo 說成「真 Ka-band beam steering」「真 SDR OTA」「真 OAI/srsRAN NTN full stack」「完整 O2 IMS lifecycle」。文件需明示「P0 為 metrics emulator」與「P2 才接 Sionna RT/AODT/真 RAN stack」。
+3. **Evidence-first LLM**：copilot-api 任何 `/ask` `/explain` `/runbook` 回應必含 `evidence` 區塊（metrics_used / logs_used / scenario_id / timestamp / confidence）。無 evidence 時回 `INSUFFICIENT_EVIDENCE`，**不得自由幻想**。
+4. **不硬綁單一 LLM 廠商**：以 OpenAI-compatible 介面為抽象，相容 Ollama / vLLM / LM Studio / 任何相容端點。
+5. **MVP 7–14 天可交付**：P0 範圍嚴格限制（見第 9 節）。
+6. **No secrets in repo**：`.env` 一律不上 git；`.env.example` 為模板；`pre-commit` hook 偵測。
+7. **3GPP / NTN 正名**：場景與指標名稱對齊 Rel-19 用詞（regenerative / transparent payload、ISL、Store-and-Forward、Doppler residual）。
+
+---
+
+## 3. Architecture principles
+
+- **Cloud-native first**：每個 service 皆為容器化、stateless、可水平擴充；以 Kubernetes manifest（Kustomize）為唯一部署來源；Helm chart 為發行管道；docker-compose 為 dev fast-path。
+- **Domain types are first-class**：`SatellitePass`、`Beam`、`HandoverEvent`、`AnomalyInjection`、`PayloadMode` 為 Pydantic / TS interface 一等公民，不靠字串約定。
+- **Evidence-grounded AI**：copilot 不直連模型；中介層強制注入 metrics / logs context window，並驗證輸出 schema（Pydantic）。
+- **Boundaries are honest**：simulation vs real integration、P0 vs P2、metrics emulator vs full RAN stack——所有邊界寫在 `docs/02_architecture.md` 並於 README 簡述。
+- **Observability is product, not infra**：Prometheus + Grafana + （optional）Loki/Tempo 為 demo 的一部分，不是事後加裝。
+- **GitOps idiom**：以 ArgoCD（Nephio R5 風格）作為 reference；Flux 為替代；不必跑 Porch。
+
+---
+
+## 4. Coding rules
+
+### Python（services/scenario-generator、ntn-metrics-emulator、copilot-api）
+
+- Python 3.13（建議）；Python 3.11+ 為下限。
+- 框架：FastAPI + Pydantic v2 + uvicorn；指標：prometheus-client；HTTP：httpx；測試：pytest；Lint/Format：ruff。
+- 強制型別：`from __future__ import annotations`；公開函式必須有 type hints；mypy optional 但歡迎。
+- 檔案結構：`src/<package>/{__init__.py, main.py, models.py, ...}` + `tests/`；packaging 用 `pyproject.toml`（PEP 621）。
+- 不使用 print；用 `logging.getLogger(__name__)`。
+- 不直接吞例外；至少 log + re-raise 或回 4xx/5xx with structured error。
+- HTTP 路由命名 kebab-case；Python 變數 snake_case；類別 PascalCase。
+
+### TypeScript / React（services/digital-twin-ui）
+
+- React 19 + Vite 8 + TypeScript 6（嚴格模式）+ Tailwind 4。
+- 視覺化：CesiumJS 1.140 為主、Three.js r184 為備案；圖表：Recharts。
+- 元件 PascalCase、hook camelCase 以 `use` 開頭、CSS 類 kebab-case；資料夾 kebab-case。
+- 不允許 `any`；錯誤回應透過 `ApiError` 型別處理。
+- 所有 `console.error` 統一收斂到 `src/utils/logger.ts`。
+
+### Shell
+
+- `set -euo pipefail` 為強制標頭；用 long-form flag；輸出區分 `info` / `warn` / `error`。
+- 任何破壞性指令需 `--confirm` 旗標；hook 中 **絕不** 自動 `rm`、`git push`、上傳。
+
+---
+
+## 5. Testing rules
+
+- `make test` → 所有單元測試（Python: pytest；TS: vitest 或 build-only）。
+- `make verify` → lint + typecheck + unit + secrets scan + k8s manifest validate。
+- `./test.sh` 與 `./verify.sh` 為 thin wrapper。
+- 每個 service 至少：1 個 health-endpoint test、1 個 contract test、1 個 golden scenario test。
+- LLM 輸出測試：grounding test 驗證 evidence block 必填欄位；hallucination test 故意給空 metrics，期望 `INSUFFICIENT_EVIDENCE`。
+- K8s smoke：`kind` 起 cluster、`kustomize build | kubectl apply --dry-run=client`。
+- CI 跑全部上述 + docker build dry-run + 無 secrets 掃描。
+
+---
+
+## 6. Security and privacy rules
+
+- `.env` 永不入 git；`.gitignore` 含 `.env*`、`.claude/settings.local.json`、`.claude/CLAUDE.local.md`、`secrets/`、`*.pem`、`*.key`。
+- `scripts/check-no-secrets.sh` 在 pre-commit + CI 雙處執行；偵測 AKID / private key header / `.env` patterns / team-name 白名單。
+- LLM prompt-injection note：copilot-api 對所有 user-supplied 字串套 sanitization；prompt 模板不直接拼接（用 placeholder + JSON schema）。
+- MCP security note：本骨架預設**不啟用任何 MCP server**；如需啟用，先以 read-only stdio 模式檢視，禁止 long-lived token 直接寫入 `.mcp.json`。
+- Hooks 僅做 lint / format / test / secrets-scan；**禁止** 自動刪檔、自動 push、自動上傳。
+- 模型權重 / 大檔由 `.gitignore` 排除；以 HF Hub link + `pyproject.toml` 描述。
+
+---
+
+## 7. Submission anonymization rules
+
+> 範圍：**RunSpace 投件交付物**——zip 包、pitch deck PDF、demo 影片、提交說明、zip 內 `docs/`、UI 截圖、影片旁白。**不**包含 git workflow（git author/committer/commit message/PR title 用真實 GitHub 帳號 `thc1006` + GitHub noreply email `84045975+thc1006@users.noreply.github.com`）。
+
+1. 投件交付物中的文件、簡報、影片旁白皆不出現**真實姓名、學校全稱與縮寫、學校 e-mail、團隊名稱、Logo、內部 URL**。具體禁字模式由 `scripts/check-no-secrets.sh` 維護。
+2. 截圖前把 OS 工具列、瀏覽器分頁、`whoami` 輸出、Slack/Linear UI 等可識別介面裁掉。
+3. `scripts/check-no-secrets.sh` 在 pre-commit + CI 對 source 檔案內容掃描禁字（school、school e-mail、AKID、private key），**不**掃 git metadata。本機自填的禁字白名單放 `.secrets-baseline.txt`（不入 git）。
+4. RunSpace 提交檔（zip / pdf / mp4）打包前跑 metadata 清洗：`exiftool -all= file.pdf`、`zip -X` 去 extra fields、影片用 `ffmpeg -map_metadata -1` 重編。
+5. 真實姓名（即帳號擁有者中文本名）即使在 git author 為 `thc1006` 的情況下，**仍不得**寫進任何被打包進 zip 的 source / docs / UI string——因為 zip 是公開審查物。
+
+---
+
+## 8. Commands
+
+```bash
+# Bootstrap & tooling
+make bootstrap            # install python/node tooling, create venv
+make install-deps         # install per-service deps
+
+# Dev loop
+make dev-up               # docker compose up scenario+emulator+copilot+ui+prom+grafana
+make dev-down             # tear down
+make demo                 # run end-to-end golden scenario demo
+
+# Quality gates
+make lint                 # ruff (Python) + eslint (TS)
+make typecheck            # mypy optional + tsc -b
+make test                 # pytest + vitest (or skip)
+make verify               # lint + typecheck + test + secrets + k8s validate
+./verify.sh               # thin wrapper for CI
+
+# K8s
+make kind-up              # spin up local kind cluster
+make kind-down            # destroy
+make k8s-apply            # kustomize build | kubectl apply -f -
+make k8s-smoke            # smoke tests against running cluster
+
+# Packaging
+make package-zip          # produce orbitops-copilot.zip (excluding venv/node_modules)
+```
+
+---
+
+## 9. Current MVP scope（P0，7 天）
+
+- `services/scenario-generator/`：3 個 sample scenarios（beam-degradation、handover-failure、gateway-fallback）。
+- `services/ntn-metrics-emulator/`：FastAPI + `/metrics` Prometheus exporter；可注入 anomaly。
+- `services/copilot-api/`：FastAPI；`/ask` `/explain` `/runbook` `/healthz`；OpenAI-compatible adapter（含 mock provider）；evidence-grounded。
+- `services/digital-twin-ui/`：React + Vite skeleton（先有 UI shell + Copilot panel；CesiumJS pass viz 留 P1）。
+- `observability/`：Prometheus scrape + Grafana dashboard。
+- `deploy/`：docker-compose、kind、k3d、Kustomize base、Helm chart skeleton。
+- `tests/`：unit + integration + golden + k8s smoke。
+- CI：lint、typecheck、unit、secrets、manifest validate、docker build dry-run。
+
+---
+
+## 10. Forbidden scope（第一版禁止）
+
+- 真 Ka-band beam steering、真 SDR OTA、真天線控制。
+- 完整 OAI / srsRAN NTN full stack 整合。
+- 完整 O-RAN O2 IMS lifecycle（只出 stub package）。
+- 完整 Nephio Porch 跑 sandbox（只出 kpt package skeleton）。
+- 真 Sionna RT 跑 channel coefficients（P2）。
+- 真 AODT 整合（待 OSS 釋出後再評估，P2/P3）。
+- 自由幻想的 LLM 回答。
+- 商用閉源 LLM 強綁。
+- 任何上傳資料到外部服務的 hook。
+
+---
+
+## 11. Definition of done（單一變更）
+
+- `make verify` 全綠。
+- 受影響 service 至少多一個測試（綠燈）。
+- 文件：若 API/scenario schema 變動，同步更新 `docs/02_architecture.md` 或 `services/<svc>/README.md`。
+- Commit message 不含真實姓名 / school / 團隊名（GitHub handle `thc1006` OK）。
+- Pre-commit hook 通過（含 `scripts/check-no-secrets.sh`）。
+- 若涉及版本號：先跑 `verify.sh`（會比對 GitHub Releases / PyPI）。
+
+---
+
+## 12. Engineering constitution（SDD / TDD / Agile）
+
+> 本節為**不可妥協**的開發流程。所有 agent、貢獻者、Claude Code session 一律遵守。
+
+### 12.1 SDD — Specification-Driven Development
+
+- **每個功能先有 spec**：`docs/specs/SPEC-NNN-<short-name>.md`，含 Goal / Non-goals / Inputs / Outputs / Interfaces / Constraints / Open Questions。
+- **每個 spec 對應 acceptance criteria**：`docs/acceptance/AC-NNN-<short-name>.md`，採 Given/When/Then；每條 AC 必須可被自動化測試驗證或人工 demo 驗收。
+- **每個重大技術選型寫 ADR**：`docs/adr/ADR-NNN-<title>.md`（Status / Context / Decision / Consequences / Alternatives）。
+- **沒有 spec 不寫 code**；沒有 AC 不算交付。
+- **schema 是契約**：scenario / metrics / copilot response 三類 schema 統一放 `tests/contracts/*.schema.json`，所有測試以 schema 為真。
+
+### 12.2 TDD — Test-Driven Development
+
+- **Red → Green → Refactor**：先寫**失敗**的測試（commit 1：紅），再實作（commit 2：綠），再重構（commit 3：仍綠）。三步可合併但失敗測試必須先存在於 git history。
+- **覆蓋層次**：每個 service 同時具備
+  1. unit test（不開 socket、不打 LLM）
+  2. contract test（驗 JSON schema）
+  3. golden scenario test（replay `packages/scenarios/*.json` → 驗 expected metrics + copilot evidence）
+- **未實作功能** 用 `pytest.mark.xfail(strict=True)` 或 `it.todo(...)` 標示；`test.sh` 須**清楚列出尚未存在的測試**，**不得偷偷 pass**。
+- **LLM 測試**：grounding test（給 metrics → 必須引用）、hallucination test（不給 metrics → 必須回 `INSUFFICIENT_EVIDENCE`）、injection test（user prompt 含越獄字串 → 必須 sanitize）。
+
+### 12.3 Agile — Vertical Slices
+
+- **單位是 1–2 天可完成的 vertical slice**（含 spec、test、code、docs、demo screenshot）。
+- 所有工作項目進入 `docs/agile/backlog.md`；每個 sprint 在 `docs/agile/sprint-NN-plan.md`；每 sprint 結束用 `docs/agile/sprint-review-template.md` 填一頁 review。
+- Sprint 長度 1 週；Sprint 0 為 bootstrap（已完成本骨架）；Sprint 1 起進入 P0。
+- **DoD（Definition of Done）** 見 `docs/agile/definition-of-done.md`，是合併與發行的硬性閘門。
+- **Risk register**：`docs/agile/risk-register.md` 持續維護（Likelihood × Impact × Mitigation × Owner）。
+
+### 12.4 Branching & PR
+
+- `main` 永遠綠；功能在 `feat/<spec-id>-<slug>` 分支；fix 在 `fix/<issue>-<slug>`；docs 在 `docs/<slug>`。
+- PR title：`[SPEC-NNN] <imperative summary>`；body 須引用對應 SPEC / AC / ADR。
+- PR 須通過 `make verify` + CI；缺少 spec / AC 自動 reject。
+- PR commit message 不得含**真實姓名** / school / 團隊名；GitHub handle `thc1006` 與 noreply email 視同 GitHub identity 可保留。
+
+---
+
+## 13. Agent OS — task → skill → subagent → command map
+
+> CLAUDE.md 是憲法、`.claude/skills/` 是可重用操作流程、`.claude/agents/` 是角色、`.claude/commands/` 是入口。本節不重複各檔內容，只給對應表。
+
+### 13.1 任務 → 工具映射（必讀）
+
+| 任務情境 | 主要 skill | 主要 subagent | Slash command |
+|---|---|---|---|
+| 引入新外部事實／驗證版本 | `orbitops-research` | `researcher` | `/research <topic>` |
+| 設計新 NTN scenario | `ntn-scenario-design` | `ran-ntn-engineer` | `/plan` → `/implement SPEC-001` |
+| 實作 emulator metric/tick | `metrics-emulator-tdd` | `implementer`（+ `ran-ntn-engineer`） | `/implement SPEC-002` |
+| 改 copilot prompt / provider | `llm-grounding-review` | `llm-copilot-engineer` | `/implement SPEC-003` → `/review` |
+| 改 Kustomize / Helm / Nephio stub | `k8s-demo-deploy` | `k8s-platform-engineer` | `/implement SPEC-006` |
+| 改 dashboard / scrape config | `observability-dashboard` | `observability-engineer` | `/implement SPEC-005` |
+| 寫簡報 / demo 影片腳本 | `runspace-pitch` | `architect`（敘事）+ `researcher`（事實） | `/research` → 編輯 docs/06–08 |
+| 加固 demo replay | `demo-replay-hardening` | `implementer` + `release-engineer` | `/demo` |
+| Pitch 前事實審計 | `claims-audit` | `architect` + `security-reviewer` | `/review` |
+| 任何 commit / PR / release | `no-secrets-anonymity-check` | `security-reviewer` | 自動 `/review` 與 `/release` 內建 |
+| Sprint exit / 投件包裝 | （流程性，非單一 skill） | `release-engineer` | `/release <tag>` |
+
+### 13.2 實作前必讀清單（Pre-implementation reading）
+
+任何 `/implement SPEC-NNN` 之前必須讀：
+
+1. `docs/specs/SPEC-NNN-*.md`（規格本身）
+2. 對應 `docs/acceptance/AC-*.md`（在 SPEC 末段列出）
+3. 相關 `docs/adr/ADR-*.md`（若 SPEC 引用）
+4. 相關 `tests/contracts/*.schema.json`（契約）
+5. 相關 skill SKILL.md（流程、verification、forbidden）
+
+### 13.3 完成後必跑 verification commands（Post-implementation gates）
+
+每次合併前依序執行（`make verify` 已封裝大部分）：
+
+```bash
+./verify.sh                                  # 6 gate（lint / test / secrets / schema / k8s manifest / anonymity）
+pytest services/<svc>/tests -q -v             # 該 service 紅燈/綠燈狀態
+python3 scripts/validate_schemas.py           # contracts + scenarios + golden
+scripts/check-no-secrets.sh                   # 完整匿名性 + secrets
+kustomize build deploy/k8s/overlays/local | kubectl apply --dry-run=client -f -
+```
+
+附加情境：
+
+- copilot-api 變更 → 額外跑 `llm-grounding-review` skill checklist。
+- 任何新 metric → 額外跑 `observability-dashboard` 的 30-second visibility check。
+- pitch / docs/06–08 變更 → 額外跑 `claims-audit` skill。
+- 包 zip / 投件 → 跑 `/release` 命令。
+
+### 13.4 委派決策樹（給未來 session 參考）
+
+```
+是同一 PR 內的小調整？  → 自己做（`Read` / `Edit` / `Write`）
+研究外部事實 ≥ 3 個來源？ → Agent(researcher)
+設計新 SPEC / ADR？      → Agent(architect)
+跨檔案大量重構？         → Agent(implementer) 一個 slice 一次
+Code-review 一份 diff？  → Agent(security-reviewer) 含 claims-audit
+RunSpace 提交準備？      → Agent(release-engineer)
+特定領域 deep-dive？     → Agent(ran-ntn-engineer / observability-engineer / llm-copilot-engineer / k8s-platform-engineer / test-engineer)
+```
+
+---
+
+## 14. MCP usage policy
+
+> 完整推理見 `docs/mcp/00..04`；本節為日常規則摘要。
+
+### 14.1 何時可用（Sprint 階段門檻）
+
+| Server | 何時 OK | 何時禁止 | 必要設定 |
+|---|---|---|---|
+| **無**（Sprint 0 預設） | 永遠 OK | — | `.mcp.json` 不存在 |
+| `github/github-mcp-server` | Sprint 1 首 PR 出現後 | Sprint 0；CI；Sprint 1 開 read-write | `--read-only` + fine-grained PAT 限本 repo |
+| `containers/kubernetes-mcp-server` | Sprint 1 task S1-09 起 | Sprint 0；連線到正式 cluster | `--read-only --toolsets core,config,helm` + 專屬 SA + view ClusterRole |
+| `grafana/mcp-grafana` | Sprint 1 obs 上線後 | Editor / Admin role token | viewer-scoped SA token |
+| `pab1it0/prometheus-mcp-server` | Sprint 1 optional | Prom admin API 已啟用時 | bearer token；admin API 必 off |
+| `@playwright/mcp` | Sprint 2+ UI 完成後 | profile 入 git；CI 不用 isolated | `--isolated --headless`；profile dir 進 .gitignore |
+| `@upstash/context7-mcp` | 任何 sprint，**user-level** | 入 project `.mcp.json` | API key 走 user shell env |
+| Filesystem / fetch / git / Postgres / SQLite MCP | **永遠禁止** | — | — |
+| AWS / Azure / GCP / Atlassian / Drive / Gmail / Calendar / Slack / Linear MCP | **永遠禁止**（匿名性違規或不需要） | — | — |
+
+### 14.2 安裝閘門
+
+每個 MCP 安裝前必須：
+
+1. 寫 ADR：`docs/adr/ADR-NNN-add-<server>-mcp.md`（Status / Context / Decision / Consequences / Alternatives）。
+2. 跟 `docs/mcp/03_mcp_install_plan.md` 對應 §P1.x / P2 章節。
+3. PR 兩人 review；含 `.mcp.json` diff、token scope 說明、rollback 指令。
+4. token 走 `${VAR}` 注入；`.env.example` 加 commented slot；real token 由 contributor 走 OS keyring / 1Password / direnv，**永不** commit。
+5. `scripts/check-no-secrets.sh` 必 pass。
+
+### 14.3 使用守則（執行階段）
+
+- 每次 prompt 模型欲使用 `mcp__<server>__<tool>` 工具時，必須是 `.claude/settings.json` `permissions.allow` 顯式列舉的工具名（**不可** 用 `mcp__server__*` wildcard）。
+- 寫工具（`*__create_*`、`*__update_*`、`*__delete_*`、`*__post_*`）一律進 `permissions.deny`，除非有明確 ADR。
+- LLM Copilot（copilot-api）的 evidence schema（ADR-004）對 MCP 結果同樣適用——MCP tool result 不能繞過 evidence 結構直接成為 user-facing answer。
+- 任何升級 MCP server 版本 → 先 diff tool descriptions，避免 tool poisoning。
+
+### 14.4 緊急下線
+
+```bash
+claude mcp list
+claude mcp remove <name>
+claude mcp reset-project-choices
+# 或於 .claude/settings.json 加 "deny": ["mcp__<server>__*"]
+export ENABLE_CLAUDEAI_MCP_SERVERS=false   # claude.ai-hosted MCPs 全 disable
+```
+
+---
+
+## 15. References
+
+- `docs/00_research_2026_04.md`：技術調研與來源。
+- `docs/01_product_strategy.md`：產品策略與 use case。
+- `docs/02_architecture.md`：架構圖、邊界、未來整合點。
+- `docs/03_breakthrough_directions.md`：5 個分階段突破方向。
+- `docs/04_technical_decisions.md`：ADR 索引。
+- `docs/05_validation_plan.md`：測試與驗證。
+- `docs/09_installation_research.md`：版本表 + 查證指令。
+- `docs/specs/`：SPEC（SDD 入口）。
+- `docs/acceptance/`：AC（驗收條件）。
+- `docs/adr/`：ADR（技術決策）。
+- `docs/agile/`：backlog / sprint / DoD / risk register。
+- `tests/contracts/`：JSON schema 契約。
+- `tests/golden/`：golden scenario expected output。
+- `AGENTS.md`：subagent 角色定義。
