@@ -32,6 +32,12 @@ from .models import MetricCitation
 
 SNR_DROP_THRESHOLD_DB = 8.0  # AC-001 threshold; below this is "degraded"
 HANDOVER_FAILURE_STATE = 2.0  # per docs/contracts/metrics.md §3
+# G8 — doppler_compensation_warning trips at residual > 2 kHz. Rationale
+# (research 2026-05): NR demod budget caps residual CFO at ~10% of SCS;
+# for SCS=30 kHz that's ~3 kHz, so 2 kHz is the conservative warning gate.
+# The post-pre-comp residual on a healthy Ka-band LEO link sits well below
+# this; a sustained excursion indicates ephemeris drift or loop-loss.
+DOPPLER_RESIDUAL_WARNING_HZ = 2000.0
 DEFAULT_TIMEOUT_SECONDS = 2.0
 ENV_METRICS_URL = "ORBITOPS_EMULATOR_METRICS_URL"
 
@@ -113,6 +119,7 @@ def classify(
     snr_low: list[MetricCitation] = []
     ho_failed: list[MetricCitation] = []
     gw_down: list[MetricCitation] = []
+    doppler_warn: list[MetricCitation] = []
 
     for family in text_string_to_metric_families(prom_body):
         for sample in family.samples:
@@ -150,11 +157,28 @@ def classify(
                         timestamp=timestamp,
                     )
                 )
+            elif (
+                sample.name == "orbitops_doppler_residual_hz"
+                and abs(sample.value) > DOPPLER_RESIDUAL_WARNING_HZ
+            ):
+                doppler_warn.append(
+                    MetricCitation(
+                        name=sample.name,
+                        labels=labels,
+                        value=float(sample.value),
+                        timestamp=timestamp,
+                    )
+                )
 
+    # Priority: snr_drop > handover_failure > gateway_outage > doppler_compensation_warning.
+    # The four anomaly classes are mutually exclusive in the response — picking
+    # the most-impactful keeps the diagnosis focused.
     if snr_low:
         return (snr_low, "snr_drop")
     if ho_failed:
         return (ho_failed, "handover_failure")
     if gw_down:
         return (gw_down, "gateway_outage")
+    if doppler_warn:
+        return (doppler_warn, "doppler_compensation_warning")
     return ([], None)

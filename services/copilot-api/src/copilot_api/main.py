@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from . import _grounding, _retrieval
 from ._provider import FakeLLMProvider, LLMProvider
@@ -50,6 +51,17 @@ app.add_middleware(
     allow_methods=["POST", "GET", "OPTIONS"],
     allow_headers=["*"],
     allow_credentials=False,
+)
+
+# G6 — Prometheus exposition. Default request-counter / latency-histogram
+# / in-progress gauge are written to the global prometheus_client.REGISTRY.
+# (copilot-api has no other custom registry, so the global is fine.) The
+# `/metrics` endpoint is registered before the routes below so it can't be
+# accidentally shadowed.
+Instrumentator().instrument(app).expose(
+    app,
+    endpoint="/metrics",
+    include_in_schema=False,  # don't pollute /docs with the exposition route
 )
 
 _SYSTEM_PROMPT = (

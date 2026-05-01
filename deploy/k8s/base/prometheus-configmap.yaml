@@ -26,11 +26,15 @@ data:
             labels:
               service: ntn-metrics-emulator
 
-      # NOTE: copilot-api scrape job intentionally omitted. The FastAPI app
-      # does not yet expose /metrics; including the job would leave a
-      # permanently-down target in the Prometheus UI. Re-add once Sprint 2
-      # instruments copilot-api with prometheus-client (e.g., via
-      # prometheus-fastapi-instrumentator).
+      # G6 — copilot-api self-metrics (HTTP RED — request-rate, errors,
+      # duration). Wired via prometheus-fastapi-instrumentator 7.x.
+      - job_name: copilot-api
+        metrics_path: /metrics
+        static_configs:
+          - targets:
+              - "copilot-api.orbitops.svc.cluster.local:8001"
+            labels:
+              service: copilot-api
 
       # Self-monitoring.
       - job_name: prometheus

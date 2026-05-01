@@ -108,6 +108,15 @@ _ANOMALY_ACTIVE = Gauge(
     ["type"],
     registry=_REGISTRY,
 )
+# G7 — sin-shaped elevation gauge driven by _compute.elevation_deg(scenario, t).
+# Single satellite + multiple beams share the pass geometry, so each beam's
+# label gets the same value at any given tick.
+_BEAM_ELEVATION_DEG = Gauge(
+    "orbitops_beam_elevation_deg",
+    "Per-beam elevation angle in degrees (sin-shaped over the pass; 0..90)",
+    ["beam_id"],
+    registry=_REGISTRY,
+)
 
 _METRIC_TO_GAUGE: dict[str, Gauge] = {
     "orbitops_beam_snr_db": _BEAM_SNR,
@@ -118,6 +127,7 @@ _METRIC_TO_GAUGE: dict[str, Gauge] = {
     "orbitops_handover_state": _HANDOVER_STATE,
     "orbitops_gateway_available": _GATEWAY_AVAIL,
     "orbitops_anomaly_active": _ANOMALY_ACTIVE,
+    "orbitops_beam_elevation_deg": _BEAM_ELEVATION_DEG,
 }
 
 

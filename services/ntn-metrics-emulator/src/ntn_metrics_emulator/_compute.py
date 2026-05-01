@@ -8,7 +8,15 @@ No randomness in Sprint 1: output is a pure function of (scenario, t).
 
 from __future__ import annotations
 
+import math
 from typing import Any
+
+# G7 — sin-shaped pass elevation. Validated against TASA-style 600 km LEO
+# pass geometry (research 2026-05): peak elevation lands in 40°–70° for a
+# moderate-quality pass; pass duration above 10° horizon ≈ 6–10 min.
+# Defaults below cover the Sprint-1 beam-degradation preset.
+DEFAULT_PASS_PEAK_ELEVATION_DEG = 55.0
+ELEVATION_FLOOR_DEG = 0.0  # geometric floor; sin gives this naturally at endpoints
 
 EVENT_TYPES: tuple[str, ...] = (
     "snr_drop",
@@ -56,6 +64,30 @@ def _baseline_snr_db(beam: dict[str, Any]) -> float:
     return 8.0 + el / 10.0
 
 
+def elevation_deg(scenario: dict[str, Any], t: int) -> float:
+    """Sin-shaped elevation profile over a single LEO pass.
+
+    Per research 2026-05 (3GPP TS 38.811 channel model + standard SMAD
+    orbital geometry), a sin envelope is a defensible Sprint-1 simplification
+    that lands within a few degrees of full SGP4 propagation for the duration
+    above 10° horizon. Pass duration is taken from `scenario.duration_seconds`;
+    peak elevation from `scenario.satellite.pass_peak_elevation_deg` (defaults
+    to 55°, matching a moderate-quality TASA-style ~600 km LEO pass at a
+    mid-latitude ground station).
+
+    Returns a value in [0, peak] (geometry: never negative).
+    """
+    duration = float(scenario.get("duration_seconds", 600))
+    if duration <= 0:
+        return ELEVATION_FLOOR_DEG
+    sat_cfg = scenario.get("satellite", {}) or {}
+    peak = float(sat_cfg.get("pass_peak_elevation_deg", DEFAULT_PASS_PEAK_ELEVATION_DEG))
+    # Clamp t into [0, duration]; sin would still give 0 at the endpoints
+    # but a hard clamp keeps the value well-defined for late ticks.
+    t_clamped = max(0.0, min(float(t), duration))
+    return max(ELEVATION_FLOOR_DEG, peak * math.sin(math.pi * t_clamped / duration))
+
+
 def compute(scenario: dict[str, Any], t: int) -> dict[str, list[tuple[dict[str, str], float]]]:
     """Return mapping metric-name → list[(labels, value)]."""
     active = _active_events(scenario, t)
@@ -66,6 +98,10 @@ def compute(scenario: dict[str, Any], t: int) -> dict[str, list[tuple[dict[str, 
     loss: list[tuple[dict[str, str], float]] = []
     doppler: list[tuple[dict[str, str], float]] = []
     ho_state: list[tuple[dict[str, str], float]] = []
+    elevation: list[tuple[dict[str, str], float]] = []
+    # Pass-level value; same elevation reused for every beam in Sprint-1
+    # (single satellite, multiple beams share the pass geometry).
+    pass_elev = elevation_deg(scenario, t)
 
     any_gateway_outage_active = any(ev["type"] == "gateway_outage" for ev in active)
 
@@ -104,6 +140,8 @@ def compute(scenario: dict[str, Any], t: int) -> dict[str, list[tuple[dict[str, 
         else:
             ho_state.append((labels, HO_STATE_STABLE))
 
+        elevation.append((labels, pass_elev))
+
     gw_avail: list[tuple[dict[str, str], float]] = []
     gw_outage_targets = {
         ev["target"] for ev in active if ev["type"] == "gateway_outage"
@@ -127,6 +165,7 @@ def compute(scenario: dict[str, Any], t: int) -> dict[str, list[tuple[dict[str, 
         "orbitops_handover_state": ho_state,
         "orbitops_gateway_available": gw_avail,
         "orbitops_anomaly_active": anomaly_active,
+        "orbitops_beam_elevation_deg": elevation,
     }
 
 

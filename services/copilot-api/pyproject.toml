@@ -9,6 +9,9 @@ dependencies = [
   "pydantic>=2.13",
   "httpx>=0.28",
   "prometheus-client>=0.25",
+  # G6 — exposes /metrics for the Prom scrape job in
+  # deploy/k8s/base/prometheus-configmap.yaml.
+  "prometheus-fastapi-instrumentator>=7.0,<8.0",
 ]
 
 [project.optional-dependencies]
