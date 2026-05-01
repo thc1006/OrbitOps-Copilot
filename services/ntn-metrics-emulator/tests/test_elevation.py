@@ -105,3 +105,27 @@ def test_elevation_rises_then_falls_over_pass(
 
     assert elev_mid > elev_start, f"mid {elev_mid} should exceed start {elev_start}"
     assert elev_mid > elev_end, f"mid {elev_mid} should exceed end {elev_end}"
+
+
+def test_elevation_clamps_to_geometric_upper_bound() -> None:
+    """Defense-in-depth (Copilot review C1): even if a malformed scenario
+    bypasses the JSON-schema's `pass_peak_elevation_deg ≤ 90` bound (e.g.
+    a future caller constructs the dict in-memory without validating it
+    through /scenario/load), `elevation_deg` MUST still respect the
+    metrics-contract bound `[0, 90]` documented in
+    docs/contracts/metrics.md §3 row 9.
+
+    Without the clamp, `peak=120 * sin(π/2)` returns 120, silently
+    violating the contract. The producer side enforces it explicitly.
+    """
+    from ntn_metrics_emulator._compute import elevation_deg
+
+    pathological_scenario = {
+        "duration_seconds": 600,
+        "satellite": {"pass_peak_elevation_deg": 120.0},
+        "beams": [{"beam_id": "beam-1"}],
+    }
+    val = elevation_deg(pathological_scenario, t=300)  # mid-pass, sin(π/2)=1
+    assert 0.0 <= val <= 90.0, (
+        f"elevation must be clamped to [0, 90] regardless of input peak; got {val}"
+    )
