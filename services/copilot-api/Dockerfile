@@ -9,7 +9,8 @@ COPY services/copilot-api/pyproject.toml ./
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir 'fastapi>=0.115' 'uvicorn[standard]>=0.32' \
                                 'pydantic>=2.0' 'httpx>=0.27' \
-                                'prometheus-client>=0.21'
+                                'prometheus-client>=0.21' \
+                                'prometheus-fastapi-instrumentator>=7.0,<8.0'
 
 COPY services/copilot-api/src/ ./src/
 
