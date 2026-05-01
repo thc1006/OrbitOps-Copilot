@@ -24,12 +24,14 @@ spec:
           resources:
             requests: { cpu: "20m", memory: "32Mi" }
             limits:   { cpu: "200m", memory: "128Mi" }
+          # /healthz served by nginx.conf — cheaper than rendering index.html
+          # on every probe tick. Aligned with services/digital-twin-ui/nginx.conf.
           livenessProbe:
-            httpGet: { path: /, port: 80 }
+            httpGet: { path: /healthz, port: 80 }
             initialDelaySeconds: 5
             periodSeconds: 10
           readinessProbe:
-            httpGet: { path: /, port: 80 }
+            httpGet: { path: /healthz, port: 80 }
             initialDelaySeconds: 2
             periodSeconds: 5
 ---

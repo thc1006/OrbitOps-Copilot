@@ -33,8 +33,11 @@ services:
 
   copilot-api:
     build:
-      context: ../services/copilot-api
-      dockerfile: Dockerfile
+      # Repo root: matches the Dockerfile's `COPY services/copilot-api/...` paths.
+      # Aligned with ntn-metrics-emulator (changed in PR #23) so both services
+      # share a build-context convention.
+      context: ..
+      dockerfile: services/copilot-api/Dockerfile
     image: orbitops/copilot-api:0.1.0-dev
     container_name: orbitops-copilot
     depends_on:

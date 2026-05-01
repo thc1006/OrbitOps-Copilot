@@ -59,7 +59,7 @@ for img in \
 done
 
 say "4. apply local overlay"
-kustomize build deploy/k8s/overlays/local | kubectl apply -f -
+kustomize build --load-restrictor=LoadRestrictionsNone deploy/k8s/overlays/local | kubectl apply -f -
 
 say "5. wait for pods Ready (timeout 90s)"
 kubectl -n orbitops wait --for=condition=Ready pod -l app.kubernetes.io/part-of=orbitops-copilot --timeout=90s || \

@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orbitops-prometheus-config
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: orbitops-copilot
+data:
+  prometheus.yml: |
+    # k8s flavour of observability/prometheus/prometheus.yml — only the
+    # scrape targets differ (k8s in-cluster DNS instead of compose hostname).
+    global:
+      scrape_interval: 5s
+      evaluation_interval: 5s
+      external_labels:
+        monitor: orbitops-copilot
+        deployment: kubernetes
+
+    scrape_configs:
+      # Primary scrape target — emits the seven orbitops_* metrics.
+      - job_name: ntn-metrics-emulator
+        metrics_path: /metrics
+        static_configs:
+          - targets:
+              - "ntn-metrics-emulator.orbitops.svc.cluster.local:8000"
+            labels:
+              service: ntn-metrics-emulator
+
+      # NOTE: copilot-api scrape job intentionally omitted. The FastAPI app
+      # does not yet expose /metrics; including the job would leave a
+      # permanently-down target in the Prometheus UI. Re-add once Sprint 2
+      # instruments copilot-api with prometheus-client (e.g., via
+      # prometheus-fastapi-instrumentator).
+
+      # Self-monitoring.
+      - job_name: prometheus
+        static_configs:
+          - targets:
+              - "localhost:9090"
+            labels:
+              service: prometheus

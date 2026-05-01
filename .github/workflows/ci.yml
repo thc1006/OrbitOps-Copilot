@@ -107,7 +107,7 @@ jobs:
           sudo mv kubeconform /usr/local/bin/
       - run: |
           if [ -f deploy/k8s/overlays/local/kustomization.yaml ]; then
-            kustomize build deploy/k8s/overlays/local > /tmp/render.yaml
+            kustomize build --load-restrictor=LoadRestrictionsNone deploy/k8s/overlays/local > /tmp/render.yaml
             kubeconform -strict -summary /tmp/render.yaml
           else
             echo "k8s overlay not yet present (Sprint 0); will tighten in Sprint 1."

@@ -105,7 +105,7 @@ if command -v kustomize >/dev/null 2>&1; then
     ok "k8s static smoke (manifests + invariants)"
   elif [ -f deploy/k8s/overlays/local/kustomization.yaml ]; then
     if command -v python3 >/dev/null 2>&1 && python3 -c "import yaml" >/dev/null 2>&1; then
-      kustomize build deploy/k8s/overlays/local | python3 -c "import yaml,sys; list(yaml.safe_load_all(sys.stdin))"
+      kustomize build --load-restrictor=LoadRestrictionsNone deploy/k8s/overlays/local | python3 -c "import yaml,sys; list(yaml.safe_load_all(sys.stdin))"
       ok "kustomize render + yaml parse passed"
     else
       warn "python3 + pyyaml required for fallback yaml-parse — run 'make bootstrap'"
