@@ -14,7 +14,7 @@
 
 ## 2. Problem
 
-emulator 暴露 9 個 `orbitops_*` metric（snr/sinr/latency/loss/doppler/ho_state/gateway/anomaly_active/elevation；完整契約見 `docs/contracts/metrics.md` §3）+ copilot-api 自身的 RED metrics（PR #34 G6），但沒人看就沒價值。一頁有意義的 dashboard 是 demo 與整合測試的視覺骨幹；同時 copilot-api 的 `evidence.metrics_used` / `logs_used` 都需要這條 obs pipeline 餵食。
+emulator 暴露 9 個 `orbitops_*` metric（`orbitops_beam_snr_db`、`orbitops_beam_sinr_db`、`orbitops_link_latency_ms`、`orbitops_packet_loss_ratio`、`orbitops_doppler_residual_hz`、`orbitops_handover_state`、`orbitops_gateway_available`、`orbitops_anomaly_active`、`orbitops_beam_elevation_deg`；完整契約見 `docs/contracts/metrics.md` §3）+ copilot-api 自身的 RED metrics（PR #34 G6），但沒人看就沒價值。一頁有意義的 dashboard 是 demo 與整合測試的視覺骨幹；同時 copilot-api 的 `evidence.metrics_used` / `logs_used` 都需要這條 obs pipeline 餵食。
 
 ## 3. Scope
 
