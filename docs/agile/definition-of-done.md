@@ -25,7 +25,7 @@
 - [ ] sprint review 文件填妥。
 - [ ] backlog 與 risk-register 更新。
 - [ ] CI 在 main branch 全綠（HEAD）。
-- [ ] `make package-zip` 可產出 zip（從 sprint 1 起每 sprint 至少跑一次）。
+- [ ] `make archive` 可產出 zip（從 sprint 1 起每 sprint 至少跑一次）。
 
 ## 發行（提交 RunSpace）
 

@@ -11,7 +11,7 @@ Wraps `scripts/check-no-secrets.sh`. Catches: credential leaks (AWS, OpenAI/Anth
 
 - Pre-commit hook (auto via `.claude/settings.json` PreToolUse on Write/Edit).
 - Pre-PR (CI job `no-secrets`).
-- Before any `make package-zip`.
+- Before producing the RunSpace deliverable archive (`make archive`).
 - After any update to forbidden patterns or allowlists.
 - Slash command `/review` includes this skill.
 

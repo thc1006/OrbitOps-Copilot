@@ -58,7 +58,7 @@
 | **VS-15** | 90s demo video | docs/07_demo_script_90s.md → 真 .mp4 + exiftool 清 metadata | 1d | 007 |
 | **VS-16** | 3min English-subtitled video | docs/08_demo_script_3min.md → 真 .mp4 + 英文字幕 .srt | 1d | 007 |
 | **VS-17** | Nephio kpt package full doc | packages/nephio-stubs/ 文件化 + kpt fn render dry-run | 0.5d | 006 |
-| **VS-18** | Pre-submission claims audit + zip | claims-audit skill 全 pass + `make package-zip` + DoD §3.4 全 checked | 0.5d | 007 |
+| **VS-18** | Pre-submission claims audit + zip | claims-audit skill 全 pass + `make archive` + DoD §3.4 全 checked | 0.5d | 007 |
 
 ## Backlog（暫不排，待 P2/P3）
 

@@ -21,7 +21,7 @@
 - 10 頁英文簡報 PDF（從 `docs/06_runspace_pitch_outline.md` 衍生）。
 - 90 秒影片 .mp4（從 `docs/07_demo_script_90s.md`）。
 - 3 分鐘英文字幕影片 .mp4 + .srt（從 `docs/08_demo_script_3min.md`）。
-- `make package-zip` 產 `orbitops-copilot.zip`。
+- `make archive` 產 `orbitops-copilot.zip`（內部呼叫 `git archive`，只含 tracked 檔案）。
 - DoD §3.4「發行」全打勾。
 - 所有提交檔通過 `claims-audit` skill（零 OVER-CLAIM）。
 - 所有提交檔通過 `exiftool -all=` 後無作者欄位。
@@ -56,7 +56,7 @@
 | Target | 用途 |
 |---|---|
 | `scripts/run-demo.sh` | demo replay（VS-5 / SPEC-002 已定義） |
-| `scripts/package-zip.sh` | 產 orbitops-copilot.zip |
+| `make archive` | 產 orbitops-copilot.zip via `git archive` |
 | `scripts/check-no-secrets.sh` | 9-pattern 掃描 |
 | `exiftool -all= <file>` | metadata 清空 |
 
@@ -78,7 +78,7 @@
 - AC-S007-3：`claims-audit` skill 表全分類為 implemented / simulated / planned / external_reference；零 OVER-CLAIM。
 - AC-S007-4：90 秒影片總長 88–92 秒；3 分鐘影片 175–185 秒。
 - AC-S007-5：簡報 10 頁；每外部宣稱有 footnote URL（在 docs/10 allowlist 內）。
-- AC-S007-6：`make package-zip` 產出之 zip 解壓後可獨立 `make verify` 通過。
+- AC-S007-6：`make archive` 產出之 zip 解壓後可獨立 `make verify` 通過。
 
 ## 9. Test strategy
 
@@ -102,4 +102,4 @@
 | R-S007-3 | claims-audit 發現 over-claim → 全部回頭重寫 | sprint 中段（D3）跑一次 audit，留 2 天緩衝 |
 | R-S007-4 | 90 秒太緊 → 切過頭 / 看不懂 | dry-run 3 次；秒數計時 |
 | R-S007-5 | RunSpace 規則臨時改（評分權重 / 提交格式） | 兩套權重已自評；提交前 24 h 重讀官方公告 |
-| R-S007-6 | zip 含意外大檔（model weights / video） | `package-zip.sh` 已排除 `tmp/`、`.venv/`、`node_modules/`；CI 跑 size assert ≤ 5 MB |
+| R-S007-6 | zip 含意外大檔（model weights / video） | `git archive` 只打 tracked 檔案；`.gitignore` 已含 `tmp/`、`.venv/`、`node_modules/`；CI 跑 size assert ≤ 5 MB |

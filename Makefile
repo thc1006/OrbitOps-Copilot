@@ -88,9 +88,16 @@ schema-check: ## Validate sample scenarios against scenario.schema.json
 	$(PY) scripts/validate_schemas.py
 
 # ---------- Packaging ----------
-.PHONY: package-zip
-package-zip: ## Produce orbitops-copilot.zip (excludes venv/node_modules/.git)
-	scripts/package-zip.sh
+# Note: a custom zip script is no longer maintained — `git archive` does the
+# same thing in one line, with content sourced from git itself (no .git/,
+# no venv, no caches; only tracked files).
+#
+# RunSpace reviewers can also use GitHub's "Code → Download ZIP" button on
+# the repo page; this `archive` target is for offline / scripted use only.
+.PHONY: archive
+archive: ## Produce orbitops-copilot.zip via git archive (RunSpace deliverable)
+	git archive --format=zip --prefix=orbitops-copilot/ HEAD -o orbitops-copilot.zip
+	@du -h orbitops-copilot.zip
 
 # ---------- Cleaning ----------
 .PHONY: clean

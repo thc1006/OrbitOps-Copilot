@@ -15,7 +15,7 @@
 | VS-15 | 90-second demo video | docs/07 script → real .mp4（exiftool 清 metadata） | 1d | 007 |
 | VS-16 | 3-minute English-subtitled video | docs/08 script → real .mp4 + .srt 字幕 | 1d | 007 |
 | VS-17 | Nephio kpt package full doc | packages/nephio-stubs/ + kpt fn render dry-run | 0.5d | 006 |
-| VS-18 | Pre-submission audit + zip | claims-audit + check-no-secrets + exiftool + `make package-zip` + DoD §3.4 | 0.5d | 007 |
+| VS-18 | Pre-submission audit + zip | claims-audit + check-no-secrets + exiftool + `make archive` + DoD §3.4 | 0.5d | 007 |
 
 ## Acceptance gates
 
