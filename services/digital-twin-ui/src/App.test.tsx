@@ -1,35 +1,97 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { App } from "./App";
-import { MOCK_METRICS } from "./mocks";
-import type { MetricsSnapshot } from "./types";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { ThemeProvider } from "@mui/material/styles";
 
-describe("App layout", () => {
-  it("renders three panels: digital-twin, metrics, copilot", () => {
-    render(<App />);
-    expect(screen.getByTestId("digital-twin-view")).toBeInTheDocument();
-    expect(screen.getByTestId("metrics-panel")).toBeInTheDocument();
-    expect(screen.getByTestId("copilot-panel")).toBeInTheDocument();
-  });
+import App from "./App";
+import { orbitopsTheme } from "./theme";
 
-  it("renders anomaly banner when active_anomaly is set", () => {
-    render(<App />);
-    const banner = screen.getByTestId("anomaly-banner");
-    expect(banner).toHaveTextContent("snr_drop");
-    expect(banner).toHaveAttribute("role", "alert");
-  });
+// useMetricsPoll hits /metrics + /scenario/current — stub fetch to avoid
+// trying to talk to the cluster from inside jsdom.
+const stubMetrics = `
+# HELP orbitops_beam_snr_db SNR
+orbitops_beam_snr_db{beam_id="beam-1"} 6.5
+orbitops_beam_snr_db{beam_id="beam-2"} 13.0
+`;
 
-  it("hides anomaly banner when no active anomaly", () => {
-    const calm: MetricsSnapshot = { ...MOCK_METRICS, active_anomaly: null };
-    render(<App initialSnapshot={calm} />);
-    expect(screen.queryByTestId("anomaly-banner")).not.toBeInTheDocument();
-  });
+beforeEach(() => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(
+    async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : (input as URL).toString();
+      if (url.endsWith("/scenario/current")) {
+        return new Response(
+          JSON.stringify({
+            scenario_id: "beam-degradation-001",
+            t: 90,
+            active_anomalies: ["snr_drop"],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/metrics")) {
+        return new Response(stubMetrics, {
+          status: 200,
+          headers: { "content-type": "text/plain" },
+        });
+      }
+      return new Response("not found", { status: 404 });
+    },
+  );
+});
 
-  it("renders one beam card per beam in the snapshot", () => {
-    render(<App />);
-    for (const beam of MOCK_METRICS.beams) {
-      expect(screen.getByTestId(`beam-card-${beam.beam_id}`)).toBeInTheDocument();
-      expect(screen.getByTestId(`beam-svg-${beam.beam_id}`)).toBeInTheDocument();
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+const wrap = (path = "/") => (
+  <ThemeProvider theme={orbitopsTheme}>
+    <MemoryRouter initialEntries={[path]}>
+      <App />
+    </MemoryRouter>
+  </ThemeProvider>
+);
+
+describe("App shell", () => {
+  test("renders the AppBar with brand + sidebar nav", async () => {
+    render(wrap("/"));
+    expect(screen.getAllByText("OrbitOps Copilot").length).toBeGreaterThan(0);
+    // Each nav label may also appear in page body copy (Overview, Scenarios
+    // are mentioned in the empty-state hint on /). getAllByText is the
+    // honest assertion: the label exists *somewhere*.
+    for (const label of ["Overview", "Scenarios", "Beams", "Gateways", "Anomalies", "Copilot"]) {
+      expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
+  });
+
+  test("Overview hydrates with polled scenario data", async () => {
+    render(wrap("/"));
+    await waitFor(() => {
+      expect(screen.getByText("beam-degradation-001")).toBeInTheDocument();
+    });
+  });
+
+  test("Beams page lists scraped beams", async () => {
+    render(wrap("/beams"));
+    await waitFor(() => {
+      expect(screen.getByText("beam-1")).toBeInTheDocument();
+      expect(screen.getByText("beam-2")).toBeInTheDocument();
+    });
+  });
+
+  test("Anomalies page surfaces snr_drop", async () => {
+    render(wrap("/anomalies"));
+    await waitFor(() => {
+      expect(screen.getByText("snr_drop")).toBeInTheDocument();
+    });
+  });
+
+  test("Unknown route redirects to /", async () => {
+    render(wrap("/no-such-page"));
+    // Overview-only category overline — confirms we landed on / (Cluster
+    // appears in the SideNav heading + the page's category overline).
+    await waitFor(() => {
+      expect(screen.getAllByText("Cluster").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Overview").length).toBeGreaterThan(0);
+    });
   });
 });

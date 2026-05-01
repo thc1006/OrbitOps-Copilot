@@ -27,6 +27,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError
@@ -40,6 +41,24 @@ from prometheus_client import (
 from . import _compute
 
 app = FastAPI(title="ntn-metrics-emulator", version="0.1.0")
+
+# CORS allowlist. Driven by the `CORS_ALLOWED_ORIGINS` env var (comma-
+# separated list). Defaults to `*` so a fresh local dev box works without
+# extra wiring; deployment manifests in non-local clusters MUST override
+# with an explicit allowlist before exposing this service via ingress.
+_cors_origins_env = os.environ.get("CORS_ALLOWED_ORIGINS", "*").strip()
+_cors_origins: list[str] = (
+    ["*"]
+    if _cors_origins_env == "*"
+    else [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+    allow_credentials=False,
+)
 
 
 # --- per-service prometheus registry ----------------------------------------

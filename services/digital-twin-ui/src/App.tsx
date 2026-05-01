@@ -1,35 +1,55 @@
-import { AnomalyBanner } from "./AnomalyBanner";
-import { CopilotPanel } from "./CopilotPanel";
-import { DigitalTwinView } from "./DigitalTwinView";
-import { MetricsPanel } from "./MetricsPanel";
-import { MOCK_METRICS } from "./mocks";
-import type { MetricsSnapshot } from "./types";
+import { Box, Toolbar } from "@mui/material";
+import { Navigate, Route, Routes } from "react-router-dom";
 
-interface AppProps {
-  initialSnapshot?: MetricsSnapshot;
-}
+import TopBar from "./layout/TopBar";
+import SideNav from "./layout/SideNav";
+import { useMetricsPoll } from "./hooks/useMetricsPoll";
 
-export function App({ initialSnapshot = MOCK_METRICS }: AppProps) {
+import Overview from "./pages/Overview";
+import Scenarios from "./pages/Scenarios";
+import Beams from "./pages/Beams";
+import Gateways from "./pages/Gateways";
+import Anomalies from "./pages/Anomalies";
+import Copilot from "./pages/Copilot";
+
+const DRAWER_WIDTH = 248;
+
+export default function App() {
+  const poll = useMetricsPoll(5_000);
+  const data = poll.data;
+
   return (
-    <main className="min-h-screen bg-space-900 px-4 py-6 lg:px-8">
-      <header className="mx-auto mb-6 max-w-7xl">
-        <h1 className="font-mono text-xl font-bold tracking-tight text-slate-100">
-          OrbitOps Copilot
-        </h1>
-        <p className="text-xs text-slate-400">
-          B5G LEO ground-station operations digital twin · Sprint 1 demo
-        </p>
-      </header>
+    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+      <SideNav drawerWidth={DRAWER_WIDTH} />
+      <TopBar
+        scenarioId={data?.scenario_id ?? "(no scenario loaded)"}
+        tickT={data?.t_seconds ?? 0}
+        isLoading={poll.isLoading}
+        onRefresh={poll.refetch}
+        drawerWidth={DRAWER_WIDTH}
+      />
 
-      <div className="mx-auto mb-4 max-w-7xl">
-        <AnomalyBanner snapshot={initialSnapshot} />
-      </div>
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          minWidth: 0,
+          bgcolor: "background.default",
+          p: 4,
+        }}
+      >
+        <Toolbar variant="dense" sx={{ minHeight: 56, mb: 1 }} />
 
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 lg:grid-cols-3">
-        <DigitalTwinView snapshot={initialSnapshot} />
-        <MetricsPanel snapshot={initialSnapshot} />
-        <CopilotPanel scenarioId={initialSnapshot.scenario_id} />
-      </div>
-    </main>
+        <Routes>
+          <Route path="/" element={<Overview poll={poll} />} />
+          <Route path="/scenarios" element={<Scenarios refetchMetrics={poll.refetch} />} />
+          <Route path="/beams" element={<Beams data={data} />} />
+          <Route path="/gateways" element={<Gateways data={data} />} />
+          <Route path="/anomalies" element={<Anomalies data={data} />} />
+          <Route path="/copilot" element={<Copilot data={data} />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Box>
+    </Box>
   );
 }

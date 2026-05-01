@@ -82,6 +82,21 @@ if [ -x scripts/check-observability.sh ]; then
   ok "prometheus.yml + Grafana provisioning + dashboard panels valid"
 fi
 
+# ─── 3c. canonical scenario JSON ↔ UI mirror drift detector ────
+# services/digital-twin-ui/src/scenarios/* is a tracked mirror of
+# packages/scenarios/*. The mirror exists because vitest's test-mode
+# resolver rejects cross-project-root imports. Canonical is source of
+# truth; this gate fails loudly if the mirror drifts.
+if command -v cmp >/dev/null 2>&1; then
+  for canonical in packages/scenarios/*.json; do
+    mirror="services/digital-twin-ui/src/scenarios/$(basename "$canonical")"
+    if [ -f "$mirror" ] && ! cmp -s "$canonical" "$mirror"; then
+      fail "scenario JSON drift: $canonical ≠ $mirror (cp '$canonical' '$mirror')"
+    fi
+  done
+  ok "scenario JSON canonical/mirror in sync"
+fi
+
 # ─── 4. JSON schema validation ──────────────────────────
 info "4/5 JSON schema validation (contracts + sample scenarios)"
 if command -v python3 >/dev/null 2>&1; then
