@@ -36,4 +36,13 @@ spec:
             - name: COPILOT_LLM_PROVIDER
               value: "mock"
             - name: ORBITOPS_EMULATOR_METRICS_URL
+              # Bare hostname uses kubernetes' DNS search-domain expansion
+              # to resolve `<svc>` → `<svc>.<pod-ns>.svc.cluster.local`,
+              # which means an overlay that deploys the stack into a
+              # non-default namespace continues to work without patching.
               value: "http://ntn-metrics-emulator:8000/metrics"
+            - name: CORS_ALLOWED_ORIGINS
+              # Local NodePort overlay only; tighten before any ingress deploy.
+              # Vite dev server (localhost:5173) included so contributors can
+              # run `npm run dev` against the in-cluster copilot directly.
+              value: "http://localhost:5173,http://localhost:30073,http://31.41.34.19:30073"

@@ -35,6 +35,9 @@ spec:
           env:
             - name: ORBITOPS_SCENARIO_PATH
               value: "/scenarios/beam-degradation.json"
+            - name: CORS_ALLOWED_ORIGINS
+              # Local NodePort overlay only; tighten before any ingress deploy.
+              value: "http://localhost:5173,http://localhost:30073,http://31.41.34.19:30073"
           volumeMounts:
             - name: scenarios
               mountPath: /scenarios

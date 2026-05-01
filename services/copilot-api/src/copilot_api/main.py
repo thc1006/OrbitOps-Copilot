@@ -14,9 +14,11 @@ provider is FakeLLMProvider (deterministic, offline) — see ``_provider.py``.
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from . import _grounding, _retrieval
 from ._provider import FakeLLMProvider, LLMProvider
@@ -31,6 +33,24 @@ from .models import (
 )
 
 app = FastAPI(title="copilot-api", version="0.1.0")
+
+# CORS allowlist driven by the `CORS_ALLOWED_ORIGINS` env var (comma-separated).
+# Defaults to `*` so local dev works out-of-box; deployment manifests in
+# non-local clusters MUST override with an explicit allowlist before exposing
+# this service via ingress.
+_cors_origins_env = os.environ.get("CORS_ALLOWED_ORIGINS", "*").strip()
+_cors_origins: list[str] = (
+    ["*"]
+    if _cors_origins_env == "*"
+    else [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_methods=["POST", "GET", "OPTIONS"],
+    allow_headers=["*"],
+    allow_credentials=False,
+)
 
 _SYSTEM_PROMPT = (
     "You are an evidence-grounded NTN ground-station operations assistant. "

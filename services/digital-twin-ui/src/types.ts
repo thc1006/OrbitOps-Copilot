@@ -57,9 +57,25 @@ export interface BeamView {
   health: BeamHealth;
 }
 
+export interface GatewayView {
+  gateway_id: string;
+  available: boolean; // backed by orbitops_gateway_available
+  load: number | null; // 0..1; null when not exported
+}
+
 export interface MetricsSnapshot {
   scenario_id: string;
   t_seconds: number;
   beams: BeamView[];
+  gateways: GatewayView[];
   active_anomaly: string | null; // e.g. "snr_drop", or null
+  active_anomalies: string[]; // multi-anomaly listing (Sprint 2 forward-compat)
+  scraped_at: string; // ISO timestamp
+}
+
+// Parsed Prometheus metric line (one per gauge sample).
+export interface PromSample {
+  name: string;
+  labels: Record<string, string>;
+  value: number;
 }

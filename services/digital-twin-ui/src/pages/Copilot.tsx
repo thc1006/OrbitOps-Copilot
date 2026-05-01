@@ -1,0 +1,239 @@
+import { useState } from "react";
+import {
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Divider,
+  LinearProgress,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import AssistantRoundedIcon from "@mui/icons-material/AssistantRounded";
+
+import SectionHeader from "../components/SectionHeader";
+import { askCopilot } from "../api";
+import { monoFamily } from "../theme";
+import type { CopilotResponse, MetricsSnapshot } from "../types";
+
+interface CopilotProps {
+  data: MetricsSnapshot | null;
+}
+
+const PRESET_QUESTIONS = [
+  "Which beam is degrading and why?",
+  "Is any gateway at risk of falling over?",
+  "What should the operator do in the next 30 minutes?",
+];
+
+const STATUS_COLORS: Record<CopilotResponse["status"], "success" | "warning" | "error" | "default"> = {
+  ok: "success",
+  INSUFFICIENT_EVIDENCE: "warning",
+  REFUSED: "error",
+  ERROR: "error",
+};
+
+export default function Copilot({ data }: CopilotProps) {
+  const [question, setQuestion] = useState(PRESET_QUESTIONS[0]);
+  const [busy, setBusy] = useState(false);
+  const [response, setResponse] = useState<CopilotResponse | null>(null);
+
+  const ask = async (q: string) => {
+    setBusy(true);
+    setResponse(null);
+    const r = await askCopilot({
+      question: q,
+      scenario_id: data?.scenario_id ?? undefined,
+      time_window_seconds: 60,
+    });
+    setResponse(r);
+    setBusy(false);
+  };
+
+  return (
+    <Box>
+      <SectionHeader
+        category="AI Ops"
+        title="Copilot"
+        subtitle="Evidence-grounded NTN ops assistant. Every response is constrained to /metrics observations; the model never invents data. Status field tells you which path the response took."
+      />
+
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems="stretch">
+          <TextField
+            fullWidth
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder="Ask about beam health, gateway availability, anomalies…"
+            multiline
+            minRows={2}
+            disabled={busy}
+          />
+          <Button
+            variant="contained"
+            onClick={() => ask(question)}
+            disabled={busy || question.trim().length === 0}
+            startIcon={busy ? <CircularProgress size={16} color="inherit" /> : <SendRoundedIcon />}
+            sx={{ minWidth: 140, alignSelf: { md: "flex-end" } }}
+          >
+            {busy ? "Asking…" : "Ask Copilot"}
+          </Button>
+        </Stack>
+
+        <Stack direction="row" spacing={1} sx={{ mt: 2, flexWrap: "wrap", rowGap: 1 }}>
+          <Typography variant="caption" sx={{ alignSelf: "center", mr: 1 }}>
+            Try:
+          </Typography>
+          {PRESET_QUESTIONS.map((q) => (
+            <Chip
+              key={q}
+              label={q}
+              variant="outlined"
+              size="small"
+              onClick={() => {
+                setQuestion(q);
+                ask(q);
+              }}
+              disabled={busy}
+            />
+          ))}
+        </Stack>
+      </Paper>
+
+      {busy && <LinearProgress />}
+
+      {response && (
+        <Paper sx={{ p: 0, overflow: "hidden" }}>
+          <Box sx={{ px: 3, py: 2, bgcolor: "background.default", borderBottom: "1px solid", borderColor: "divider" }}>
+            <Stack direction="row" alignItems="center" spacing={1.5}>
+              <AssistantRoundedIcon color="primary" />
+              <Typography variant="subtitle1">Copilot response</Typography>
+              <Box sx={{ flexGrow: 1 }} />
+              <Chip
+                label={response.status}
+                color={STATUS_COLORS[response.status]}
+                size="small"
+                sx={{ fontFamily: monoFamily }}
+              />
+              <Typography variant="caption" sx={{ ml: 2, color: "text.secondary" }}>
+                confidence {Math.round(response.confidence * 100)}%
+              </Typography>
+            </Stack>
+          </Box>
+
+          <Box sx={{ p: 3 }}>
+            {response.status === "REFUSED" && response.refusal_reason && (
+              <Typography variant="body2" sx={{ mb: 2, color: "error.main" }}>
+                Refused: {response.refusal_reason}
+              </Typography>
+            )}
+
+            {response.summary && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="overline" color="text.secondary">
+                  Summary
+                </Typography>
+                <Typography variant="body1" sx={{ mt: 0.5, fontWeight: 500 }}>
+                  {response.summary}
+                </Typography>
+              </Box>
+            )}
+
+            {response.likely_cause && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="overline" color="text.secondary">
+                  Likely cause
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 0.5 }}>
+                  {response.likely_cause}
+                </Typography>
+              </Box>
+            )}
+
+            {response.recommended_actions.length > 0 && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="overline" color="text.secondary">
+                  Recommended actions
+                </Typography>
+                <Stack spacing={1.5} sx={{ mt: 1 }}>
+                  {response.recommended_actions.map((a) => (
+                    <Box
+                      key={a.step}
+                      sx={{
+                        p: 1.5,
+                        borderLeft: 3,
+                        borderColor: "primary.main",
+                        bgcolor: "action.hover",
+                      }}
+                    >
+                      <Typography variant="subtitle2">
+                        {a.step}. {a.title}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mt: 0.5 }}>
+                        {a.body}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+
+            {response.evidence.metrics_used.length > 0 && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="overline" color="text.secondary">
+                  Metric citations ({response.evidence.metrics_used.length})
+                </Typography>
+                <Box
+                  component="ul"
+                  sx={{
+                    mt: 1,
+                    pl: 2,
+                    fontFamily: monoFamily,
+                    fontSize: "0.75rem",
+                    color: "text.secondary",
+                  }}
+                >
+                  {response.evidence.metrics_used.map((m, i) => (
+                    <li key={i}>
+                      {m.name}
+                      {Object.keys(m.labels).length > 0 ? `{${Object.entries(m.labels).map(([k, v]) => `${k}="${v}"`).join(",")}}` : ""}
+                      {" = "}
+                      <Box component="strong" sx={{ color: "text.primary" }}>
+                        {m.value}
+                      </Box>
+                    </li>
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {response.unknowns.length > 0 && (
+              <>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="overline" color="text.secondary">
+                  Unknowns
+                </Typography>
+                <Box component="ul" sx={{ mt: 1, pl: 2 }}>
+                  {response.unknowns.map((u, i) => (
+                    <Box component="li" key={i} sx={{ mb: 0.5 }}>
+                      <Typography variant="body2" color="text.secondary">{u}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </>
+            )}
+
+            {response.error && (
+              <Typography variant="caption" sx={{ display: "block", mt: 2, color: "error.main" }}>
+                error: {response.error}
+              </Typography>
+            )}
+          </Box>
+        </Paper>
+      )}
+    </Box>
+  );
+}
