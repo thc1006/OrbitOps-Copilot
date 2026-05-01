@@ -21,40 +21,41 @@ Each addressed below.
 
 ## Findings
 
-### S-1 (Critical) — Real name in public git history (Q-1 dup; security view)
+### S-1 (RETIRED 2026-05-01) — Real name in public git history
 
-`<real-name-redacted> <<noreply-email-redacted>>` is the author of `c3c698f Initial commit`, visible at `https://github.com/<OWNER>/<REPO>/commit/c3c698f`. Public.
+> **Status: RETIRED.** Project owner reversed the repo-wide anonymity stance on 2026-05-01 (see CLAUDE.md §2.1). Real name in git history is **no longer a defect** at the repo level. The original finding text is preserved below for historical audit context.
 
-**Threat**: RunSpace evaluator runs `git log` → sees real name → anonymity-rule violation → submission disqualified.
+~~`蔡秀吉 <84045975+thc1006@users.noreply.github.com>` is the author of `c3c698f Initial commit`, visible at `https://github.com/thc1006/OrbitOps-Copilot/commit/c3c698f`. Public.~~
 
-**Remediation playbook** (do not auto-execute; documented for user-driven fix):
+~~**Threat**: RunSpace evaluator runs `git log` → sees real name → anonymity-rule violation → submission disqualified.~~
+
+**Why retired**: anonymity scope is now narrowed to the actual RunSpace submission archive (CLAUDE.md §7). When that archive is produced via `make archive`, only the *deliverable copy* needs sanitisation (if the contest term requires it). Git history of the source repo is out of scope.
+
+If a future RunSpace contest term reinstates a stricter "anonymous source code" requirement, the playbook below stays usable:
 
 ```bash
-# Option A — rewrite history with git-filter-repo (recommended)
+# Option A — rewrite history with git-filter-repo
 pip install git-filter-repo
-git filter-repo --mailmap <(echo "OrbitOps Copilot <anon@orbitops.local> <real-name-redacted> <<noreply-email-redacted>>")
-
-# Force-push to all branches on origin (DESTRUCTIVE; coordinate first):
+git filter-repo --mailmap <(echo "OrbitOps Copilot <anon@orbitops.local> 蔡秀吉 <84045975+thc1006@users.noreply.github.com>")
 git push --force-with-lease origin --all
 git push --force-with-lease origin --tags
 
-# Option B — recreate the repo
+# Option B — recreate the repo under an anon account
 gh repo create anon-orbitops/orbitops-copilot --public --source=. --push
-# Then archive <OWNER>/<REPO> OR make it private.
 
-# Option C — make current repo private (lowest cost; doesn't fix history but hides it from public eyes)
-gh repo edit <OWNER>/<REPO> --visibility private --accept-visibility-change-consequences
+# Option C — make repo private
+gh repo edit thc1006/OrbitOps-Copilot --visibility private --accept-visibility-change-consequences
 ```
 
-**Status**: open. Auto-fix not applied. Owner-only decision.
+### S-2 (RETIRED 2026-05-01) — Owner GitHub handle in repo URL
 
-### S-2 (High) — Owner GitHub handle in repo URL
+> **Status: RETIRED.** Same policy reversal as S-1. GitHub identity in the repo URL is acceptable per CLAUDE.md §2.1.
 
-`<OWNER>/<REPO>` — owner handle is part of the URL. Same anonymity threat as S-1.
+~~`thc1006/OrbitOps-Copilot` — owner handle is part of the URL. Same anonymity threat as S-1.~~
 
-**Mitigation already in baseline**: `verify.sh` gate 6 (`forbidden_pat`) catches `<OWNER>` if it ever appears in tracked files. Gate is operating; clean today.
+~~**Mitigation already in baseline**: `verify.sh` gate 6 (`forbidden_pat`) catches `thc1006` if it ever appears in tracked files. Gate is operating; clean today.~~
 
-**Outstanding gap**: gate does NOT scan git author/committer fields. Adding that is the auto-applied fix (see §Auto-applied below).
+**Why retired**: gate 6 itself was removed in the same 2026-05-01 change (see PR #31). The git-author advisory gate (1c) was also removed. Current `verify.sh` runs 5 gates (lint / tests / real-secrets / schema / k8s manifest) and does not police identity exposure.
 
 ### S-3 (Medium) — Sprint-1 demo creds: Grafana admin/admin
 

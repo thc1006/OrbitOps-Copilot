@@ -1,11 +1,13 @@
 ---
 name: no-secrets-anonymity-check
-description: Run + interpret + extend the secrets / anonymity scan. Pre-commit, pre-PR, pre-release gate.
+description: Run + interpret + extend the real-secrets scan. Pre-commit, pre-PR, pre-release gate. (Folder name retains "anonymity" for backwards-link compat; the anonymity-scan was retired 2026-05-01 — see CLAUDE.md §2.1.)
 ---
 
 ## Overview
 
-Wraps `scripts/check-no-secrets.sh`. Catches: credential leaks (AWS, OpenAI/Anthropic, GitHub tokens, private keys) and **anonymity leaks** (school names, school e-mails, personal handles, gmail addresses). Fail-fast: any hit blocks commit / PR / release.
+Wraps `scripts/check-no-secrets.sh`. Catches **credential leaks**: AWS access key IDs, OpenAI / Anthropic API keys, GitHub tokens, PEM private-key headers. Fail-fast: any hit blocks commit / PR / release.
+
+Earlier versions also scanned for school names / school e-mails / personal handles / gmail to enforce repo-wide RunSpace anonymity. That stance was relaxed on 2026-05-01: the repo now allows real names; only the actual RunSpace submission archive needs metadata cleanup, and that's a packaging-time concern (see `make archive` + CLAUDE.md §7).
 
 ## Triggers
 

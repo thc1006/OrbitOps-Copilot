@@ -24,32 +24,30 @@
 | 7. Secrets | **CLEAN**. Zero AKID / OpenAI key / Anthropic key / GH token / private-key headers in tracked files. |
 | 8. Unverified version pins | **DOCUMENTED**, not stale. `docs/mcp/01_mcp_candidates.md` and `docs/specs/SPEC-000` mark "verify before install" with explicit gh / curl commands. Acceptable. |
 | 9. Exaggerated claims | **CLEAN**. Marketing-word grep returned 1 false positive in ADR-006 (rejecting an alternative). All capability statements scoped with "Sprint 1 stub" / "P2 future" hedges. `claims-audit` skill enforces this in `runspace-pitch` workflow. |
-| 10. Identity exposure | **CRITICAL**. `Initial commit c3c698f` authored by `<real-name-redacted> <<noreply-email-redacted>>` — real name in public git history. Q-1 below. |
+| 10. Identity exposure | **N/A as of 2026-05-01**. Real name in `c3c698f` is no longer a defect — repo-wide anonymity stance reversed (CLAUDE.md §2.1). See Q-1 (RETIRED) below. |
 | 11. Demo replay | **GOOD**. Three exit paths: `scripts/run-demo.sh` (Sprint 0 placeholder), `scripts/demo-beam-quality.sh` (live process via curl), `tests/integration/test_beam_quality_copilot.py` (in-process). Deterministic via FakeLLMProvider; no LLM dependency. |
 | 12. LLM hallucination / injection | **STRONG**. ADR-004 + PR-β (FakeLLMProvider evidence-relevance check) + PR-α (Pydantic `extra='forbid'`) + AC-003 explicit injection test + `_with_time_window_note` disclaimer. Provider sees **only structured evidence**, never raw user logs. |
 | 13. Dangerous shell hooks | **CLEAN**. `.claude/settings.json`: zero hooks defined. Permissions deny `rm`, `curl`, `wget`, `git push --force`, `git config`, `sudo`, `chmod 777`. |
 
 ## Findings
 
-### Q-1 (Critical) — Real name in public git history
+### Q-1 (RETIRED 2026-05-01) — Real name in public git history
 
-`git log --all --format='%an <%ae>'` returns:
-```
-OrbitOps Copilot <anon@orbitops.local>
-<real-name-redacted> <<noreply-email-redacted>>
-```
+> **Status: RETIRED.** Project owner reversed the repo-wide anonymity stance on 2026-05-01 (see CLAUDE.md §2.1). Real name in git history is **no longer a defect** at the repo level. Original finding preserved below for historical audit context.
 
-The second author appears in **`Initial commit c3c698f`**, public on `https://github.com/<OWNER>/<REPO>`. CLAUDE.md §2 #1 forbids this for RunSpace anonymity.
+~~The second author appears in **`Initial commit c3c698f`**, public on `https://github.com/thc1006/OrbitOps-Copilot`. CLAUDE.md §2 #1 forbids this for RunSpace anonymity.~~
 
-**Why this is "Critical, not Low"**: even if every subsequent commit is anonymized, RunSpace evaluators (or any third party) running `git log` see the real name. The repo URL itself contains `<OWNER>`.
+~~**Why this is "Critical, not Low"**: even if every subsequent commit is anonymized, RunSpace evaluators (or any third party) running `git log` see the real name. The repo URL itself contains `thc1006`.~~
 
-**Recommended fix**: see `docs/reviews/security-review.md` §S-1 for the remediation playbook (history rewrite + repo move). **Do not auto-fix** — rewriting public git history requires force-push to a public repo and is destructive; user must confirm.
+**Why retired**: anonymity scope was always supposed to be the **submission archive**, not the repo. CLAUDE.md §7 now correctly limits anonymisation to packaging-time. If a future contest term reinstates source-repo anonymity, see `docs/reviews/security-review.md` §S-1 for the (still-usable) history-rewrite playbook.
 
-### Q-2 (High) — Repo is public, exposes owner handle
+### Q-2 (RETIRED 2026-05-01) — Repo is public, exposes owner handle
 
-`gh repo view --json isPrivate` returns `false`. The repo URL `<OWNER>/<REPO>` and every PR creator name `<OWNER>` are publicly visible. Same anonymity-rule violation as Q-1.
+> **Status: RETIRED.** Same policy reversal as Q-1. GitHub identity exposure is acceptable per CLAUDE.md §2.1.
 
-**Recommended fix**: `gh repo edit <OWNER>/<REPO> --visibility private --accept-visibility-change-consequences` OR move work to an anonymized GitHub account before RunSpace submission. **Do not auto-fix** (visibility is a personal-account-level decision).
+~~`gh repo view --json isPrivate` returns `false`. The repo URL `thc1006/OrbitOps-Copilot` and every PR creator name `thc1006` are publicly visible. Same anonymity-rule violation as Q-1.~~
+
+**If a future contest restricts identity exposure**: `gh repo edit thc1006/OrbitOps-Copilot --visibility private --accept-visibility-change-consequences` is still available; not currently needed.
 
 ### Q-3 (High) — TDD red→green→refactor not visible in git history
 

@@ -14,7 +14,7 @@ OrbitOps Copilot 是「**B5G/NTN 低軌地面站雲原生 operations digital twi
 
 ## 2. Non-negotiable constraints
 
-1. **匿名性（範圍：投件交付物）**：RunSpace 投件 zip / pitch deck / 影片 / 簡報，以及 zip 內附帶的 `docs/`、UI 截圖、demo 錄製，禁止露出**真實姓名、學校、團隊名稱、Logo、學校 e-mail、私密 URL**。`scripts/check-no-secrets.sh` 與 CI 對 source 檔案掃描這些字串。Git workflow（commit author / committer / commit message / PR title）使用真實 GitHub 帳號（`thc1006` + GitHub noreply email），不在匿名範圍——RunSpace 規定限於提交檔內容，不要求 repo 隱藏 GitHub identity。
+1. **匿名性（範圍：RunSpace 投件包；非 repo 級別）**：repo 本身不必匿名——真實姓名（蔡秀吉）、學校（NYCU/NCTU）、學校 e-mail、團隊名稱、GitHub identity 都可正常出現在 commit、docs、source。範圍限縮在實際送出的 RunSpace zip / pitch deck / 影片 / pdf：那一層交付物視 RunSpace 當期規則決定要不要 metadata 清洗（`exiftool -all=`、`zip -X`、`ffmpeg -map_metadata -1`）。`scripts/check-no-secrets.sh` 已退化成「真 secrets only」（AKID / OpenAI / Anthropic / GH token / PEM headers），不再掃學校與真實姓名。歷史紀錄：早先的「all-of-repo anonymity」政策於 2026-05-01 由專案擁有者解除；先前版本見 git log 上 `chore/relax-anonymity-policy` (PR #12) 與 `chore/relax-anonymity-gates` (PR after this).
 2. **不過度承諾**：禁止把 demo 說成「真 Ka-band beam steering」「真 SDR OTA」「真 OAI/srsRAN NTN full stack」「完整 O2 IMS lifecycle」。文件需明示「P0 為 metrics emulator」與「P2 才接 Sionna RT/AODT/真 RAN stack」。
 3. **Evidence-first LLM**：copilot-api 任何 `/ask` `/explain` `/runbook` 回應必含 `evidence` 區塊（metrics_used / logs_used / scenario_id / timestamp / confidence）。無 evidence 時回 `INSUFFICIENT_EVIDENCE`，**不得自由幻想**。
 4. **不硬綁單一 LLM 廠商**：以 OpenAI-compatible 介面為抽象，相容 Ollama / vLLM / LM Studio / 任何相容端點。
@@ -77,7 +77,7 @@ OrbitOps Copilot 是「**B5G/NTN 低軌地面站雲原生 operations digital twi
 ## 6. Security and privacy rules
 
 - `.env` 永不入 git；`.gitignore` 含 `.env*`、`.claude/settings.local.json`、`.claude/CLAUDE.local.md`、`secrets/`、`*.pem`、`*.key`。
-- `scripts/check-no-secrets.sh` 在 pre-commit + CI 雙處執行；偵測 AKID / private key header / `.env` patterns / team-name 白名單。**Trust boundary**：`docs/reviews/` 與 `docs/adr/` 被 secrets scan 完整 exempt（review/ADR 文件本身就會引用禁字描述問題，否則會 self-trip）。所以這兩個資料夾的內容必須由作者親自把關——不要把真實洩漏材料貼進 review docs，placeholder（`<OWNER>`、`<real-name-redacted>`）才是正確做法。
+- `scripts/check-no-secrets.sh` 在 pre-commit + CI 雙處執行；偵測 AKID / API keys / private key header。範圍是「真 secrets only」（無學校 / 真實姓名 / Gmail patterns；那些是 §2.1 鬆綁前的舊掃描，現已移除）。`docs/reviews/` 與 `docs/adr/` 不再有 exempt 規則——文件可以直接寫真名、真學校、真 GitHub URL，不需 placeholder。
 - LLM prompt-injection note：copilot-api 對所有 user-supplied 字串套 sanitization；prompt 模板不直接拼接（用 placeholder + JSON schema）。
 - MCP security note：本骨架預設**不啟用任何 MCP server**；如需啟用，先以 read-only stdio 模式檢視，禁止 long-lived token 直接寫入 `.mcp.json`。
 - Hooks 僅做 lint / format / test / secrets-scan / 阻擋型 gate / advisory 提醒；**禁止** 自動刪檔、自動 push、自動上傳。實作見 `.claude/hooks/`：5 個 script 對應 6 條紀律規則（block .env write / pre-commit secrets+tests gate / protect SDD/ADR/AC paths / ruff format on edit / remind `make verify` at end of turn）。詳見 `.claude/hooks/README.md`。
@@ -85,15 +85,15 @@ OrbitOps Copilot 是「**B5G/NTN 低軌地面站雲原生 operations digital twi
 
 ---
 
-## 7. Submission anonymization rules
+## 7. Submission packaging rules
 
-> 範圍：**RunSpace 投件交付物**——zip 包、pitch deck PDF、demo 影片、提交說明、zip 內 `docs/`、UI 截圖、影片旁白。**不**包含 git workflow（git author/committer/commit message/PR title 用真實 GitHub 帳號 `thc1006` + GitHub noreply email `84045975+thc1006@users.noreply.github.com`）。
+> Repo 本身**不需要匿名**（見 §2.1）。本節只規範**送出去給 RunSpace 那一份交付物**——當期 RunSpace 規則若要求匿名才適用；若該屆規則允許具名投件，本節整個可跳過。
 
-1. 投件交付物中的文件、簡報、影片旁白皆不出現**真實姓名、學校全稱與縮寫、學校 e-mail、團隊名稱、Logo、內部 URL**。具體禁字模式由 `scripts/check-no-secrets.sh` 維護。
-2. 截圖前把 OS 工具列、瀏覽器分頁、`whoami` 輸出、Slack/Linear UI 等可識別介面裁掉。
-3. `scripts/check-no-secrets.sh` 在 pre-commit + CI 對 source 檔案內容掃描禁字（school、school e-mail、AKID、private key），**不**掃 git metadata。本機自填的禁字白名單放 `.secrets-baseline.txt`（不入 git）。
-4. RunSpace 提交檔（zip / pdf / mp4）打包前跑 metadata 清洗：`exiftool -all= file.pdf`、`zip -X` 去 extra fields、影片用 `ffmpeg -map_metadata -1` 重編。
-5. 真實姓名（即帳號擁有者中文本名）即使在 git author 為 `thc1006` 的情況下，**仍不得**寫進任何被打包進 zip 的 source / docs / UI string——因為 zip 是公開審查物。
+1. 投件前用 `make archive` 產 `orbitops-copilot.zip`。`git archive` 只打 tracked 檔案，自動排除 `.git/`、`.venv/`、`node_modules/`、caches、所有 `.env*`（除 `.env.example`）。
+2. 影片 / PDF / PNG metadata 清洗：`exiftool -all= file.pdf`、`ffmpeg -map_metadata -1 input.mp4 out.mp4`。zip 本身用 `git archive` 產出（無 extra fields），不必 `zip -X`。
+3. 截圖前裁掉 OS 工具列、瀏覽器分頁、`whoami`、Slack/Linear/IDE personal info。
+4. 若該屆 RunSpace 要求**匿名投件**：在投件副本（**不是 repo 主幹**）裡，把 README / pitch deck / 影片旁白裡的真實姓名、學校 / 學校 e-mail / 團隊名手動換成 placeholder。Repo 主幹保留真名，產出投件包時 `sed` 一遍即可（範例見 `docs/reviews/runspace-claims-audit.md`）。
+5. `scripts/check-no-secrets.sh` 仍在 pre-commit + CI 阻擋**真 secrets**（AKID / API keys / PEM headers），跟匿名性無關。
 
 ---
 
@@ -160,8 +160,7 @@ make archive              # produce orbitops-copilot.zip via `git archive` (no c
 - `make verify` 全綠。
 - 受影響 service 至少多一個測試（綠燈）。
 - 文件：若 API/scenario schema 變動，同步更新 `docs/02_architecture.md` 或 `services/<svc>/README.md`。
-- Commit message 不含真實姓名 / school / 團隊名（GitHub handle `thc1006` OK）。
-- Pre-commit hook 通過（含 `scripts/check-no-secrets.sh`）。
+- Pre-commit hook 通過（含 `scripts/check-no-secrets.sh` 真-secret scan）。
 - 若涉及版本號：先跑 `verify.sh`（會比對 GitHub Releases / PyPI）。
 
 ---
@@ -201,7 +200,7 @@ make archive              # produce orbitops-copilot.zip via `git archive` (no c
 - `main` 永遠綠；功能在 `feat/<spec-id>-<slug>` 分支；fix 在 `fix/<issue>-<slug>`；docs 在 `docs/<slug>`。
 - PR title：`[SPEC-NNN] <imperative summary>`；body 須引用對應 SPEC / AC / ADR。
 - PR 須通過 `make verify` + CI；缺少 spec / AC 自動 reject。
-- PR commit message 不得含**真實姓名** / school / 團隊名；GitHub handle `thc1006` 與 noreply email 視同 GitHub identity 可保留。
+- PR commit message 限於：簡潔的 imperative summary + 引用對應 SPEC/AC/ADR。真名 / 學校 / GitHub identity 都可使用（§2.1 已鬆綁；歷史條款已退役）。
 
 ---
 
@@ -240,11 +239,11 @@ make archive              # produce orbitops-copilot.zip via `git archive` (no c
 每次合併前依序執行（`make verify` 已封裝大部分）：
 
 ```bash
-./verify.sh                                  # 6 gate（lint / test / secrets / schema / k8s manifest / anonymity）
+./verify.sh                                  # 5 gate（lint / test / real-secrets / schema / k8s manifest）
 pytest services/<svc>/tests -q -v             # 該 service 紅燈/綠燈狀態
 python3 scripts/validate_schemas.py           # contracts + scenarios + golden
-scripts/check-no-secrets.sh                   # 完整匿名性 + secrets
-kustomize build deploy/k8s/overlays/local | kubectl apply --dry-run=client -f -
+scripts/check-no-secrets.sh                   # AKID / API keys / PEM scan only (no anonymity gate since 2026-05-01)
+kustomize build deploy/k8s/overlays/local | kubeconform -strict -summary -
 ```
 
 附加情境：
@@ -284,7 +283,7 @@ RunSpace 提交準備？      → Agent(release-engineer)
 | `@playwright/mcp` | Sprint 2+ UI 完成後 | profile 入 git；CI 不用 isolated | `--isolated --headless`；profile dir 進 .gitignore |
 | `@upstash/context7-mcp` | 任何 sprint，**user-level** | 入 project `.mcp.json` | API key 走 user shell env |
 | Filesystem / fetch / git / Postgres / SQLite MCP | **永遠禁止** | — | — |
-| AWS / Azure / GCP / Atlassian / Drive / Gmail / Calendar / Slack / Linear MCP | **永遠禁止**（匿名性違規或不需要） | — | — |
+| AWS / Azure / GCP / Atlassian / Drive / Gmail / Calendar / Slack / Linear MCP | **永遠禁止**（與本專案 P0 範圍無關，且涉及外部資料離開本機） | — | — |
 
 ### 14.2 安裝閘門
 

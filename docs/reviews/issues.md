@@ -4,31 +4,29 @@
 
 ---
 
-## I-1 (Critical) — Real name leaked in `Initial commit` git history
+## I-1 (RETIRED 2026-05-01) — ~~Real name leaked in `Initial commit` git history~~
 
 | Field | Value |
 |---|---|
-| Severity | **Critical** |
-| File | `c3c698f` (entire repo's initial commit) |
-| Problem | Author = `<real-name-redacted> <<noreply-email-redacted>>`, public on `https://github.com/<OWNER>/<REPO>/commit/c3c698f`. CLAUDE.md §2 #1 forbids personally-identifying info anywhere a RunSpace evaluator can see. |
-| Recommended fix | One of: (a) `git filter-repo --mailmap …` then force-push all branches; (b) recreate repo under anon GitHub account + push; (c) make repo private until submission. See `docs/reviews/security-review.md` §S-1. **Do not auto-fix** — destructive force-push to public history. |
-| Suggested test | After fix: `git log --all --format='%an <%ae>' \| sort -u` returns only `OrbitOps Copilot <anon@orbitops.local>`. |
-| Owner role | `release-engineer` + repo owner |
-| Estimated effort | 30 min (option a or c); 2h (option b — repo move + PR re-link) |
+| Severity | ~~**Critical**~~ → **RETIRED** (policy reversal) |
+| File | `c3c698f` |
+| Original problem | ~~Author = `蔡秀吉 <…>`, public; CLAUDE.md §2 #1 forbids personally-identifying info.~~ |
+| Why retired | CLAUDE.md §2.1 (rewritten 2026-05-01) limits anonymisation to the RunSpace submission archive. Real name in repo / git history is now allowed. |
+| Conditional re-open | If a future contest term mandates source-repo anonymity, the original playbook (`git filter-repo --mailmap …`, repo move, or `gh repo edit ... --visibility private`) is still in `docs/reviews/security-review.md` §S-1. |
+| Owner role | repo owner (only if re-opened) |
 
 ---
 
-## I-2 (High) — Public repo exposes owner GitHub handle
+## I-2 (RETIRED 2026-05-01) — ~~Public repo exposes owner GitHub handle~~
 
 | Field | Value |
 |---|---|
-| Severity | **High** |
-| File | repo metadata (`<OWNER>/<REPO>`) |
-| Problem | Repo is public (`gh repo view --json isPrivate` → `false`). Owner handle `<OWNER>` is in the URL of every PR, every commit, every file link. RunSpace evaluator running `git log` or visiting `github.com/<OWNER>/...` sees this. |
-| Recommended fix | `gh repo edit <OWNER>/<REPO> --visibility private --accept-visibility-change-consequences` until RunSpace submission. Or move to anonymized account. |
-| Suggested test | `gh repo view --json isPrivate --jq '.isPrivate'` returns `true`. |
-| Owner role | repo owner |
-| Estimated effort | 2 min |
+| Severity | ~~**High**~~ → **RETIRED** (policy reversal) |
+| File | repo metadata (`thc1006/OrbitOps-Copilot`) |
+| Original problem | ~~Repo is public; owner handle `thc1006` is in every URL.~~ |
+| Why retired | Same policy reversal as I-1. GitHub identity exposure in the repo URL is acceptable per CLAUDE.md §2.1. |
+| Conditional re-open | If a future contest term restricts identity exposure: `gh repo edit thc1006/OrbitOps-Copilot --visibility private --accept-visibility-change-consequences`. |
+| Owner role | repo owner (only if re-opened) |
 
 ---
 

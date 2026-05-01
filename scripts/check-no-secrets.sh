@@ -1,23 +1,24 @@
 #!/usr/bin/env bash
-# check-no-secrets.sh — block obvious credential / anonymity leaks.
+# check-no-secrets.sh — block real credential leaks.
 #
 # Run by: pre-commit hook + CI + verify.sh.
 # Non-destructive — only reports + exits non-zero.
 #
-# Findings A + B from Copilot review (PR #1/#2/#3):
-#   A. The previous version built a `find_args=( . -type f -not -path … )` array
-#      and passed it directly to `grep -R "$pat" "${find_args[@]}"`. Grep
-#      interprets `-type` and friends as flags it doesn't recognise; with
-#      stderr redirected to /dev/null the failures were silent — the script
-#      reported 'clean' even when leaks existed (canary test confirmed).
-#   B. PAT_SCHOOL used `\b…\b` ERE word boundaries, which `grep -E` does NOT
-#      support. The boundary tokens were treated as literal `b`s, so e.g.
-#      `INCTU` would falsely match `\bNCTU\b`.
+# Scope (post-2026-05-01 anonymity-relaxation): real secrets ONLY.
+#   - AWS access key IDs                      (AKIA…)
+#   - OpenAI API keys                         (sk-…)
+#   - Anthropic API keys                      (sk-ant-…)
+#   - GitHub tokens                           (ghp_/ghs_/…)
+#   - Private-key headers                     (-----BEGIN …PRIVATE KEY-----)
 #
-# This rewrite uses `grep -R --include=… --exclude-dir=…` directly (which
-# DOES honour the exclusions) and rewrites the school regex as ERE-only with
-# explicit non-letter prefix/suffix groups. A self-test fires when invoked
-# with `--self-test` so make verify can prove the gate actually works.
+# Earlier versions also scanned for school names / school e-mails / personal
+# Gmail / personal handles to enforce RunSpace anonymity. The project owner
+# relaxed that on 2026-05-01 (real name OK in repo); only the actual RunSpace
+# submission archive (zip / pdf / mp4) needs metadata cleanup, and that's
+# done at packaging time per CLAUDE.md §7 — not by this scanner.
+#
+# A self-test fires when invoked with `--self-test` so make verify can prove
+# the gate actually detects real secrets.
 
 set -euo pipefail
 
@@ -29,19 +30,14 @@ R=$'\e[31m'; Y=$'\e[33m'; G=$'\e[32m'; X=$'\e[0m'
 
 # ── Self-test ───────────────────────────────────────────
 # Plant ONE canary per pattern category, run the scan against /tmp, and
-# require ALL of them to fire. Earlier version planted a single multi-token
-# string ("NCTU thc1006 also@gmail.com") which would still trip even if any
-# one pattern silently regressed — the test wasn't telling us *which* category
-# was broken. Now each category gets its own canary file.
+# require ALL of them to fire. Each real-secret category gets its own file
+# so a future silent regression on (say) the Anthropic pattern is caught
+# precisely, not masked by a co-firing AWS canary.
 if [ "${1:-}" = "--self-test" ]; then
   td="$(mktemp -d)"
   trap 'rm -rf "$td"' EXIT
 
   declare -A canaries=(
-    ["school.md"]="canary: NCTU department"
-    ["school-email.md"]="canary: alice@ee.nctu.edu.tw"
-    ["personal-handle.md"]="canary: hctsai1006 commit author"
-    ["gmail.md"]="canary: someone@gmail.com"
     ["aws.md"]="canary: AKIAABCDEFGHIJKLMNOP"
     ["openai.md"]="canary: sk-abc123def456ghi789jkl012mno345pqr678st"
     ["anthropic.md"]="canary: sk-ant-api03-abcdefghijklmnopqrstuvwxyzABCDEF12"
@@ -74,7 +70,7 @@ if [ "${1:-}" = "--self-test" ]; then
   exit 0
 fi
 
-# ── Patterns to detect ─────────────────────────────────
+# ── Patterns to detect (real secrets only) ────────────
 # AWS access keys
 PAT_AWS_AKID='AKIA[0-9A-Z]{16}'
 # Generic API keys (40+ chars high-entropy)
@@ -83,18 +79,6 @@ PAT_ANTHROPIC='sk-ant-[A-Za-z0-9-]{30,}'
 PAT_GH_TOKEN='gh[pousr]_[A-Za-z0-9]{30,}'
 # Private key headers
 PAT_PRIV_KEY='-----BEGIN [A-Z ]*PRIVATE KEY-----'
-# Anonymity leaks (school / personal identifiers).
-# B fix: ERE has no \b. Use explicit "non-letter or start/end" sentinels via
-# grep's -w flag where applicable, OR plain substring (acceptable here because
-# false positives on bare 'NCTU' are extremely unlikely and we'd rather over-
-# fire than miss a leak).
-PAT_SCHOOL='(NCTU|NYCU|NCKU|NTHU|NTUST|NSYSU|NCHU|NTUT|NCU)'
-PAT_EMAIL_AT_SCHOOL='@[a-z]+\.(nctu|nycu|ntu|ncku|nthu|ntust)\.edu\.tw'
-# GitHub handle `thc1006` allowed per CLAUDE.md §7; still flag school-email
-# local-part variants because those connect back to a school address.
-PAT_PERSONAL='(hctsai1006|hctsai)'
-# Common dev e-mails
-PAT_EMAIL_GMAIL='[a-zA-Z0-9._%+-]+@gmail\.com'
 
 PATTERNS=(
   "$PAT_AWS_AKID"
@@ -102,10 +86,6 @@ PATTERNS=(
   "$PAT_ANTHROPIC"
   "$PAT_GH_TOKEN"
   "$PAT_PRIV_KEY"
-  "$PAT_SCHOOL"
-  "$PAT_EMAIL_AT_SCHOOL"
-  "$PAT_PERSONAL"
-  "$PAT_EMAIL_GMAIL"
 )
 LABELS=(
   "AWS access key"
@@ -113,10 +93,6 @@ LABELS=(
   "Anthropic API key"
   "GitHub token"
   "Private key header"
-  "School name (anonymity violation)"
-  "School e-mail (anonymity violation)"
-  "Personal handle (anonymity violation)"
-  "Personal e-mail (gmail)"
 )
 
 # ── Scan target (default = repo root; --root <dir> overrides for self-test) ──
@@ -152,12 +128,11 @@ for i in "${!PATTERNS[@]}"; do
   while IFS= read -r line; do
     [ -z "$line" ] && continue
     # Skip self & verify.sh: they legitimately mention forbidden patterns
-    # while describing them. Same for docs/reviews/* and docs/adr/*.
+    # while describing them. (docs/reviews + docs/adr exemptions removed
+    # along with the anonymity patterns they were carved out for.)
     case "$line" in
       *scripts/check-no-secrets.sh*) continue ;;
       *verify.sh*) continue ;;
-      *docs/reviews/*) continue ;;
-      *docs/adr/*) continue ;;
     esac
     hits+=( "$label	$line" )
     # Use --regexp=PATTERN so patterns that begin with `-` (e.g. PEM

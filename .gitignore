@@ -64,3 +64,4 @@ kubeconfig
 
 # Docker
 .docker/
+.claude/scheduled_tasks.lock
