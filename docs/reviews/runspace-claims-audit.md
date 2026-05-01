@@ -63,6 +63,6 @@ Per Sprint 3 plan VS-18 (`docs/agile/sprint-03-plan.md`), before final ZIP:
 1. Re-run `claims-audit` over the **PDF deck** (extract text via `pdftotext`).
 2. Re-run over the **video script**.
 3. Run `exiftool -all=` to strip metadata.
-4. Verify zero `<OWNER>` / `<real-name-redacted>` / `<school-redacted>` / `gmail.com` matches across all submission artifacts.
+4. Verify zero `thc1006` / `蔡秀吉` / `NYCU` / `gmail.com` matches across all submission artifacts.
 
 This is process; not auto-fixed in this branch.

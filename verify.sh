@@ -4,14 +4,19 @@
 # Runs the same checks as CI:
 #   1. format / lint  (advisory in Sprint 0 — warns but does not block)
 #   2. unit tests     (delegates to test.sh; blocking)
-#   3. no-secrets scan                                     (blocking)
+#   3. real-secrets scan (AKID / API keys / PEM headers)   (blocking)
 #   4. JSON schema validation (contracts + sample scenarios) (blocking)
-#   5. k8s manifest validation (kustomize + kubectl --dry-run) (blocking when tools present)
-#   6. anonymity / forbidden-strings check                 (blocking)
+#   5. k8s manifest validation (kustomize + kubeconform)   (blocking when tools present)
 #
 # Exits non-zero on any blocking failure. Lint findings in gate 1 are
 # advisory (skeleton placeholders won't all be ruff-clean yet) and tighten
 # to blocking once Sprint 1 lands real implementations.
+#
+# History note: gate 6 (anonymity / forbidden-strings) was removed on
+# 2026-05-01 — real names are now allowed in repo per CLAUDE.md §2.1. The
+# advisory 1c (anonymity author allowlist) was removed in the same change.
+# (CLAUDE.md §7 now scopes anonymity to the submission archive only — that's
+# a packaging-time concern, not a verify-time one.)
 
 set -euo pipefail
 
@@ -26,7 +31,7 @@ fail()  { printf "${RED}[verify FAIL]${RESET} %s\n" "$*"; exit 1; }
 ok()    { printf "${GREEN}[verify ok]${RESET}   %s\n" "$*"; }
 
 # ─── 1. format / lint ───────────────────────────────────
-info "1/6 format & lint (placeholder for Sprint 0)"
+info "1/5 format & lint (placeholder for Sprint 0)"
 if command -v ruff >/dev/null 2>&1; then
   if ruff check services/ scripts/ tests/ 2>/dev/null; then
     ok "ruff clean"
@@ -42,29 +47,9 @@ if [ -x scripts/check-tdd-discipline.sh ]; then
   scripts/check-tdd-discipline.sh
 fi
 
-# ─── 1c. anonymity author allowlist (advisory; per docs/reviews/security-review.md S-2) ──
-# IMPORTANT (R-3 fix): we DO NOT allowlist @users.noreply.github.com because
-# GitHub's noreply form is `<id>+<handle>@users.noreply.github.com` — the
-# user's GitHub handle is encoded in the local-part. Allowlisting it would
-# silently miss the very leak this gate is designed to catch.
-# The only allowed author identity is *@orbitops.local (project anon alias).
-if git rev-parse --git-dir >/dev/null 2>&1; then
-  bad_authors=$(git log --all --format='%an <%ae>' 2>/dev/null \
-    | sort -u \
-    | grep -vE '<[^>]*@orbitops\.local>$' \
-    || true)
-  if [ -n "$bad_authors" ]; then
-    while IFS= read -r entry; do
-      [ -z "$entry" ] && continue
-      # Redact the actual identity in the WARN line so the warning itself
-      # does not introduce a forbidden string into CI logs.
-      domain=$(printf '%s' "$entry" | sed -E 's/.*@([^>]+)>.*/\1/')
-      printf "${YELLOW}[verify warn]${RESET} non-anon git author detected (domain=%s) — see docs/reviews/security-review.md S-1\n" "$domain"
-    done <<< "$bad_authors"
-  fi
-fi
-
-# ─── 1d. claims audit (advisory; per docs/reviews/runspace-claims-audit.md I-10) ──
+# ─── 1c. claims audit (advisory; per docs/reviews/runspace-claims-audit.md I-10) ──
+# (Was 1d before the 1c "anonymity author allowlist" gate was retired
+# on 2026-05-01 alongside the project-wide anonymity relaxation.)
 marketing=$(grep -rIlE '\b(seamless|seamlessly|production[ -]?ready|fully[ -]?integrated|enterprise[ -]?grade|state[ -]?of[ -]?the[ -]?art|industry[ -]?leading)\b' \
   --include='*.md' README.md docs/ 2>/dev/null | grep -v 'docs/reviews/' | grep -v 'docs/adr/' || true)
 if [ -n "$marketing" ]; then
@@ -75,30 +60,30 @@ if [ -n "$marketing" ]; then
 fi
 
 # ─── 2. unit tests ──────────────────────────────────────
-info "2/6 unit tests (graceful)"
+info "2/5 unit tests (graceful)"
 ./test.sh
 
-# ─── 3. no-secrets scan ─────────────────────────────────
-info "3/6 no-secrets scan"
+# ─── 3. real-secrets scan ───────────────────────────────
+info "3/5 real-secrets scan (AKID / API keys / PEM headers)"
 if [ -x scripts/check-no-secrets.sh ]; then
   # First prove the gate is not a placebo (regression for Copilot R3 review
   # finding A: previous version silently passed even when leaks existed).
   scripts/check-no-secrets.sh --self-test
   scripts/check-no-secrets.sh
-  ok "no secrets / no anonymity leaks detected"
+  ok "no real-secret leaks detected (AKID / OpenAI / Anthropic / GH-token / PEM)"
 else
   fail "scripts/check-no-secrets.sh missing or non-executable"
 fi
 
 # ─── 3b. observability stack static check ───────────────
 if [ -x scripts/check-observability.sh ]; then
-  info "3b/6 observability stack static check"
+  info "3b/5 observability stack static check"
   scripts/check-observability.sh >/dev/null
   ok "prometheus.yml + Grafana provisioning + dashboard panels valid"
 fi
 
 # ─── 4. JSON schema validation ──────────────────────────
-info "4/6 JSON schema validation (contracts + sample scenarios)"
+info "4/5 JSON schema validation (contracts + sample scenarios)"
 if command -v python3 >/dev/null 2>&1; then
   python3 scripts/validate_schemas.py
   ok "schemas valid"
@@ -113,7 +98,7 @@ fi
 #
 # Required tools on PATH: kustomize, python3, PyYAML (the latter two via
 # `make bootstrap` venv). kubeconform optional but recommended.
-info "5/6 k8s manifest validation"
+info "5/5 k8s manifest validation"
 if command -v kustomize >/dev/null 2>&1; then
   if [ -x scripts/k8s-smoke-test.sh ]; then
     scripts/k8s-smoke-test.sh >/dev/null
@@ -130,26 +115,6 @@ if command -v kustomize >/dev/null 2>&1; then
   fi
 else
   warn "kustomize not installed; skipping locally — CI installs it and will run this gate"
-fi
-
-# ─── 6. anonymity check ─────────────────────────────────
-info "6/6 anonymity / forbidden-strings check"
-# GitHub handle `thc1006` is allowed (CLAUDE.md §7); still block school /
-# school-email local-part / school domain / personal gmail.
-forbidden_pat="(NCTU|NYCU|NTU|NCKU|NTHU|NTUST|hctsai|hctsai1006|cs\\.nctu\\.edu\\.tw|@gmail\\.com)"
-hits=$(grep -RIE -l "$forbidden_pat" \
-  --include="*.md" --include="*.json" --include="*.yml" --include="*.yaml" \
-  --include="*.py" --include="*.ts" --include="*.tsx" --include="*.js" \
-  --exclude=package-lock.json --exclude=pnpm-lock.yaml --exclude=yarn.lock \
-  --exclude-dir=.venv --exclude-dir=venv --exclude-dir=.git \
-  --exclude-dir=node_modules --exclude-dir=__pycache__ --exclude-dir=.pytest_cache \
-  --exclude-dir=.ruff_cache --exclude-dir=dist --exclude-dir=build --exclude-dir=tmp \
-  . 2>/dev/null || true)
-if [ -n "$hits" ]; then
-  echo "$hits" | sed 's/^/    /'
-  fail "anonymity leak detected — see files above"
-else
-  ok "no forbidden strings detected"
 fi
 
 info "all checks passed"
