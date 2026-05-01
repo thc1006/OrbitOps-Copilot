@@ -15,17 +15,6 @@ export interface AskInput {
   time_window_seconds?: number;
 }
 
-/**
- * ApiError unifies the failure shape the UI catches. Replaces ad-hoc
- * `(e as Error).message` casts at call sites and lets components
- * distinguish timeout / abort / HTTP failures from generic errors.
- */
-export interface ApiError {
-  kind: "timeout" | "abort" | "http" | "network";
-  message: string;
-  status?: number;
-}
-
 function buildErrorResponse(unknownsLine: string, errorLabel: string): CopilotResponse {
   return {
     summary: null,
@@ -58,9 +47,18 @@ export async function askCopilot(
   const timer = setTimeout(() => controller.abort("timeout"), timeoutMs);
 
   // Chain caller-provided abort signal so e.g. unmount cancels the fetch.
+  // Track the listener so we can remove it in finally — without that, callers
+  // who reuse the same long-lived AbortSignal across many askCopilot calls
+  // would accumulate a listener per call until the signal eventually fires.
+  // `{ once: true }` ALSO covers the abort path (auto-removes after firing).
+  let onAbort: (() => void) | null = null;
   if (options.signal) {
-    if (options.signal.aborted) controller.abort("caller-abort");
-    else options.signal.addEventListener("abort", () => controller.abort("caller-abort"));
+    if (options.signal.aborted) {
+      controller.abort("caller-abort");
+    } else {
+      onAbort = () => controller.abort("caller-abort");
+      options.signal.addEventListener("abort", onAbort, { once: true });
+    }
   }
 
   try {
@@ -97,5 +95,11 @@ export async function askCopilot(
     );
   } finally {
     clearTimeout(timer);
+    // Clean up the caller-provided signal listener if the request finished
+    // before the signal fired. (`{ once: true }` only auto-removes when
+    // the listener actually runs.)
+    if (onAbort && options.signal) {
+      options.signal.removeEventListener("abort", onAbort);
+    }
   }
 }

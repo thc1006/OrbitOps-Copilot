@@ -44,6 +44,8 @@ if [ "${1:-}" = "--self-test" ]; then
     ["gmail.md"]="canary: someone@gmail.com"
     ["aws.md"]="canary: AKIAABCDEFGHIJKLMNOP"
     ["openai.md"]="canary: sk-abc123def456ghi789jkl012mno345pqr678st"
+    ["anthropic.md"]="canary: sk-ant-api03-abcdefghijklmnopqrstuvwxyzABCDEF12"
+    ["github-token.md"]="canary: ghp_abcdefghijklmnopqrstuvwxyz123456"
     ["private-key.md"]="canary: -----BEGIN RSA PRIVATE KEY-----"
   )
 

@@ -5,9 +5,9 @@ even when drift was present because `all(... for _ in [])` is vacuously
 True. Now the gate has a dedicated `ac_drift_failures` counter; this test
 asserts it actually fails (exit 1) when a v1 path is planted.
 
-Also locks in PR #N's tightened skip rule: a line containing "migration"
-that isn't an explicit `> v1:` blockquote or "ADR-007 migration table"
-mention should NOT be exempted from the scan.
+Also locks in the tightened skip rule (added in the same sweep PR): a
+line containing "migration" that isn't an explicit `> v1:` blockquote
+or "ADR-007 migration table" mention should NOT be exempted from the scan.
 """
 
 from __future__ import annotations
