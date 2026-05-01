@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orbitops-grafana-provisioning
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/part-of: orbitops-copilot
+data:
+  # Datasource provisioning — points at the in-cluster prometheus Service.
+  # UID `prometheus` is referenced by orbitops-overview.json panel targets.
+  datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        uid: prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus.orbitops.svc.cluster.local:9090
+        isDefault: true
+        editable: false
+        jsonData:
+          timeInterval: "5s"
+  # Dashboard provider — reads JSON files from /var/lib/grafana/dashboards
+  # (mounted from the generated `orbitops-grafana-dashboards` ConfigMap).
+  dashboard-provider.yaml: |
+    apiVersion: 1
+    providers:
+      - name: orbitops
+        orgId: 1
+        folder: OrbitOps
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: false
+        options:
+          path: /var/lib/grafana/dashboards
+          foldersFromFilesStructure: false

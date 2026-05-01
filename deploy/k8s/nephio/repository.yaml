@@ -1,0 +1,35 @@
+# Porch Repository registration for OrbitOps Copilot kpt packages.
+#
+# After `kubectl apply -f deploy/k8s/nephio/repository.yaml`, Porch will
+# discover any Kptfile under `packages/nephio-stubs/` of this repo and
+# expose them as `PackageRevision` resources.
+#
+# Inspection:
+#   kubectl get repositories.config.porch.kpt.dev -A
+#   kubectl get packagerevisions -A
+#   kubectl get packagerevisions -A -o jsonpath='{.items[*].spec.packageName}'
+#
+# Currently exposed packages (Sprint 1 stub — no real O2 IMS / FOCOM wiring):
+#   - orbitops-groundstation-package
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: Repository
+metadata:
+  name: orbitops-blueprints
+  namespace: default
+  labels:
+    app.kubernetes.io/part-of: orbitops-copilot
+    kpt.dev/repository-content: package
+spec:
+  description: |
+    OrbitOps Copilot kpt blueprints (Sprint 1 stub).
+    Demonstrates Porch package-discovery shape; not a functional O2 IMS / FOCOM
+    deployment, and not full Nephio (no nephio.org CRDs / nephio-system controllers).
+    See ADR-005 + packages/nephio-stubs/README.md for rationale.
+  type: git
+  content: Package
+  deployment: false
+  git:
+    repo: https://github.com/thc1006/OrbitOps-Copilot.git
+    branch: main
+    # Porch scans this directory for Kptfile-bearing subdirectories.
+    directory: /packages/nephio-stubs

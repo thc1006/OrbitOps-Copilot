@@ -65,8 +65,20 @@ demo: ## End-to-end golden demo (requires dev-up first)
 	scripts/run-demo.sh
 
 # ---------- K8s ----------
+.PHONY: k8s-up
+k8s-up: ## Full local k8s deploy (containerd kubeadm; uses sudo for ctr import)
+	scripts/k8s-up-local.sh
+
+.PHONY: k8s-up-kind
+k8s-up-kind: ## Alternate path for kind-based clusters (no sudo / ctr)
+	scripts/k8s-up.sh
+
+.PHONY: k8s-down
+k8s-down: ## Tear down orbitops namespace (does NOT touch the cluster itself)
+	scripts/k8s-down.sh
+
 .PHONY: kind-up
-kind-up: ## Create local kind cluster
+kind-up: ## Create local kind cluster (used by k8s-up-kind)
 	kind create cluster --name orbitops --config deploy/kind/cluster.yaml
 
 .PHONY: kind-down
@@ -74,13 +86,12 @@ kind-down: ## Destroy local kind cluster
 	kind delete cluster --name orbitops
 
 .PHONY: k8s-apply
-k8s-apply: ## Apply Kustomize overlay (local)
-	kustomize build deploy/k8s/overlays/local | kubectl apply --dry-run=client -f -
-	@echo "[k8s-apply] dry-run OK; remove --dry-run=client when ready."
+k8s-apply: ## Dry-run apply Kustomize overlay (validation only; no cluster contact)
+	kustomize build --load-restrictor=LoadRestrictionsNone deploy/k8s/overlays/local | kubeconform -strict -summary -
 
 .PHONY: k8s-smoke
-k8s-smoke: ## K8s smoke tests
-	@echo "[k8s-smoke] placeholder: implement in Sprint 1 (S1-09)."
+k8s-smoke: ## Run scripts/k8s-smoke-test.sh (static; --live for cluster checks)
+	scripts/k8s-smoke-test.sh
 
 # ---------- Schema / contracts ----------
 .PHONY: schema-check

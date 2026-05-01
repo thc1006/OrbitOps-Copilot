@@ -1,7 +1,7 @@
 # Build context is the repo root (see deploy/docker-compose.yml: `context: ..`).
 # This is required because the emulator reads tests/contracts/scenario.schema.json
 # at startup, and that path lives outside any single service tree.
-FROM python:3.13-slim
+FROM docker.io/library/python:3.13-slim
 
 WORKDIR /app
 

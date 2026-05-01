@@ -32,7 +32,7 @@ say "static: kustomize build"
 command -v kustomize >/dev/null || die "missing kustomize"
 TMP_RENDER=$(mktemp)
 trap 'rm -f "$TMP_RENDER"' EXIT
-kustomize build deploy/k8s/overlays/local > "$TMP_RENDER"
+kustomize build --load-restrictor=LoadRestrictionsNone deploy/k8s/overlays/local > "$TMP_RENDER"
 ok "kustomize rendered $(wc -l < "$TMP_RENDER") lines"
 
 say "static: yaml.safe_load_all"

@@ -5,6 +5,7 @@ labels:
   - includeSelectors: false
     pairs:
       app.kubernetes.io/part-of: orbitops-copilot
+
 resources:
   - namespace.yaml
   - scenario-configmap.yaml
@@ -13,3 +14,33 @@ resources:
   - copilot-deployment.yaml
   - copilot-service.yaml
   - ui-deployment.yaml
+  - prometheus-configmap.yaml
+  - prometheus-deployment.yaml
+  - grafana-configmap.yaml
+  - grafana-deployment.yaml
+
+configMapGenerator:
+  # Wraps observability/grafana/dashboards/*.json into a ConfigMap so the
+  # canonical JSON file remains the single source of truth. Re-rendered
+  # automatically when the file changes.
+  #
+  # NOTE: this `files:` reference escapes the kustomization root
+  # (`../../../observability/...`).
+  #
+  # `kubectl apply -k <dir>` does NOT support a `--load-restrictor` flag, so
+  # applying this base directly via `kubectl -k` will fail with the current
+  # layout. Use the standalone form instead:
+  #
+  #   kustomize build --load-restrictor=LoadRestrictionsNone \
+  #     deploy/k8s/overlays/local | kubectl apply -f -
+  #
+  # The repo's scripts (k8s-up-local.sh, k8s-smoke-test.sh) and Makefile
+  # `k8s-apply` target already use that workflow.
+  - name: orbitops-grafana-dashboards
+    files:
+      - ../../../observability/grafana/dashboards/orbitops-overview.json
+    options:
+      # Disable the hash suffix so the Deployment volume reference stays
+      # stable across edits (Grafana provisioning re-reads on filesystem
+      # change anyway, every 30s per dashboard-provider.yaml).
+      disableNameSuffixHash: true
