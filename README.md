@@ -95,7 +95,7 @@ orbitops-copilot/
 │   ├── unit/                       # cross-service unit tests
 │   ├── integration/                # API + docker-compose
 │   └── k8s-smoke/                  # k8s deployment smoke
-├── scripts/                        # bootstrap / dev-up / run-demo / check-no-secrets / package-zip / ...
+├── scripts/                        # bootstrap / dev-up / run-demo / check-no-secrets / ...
 ├── .claude/                        # Claude Code config (settings, commands, agents, skills)
 ├── .github/workflows/ci.yml        # CI gates
 ├── Makefile

@@ -65,7 +65,7 @@
 - [ ] 所有外部連結 allowlisted（`docs/10_links.md`）。
 - [ ] Demo 錄製時 OS toolbar / browser tabs / `whoami` / hostname 已隱藏。
 - [ ] `git log` 無團隊／學校／姓名／真實 e-mail。
-- [ ] zip 內無 `.git/`（透過 `scripts/package-zip.sh` 排除）。
+- [ ] zip 內無 `.git/`（`make archive` 用 `git archive`，只打 tracked 檔案，`.git/`、`.venv/`、caches 自動排除）。
 
 ## 10. CI gates
 

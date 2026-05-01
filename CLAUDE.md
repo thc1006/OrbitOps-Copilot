@@ -123,7 +123,7 @@ make k8s-apply            # kustomize build | kubectl apply -f -
 make k8s-smoke            # smoke tests against running cluster
 
 # Packaging
-make package-zip          # produce orbitops-copilot.zip (excluding venv/node_modules)
+make archive              # produce orbitops-copilot.zip via `git archive` (no custom packager)
 ```
 
 ---
