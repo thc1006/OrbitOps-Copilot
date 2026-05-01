@@ -138,7 +138,9 @@ _TIME_WINDOW_SPRINT1_DISCLAIMER = (
 )
 
 
-def _with_time_window_note(req: AskRequest, response: CopilotResponse) -> CopilotResponse:
+def _with_time_window_note(
+    req: AskRequest, response: CopilotResponse
+) -> CopilotResponse:
     """PR-H-2: if the caller passed time_window_seconds, append a Sprint-1
     disclaimer to ``unknowns`` so the response doesn't silently pretend the
     window was honoured. REFUSED responses skip this — they don't carry
@@ -170,30 +172,39 @@ def ask(req: AskRequest) -> CopilotResponse:
         prom_body = _scraper.scrape()
     except RuntimeError as exc:
         # Friendly NullScraper case: message already explains how to fix.
-        return _with_time_window_note(req, _insufficient(
-            scenario_id=req.scenario_id,
-            time_window_seconds=req.time_window_seconds,
-            reason=str(exc),
-        ))
-    except Exception as exc:  # noqa: BLE001 — HTTP error / parse error etc.
-        return _with_time_window_note(req, _insufficient(
-            scenario_id=req.scenario_id,
-            time_window_seconds=req.time_window_seconds,
-            reason=(
-                f"Failed to scrape emulator metrics: {type(exc).__name__}: {exc}"
+        return _with_time_window_note(
+            req,
+            _insufficient(
+                scenario_id=req.scenario_id,
+                time_window_seconds=req.time_window_seconds,
+                reason=str(exc),
             ),
-        ))
+        )
+    except Exception as exc:  # noqa: BLE001 — HTTP error / parse error etc.
+        return _with_time_window_note(
+            req,
+            _insufficient(
+                scenario_id=req.scenario_id,
+                time_window_seconds=req.time_window_seconds,
+                reason=(
+                    f"Failed to scrape emulator metrics: {type(exc).__name__}: {exc}"
+                ),
+            ),
+        )
 
     metrics, anomaly_type = _retrieval.classify(prom_body)
     if not metrics or anomaly_type is None:
-        return _with_time_window_note(req, _insufficient(
-            scenario_id=req.scenario_id,
-            time_window_seconds=req.time_window_seconds,
-            reason=(
-                "Emulator is reachable but no degraded metrics are present "
-                "(no orbitops_beam_snr_db < 8, no handover failure, no gateway outage)."
+        return _with_time_window_note(
+            req,
+            _insufficient(
+                scenario_id=req.scenario_id,
+                time_window_seconds=req.time_window_seconds,
+                reason=(
+                    "Emulator is reachable but no degraded metrics are present "
+                    "(no orbitops_beam_snr_db < 8, no handover failure, no gateway outage)."
+                ),
             ),
-        ))
+        )
 
     evidence = Evidence(
         metrics_used=metrics,
@@ -210,17 +221,22 @@ def ask(req: AskRequest) -> CopilotResponse:
     # Same defensive degrade as /explain + /runbook: if provider produced no
     # narrative, surface INSUFFICIENT instead of "ok with hollow content".
     if raw.get("summary") is None and raw.get("likely_cause") is None:
-        return _with_time_window_note(req, _insufficient(
-            scenario_id=req.scenario_id,
-            time_window_seconds=req.time_window_seconds,
-            metrics_used=metrics,
-            reason=(
-                raw.get("unknowns", [None])[0]
-                or f"Provider returned no usable analysis for {anomaly_type!r}."
+        return _with_time_window_note(
+            req,
+            _insufficient(
+                scenario_id=req.scenario_id,
+                time_window_seconds=req.time_window_seconds,
+                metrics_used=metrics,
+                reason=(
+                    raw.get("unknowns", [None])[0]
+                    or f"Provider returned no usable analysis for {anomaly_type!r}."
+                ),
             ),
-        ))
+        )
 
-    return _with_time_window_note(req, _grounded(raw=raw, evidence=evidence, include_actions=True))
+    return _with_time_window_note(
+        req, _grounded(raw=raw, evidence=evidence, include_actions=True)
+    )
 
 
 @app.post("/explain", response_model=CopilotResponse)
