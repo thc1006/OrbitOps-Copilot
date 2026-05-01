@@ -107,20 +107,29 @@ else
 fi
 
 # ─── 5. k8s manifest validation ─────────────────────────
+# scripts/k8s-smoke-test.sh validates offline using kustomize + python
+# yaml-parse + kubeconform-when-installed. kubectl is only used
+# opportunistically (when a cluster is reachable).
+#
+# Required tools on PATH: kustomize, python3, PyYAML (the latter two via
+# `make bootstrap` venv). kubeconform optional but recommended.
 info "5/6 k8s manifest validation"
-if command -v kustomize >/dev/null 2>&1 && command -v kubectl >/dev/null 2>&1; then
+if command -v kustomize >/dev/null 2>&1; then
   if [ -x scripts/k8s-smoke-test.sh ]; then
     scripts/k8s-smoke-test.sh >/dev/null
     ok "k8s static smoke (manifests + invariants)"
   elif [ -f deploy/k8s/overlays/local/kustomization.yaml ]; then
-    kustomize build deploy/k8s/overlays/local \
-      | kubectl apply --dry-run=client --validate=false -f - >/dev/null
-    ok "kustomize + kubectl --dry-run passed"
+    if command -v python3 >/dev/null 2>&1 && python3 -c "import yaml" >/dev/null 2>&1; then
+      kustomize build deploy/k8s/overlays/local | python3 -c "import yaml,sys; list(yaml.safe_load_all(sys.stdin))"
+      ok "kustomize render + yaml parse passed"
+    else
+      warn "python3 + pyyaml required for fallback yaml-parse — run 'make bootstrap'"
+    fi
   else
     warn "deploy/k8s/overlays/local/kustomization.yaml not yet present"
   fi
 else
-  warn "kustomize / kubectl not installed; skipping locally — CI installs them and will run this gate"
+  warn "kustomize not installed; skipping locally — CI installs it and will run this gate"
 fi
 
 # ─── 6. anonymity check ─────────────────────────────────
