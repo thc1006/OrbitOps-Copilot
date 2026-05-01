@@ -20,6 +20,19 @@
     "start_time": { "type": "string", "format": "date-time" },
     "duration_seconds": { "type": "integer", "exclusiveMinimum": 0 },
     "satellite_id": { "type": "string", "minLength": 1 },
+    "satellite": {
+      "type": "object",
+      "description": "Optional satellite parameters consumed by the emulator's geometry simplifier (G7). Backward-compatible: absent => defaults.",
+      "additionalProperties": false,
+      "properties": {
+        "pass_peak_elevation_deg": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 90,
+          "description": "Peak elevation reached during the simulated pass; drives the sin-shaped orbitops_beam_elevation_deg curve. Default 55 (per docs/contracts/metrics.md row 9)."
+        }
+      }
+    },
     "ground_station_id": { "type": "string", "minLength": 1 },
     "beams": {
       "type": "array",

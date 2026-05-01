@@ -36,3 +36,14 @@
 - 缺 `anomaly_type`：回 422（Pydantic 驗證；不是 400 — FastAPI 預設）。
 - `metrics_snapshot` 為空 + `logs` 為空：回 `INSUFFICIENT_EVIDENCE`。
 - `metrics_snapshot` 與 `anomaly_type` 不對齊（如 `anomaly_type=handover_failure` 但只給 `orbitops_beam_snr_db`）：回 `INSUFFICIENT_EVIDENCE`，`unknowns` 註明缺哪個 metric（PR-β 邏輯）。
+
+## G8 extension — `doppler_compensation_warning`
+
+當 evidence 內 `orbitops_doppler_residual_hz` 出現 |value| > 2 kHz（≈10% NR SCS=30 kHz；3GPP TS 38.821 §6 + TR 38.811 §6 NTN channel）但**沒有**更高優先級的 anomaly（snr_drop / handover_failure / gateway_outage）時，`_retrieval.classify()` 應分類為 `doppler_compensation_warning`，runbook 包含至少 3 個 actions：
+
+1. Refresh ephemeris（push latest TLE/SP3 + verify epochTime / t-Service IE 在 validity window 內）
+2. Inspect compensation-loop health（PLL/FLL lock indicator + Doppler-tracking-error variance）
+3. Watch the next pass at the same elevation（if residual > 2 kHz again → 升至衛星營運方）
+
+優先級表：見 `docs/specs/SPEC-003-copilot-api.md` §8.1。
+Producer 端**不**對應一個 `orbitops_anomaly_active{type=doppler_compensation_warning}` 系列 — 此分類由 copilot 從 `orbitops_doppler_residual_hz` 原值衍生（per `docs/contracts/metrics.md` §8）。
