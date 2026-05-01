@@ -24,7 +24,12 @@ cd "$ROOT"
 # pod label `app.kubernetes.io/part-of=orbitops-copilot` is used to wait on
 # Ready below. Letting the user override NS would silently desync.
 NS=orbitops
-TAG="${TAG:-0.1.0-dev}"
+# Per-service tags must match what the deployment manifests pin in
+# deploy/k8s/base/*-deployment.yaml. Override any of them via env if you
+# want to test a different build (e.g. EMULATOR_TAG=local-shim ./k8s-up-local.sh).
+EMULATOR_TAG="${EMULATOR_TAG:-0.1.1-dev-g6g7g8}"  # bumped in PR #35 (G6/G7/G8 spec parity)
+COPILOT_TAG="${COPILOT_TAG:-0.1.1-dev-g6g7g8}"   # bumped in PR #35 (G6/G7/G8 spec parity)
+UI_TAG="${UI_TAG:-0.1.0-dev}"                    # UI unchanged in PR #34
 
 G=$'\e[32m'; Y=$'\e[33m'; R=$'\e[31m'; B=$'\e[1m'; X=$'\e[0m'
 say()  { printf "${B}── %s ──${X}\n" "$*"; }
@@ -45,9 +50,9 @@ ok "kubectl context: $CTX"
 
 # ── 1. docker build ──────────────────────────────────────
 declare -A IMAGES=(
-  ["orbitops/ntn-metrics-emulator:$TAG"]="services/ntn-metrics-emulator/Dockerfile"
-  ["orbitops/copilot-api:$TAG"]="services/copilot-api/Dockerfile"
-  ["orbitops/digital-twin-ui:$TAG"]="services/digital-twin-ui/Dockerfile"
+  ["orbitops/ntn-metrics-emulator:$EMULATOR_TAG"]="services/ntn-metrics-emulator/Dockerfile"
+  ["orbitops/copilot-api:$COPILOT_TAG"]="services/copilot-api/Dockerfile"
+  ["orbitops/digital-twin-ui:$UI_TAG"]="services/digital-twin-ui/Dockerfile"
 )
 
 say "1. docker build"

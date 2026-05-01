@@ -19,7 +19,7 @@ services:
       # with "forbidden path outside the build context" on `docker compose build`.
       context: ..
       dockerfile: services/ntn-metrics-emulator/Dockerfile
-    image: orbitops/ntn-metrics-emulator:0.1.0-dev
+    image: orbitops/ntn-metrics-emulator:0.1.1-dev-g6g7g8
     container_name: orbitops-emulator
     ports:
       # Local-only by default. To expose on a shared host, override:
@@ -38,7 +38,7 @@ services:
       # share a build-context convention.
       context: ..
       dockerfile: services/copilot-api/Dockerfile
-    image: orbitops/copilot-api:0.1.0-dev
+    image: orbitops/copilot-api:0.1.1-dev-g6g7g8
     container_name: orbitops-copilot
     depends_on:
       ntn-metrics-emulator:

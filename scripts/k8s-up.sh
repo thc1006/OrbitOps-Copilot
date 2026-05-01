@@ -6,14 +6,16 @@
 #   - kind (https://kind.sigs.k8s.io/)
 #   - kubectl
 #   - kustomize
-#   - service Docker images already built locally:
-#       (cd services/ntn-metrics-emulator && docker build -t orbitops/ntn-metrics-emulator:0.1.0-dev .)
-#       (cd services/copilot-api && docker build -t orbitops/copilot-api:0.1.0-dev .)
+#   - service Docker images already built locally (tags must match the
+#     ones pinned in deploy/k8s/base/*-deployment.yaml):
+#       (cd services/ntn-metrics-emulator && docker build -t orbitops/ntn-metrics-emulator:0.1.1-dev-g6g7g8 .)
+#       (cd services/copilot-api && docker build -t orbitops/copilot-api:0.1.1-dev-g6g7g8 .)
 #       (cd services/digital-twin-ui && npm install && npm run build && \
 #         docker build -t orbitops/digital-twin-ui:0.1.0-dev -f - . <<EOF
 #       FROM nginx:alpine
 #       COPY dist /usr/share/nginx/html
 #       EOF)
+#     (UI is still on 0.1.0-dev because no UI code changed in PR #34.)
 #
 # Usage:
 #   ./scripts/k8s-up.sh
@@ -46,9 +48,11 @@ say "2. switch kubectl context"
 kubectl config use-context "kind-${CLUSTER_NAME}"
 
 say "3. load local images into kind (skip if missing — apply will use pull policy)"
+# Tags must stay in sync with deploy/k8s/base/*-deployment.yaml.
+# Bumped emulator + copilot to 0.1.1-dev-g6g7g8 in PR #35; UI stayed at 0.1.0-dev.
 for img in \
-  orbitops/ntn-metrics-emulator:0.1.0-dev \
-  orbitops/copilot-api:0.1.0-dev \
+  orbitops/ntn-metrics-emulator:0.1.1-dev-g6g7g8 \
+  orbitops/copilot-api:0.1.1-dev-g6g7g8 \
   orbitops/digital-twin-ui:0.1.0-dev; do
   if docker image inspect "$img" >/dev/null 2>&1; then
     kind load docker-image --name "$CLUSTER_NAME" "$img"

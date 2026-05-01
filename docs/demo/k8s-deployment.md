@@ -4,8 +4,10 @@
 
 ```bash
 # 1. Build the three service images locally (kind reads them by name).
-(cd services/ntn-metrics-emulator && docker build -t orbitops/ntn-metrics-emulator:0.1.0-dev .)
-(cd services/copilot-api && docker build -t orbitops/copilot-api:0.1.0-dev .)
+#    Tags must match what's pinned in deploy/k8s/base/*-deployment.yaml.
+#    PR #35 bumped emulator + copilot to 0.1.1-dev-g6g7g8; UI stayed at 0.1.0-dev.
+(cd services/ntn-metrics-emulator && docker build -t orbitops/ntn-metrics-emulator:0.1.1-dev-g6g7g8 .)
+(cd services/copilot-api && docker build -t orbitops/copilot-api:0.1.1-dev-g6g7g8 .)
 (cd services/digital-twin-ui && npm install && npm run build)
 cat <<EOF > /tmp/orbitops-ui.Dockerfile
 FROM nginx:alpine
