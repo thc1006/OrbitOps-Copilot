@@ -22,7 +22,9 @@ services:
     image: orbitops/ntn-metrics-emulator:0.1.0-dev
     container_name: orbitops-emulator
     ports:
-      - "8000:8000"
+      # Local-only by default. To expose on a shared host, override:
+      #   COMPOSE_BIND=0.0.0.0 docker compose ... up
+      - "${COMPOSE_BIND:-127.0.0.1}:8000:8000"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz').read()"]
       interval: 5s
@@ -39,7 +41,7 @@ services:
       ntn-metrics-emulator:
         condition: service_healthy
     ports:
-      - "8001:8001"
+      - "${COMPOSE_BIND:-127.0.0.1}:8001:8001"
     environment:
       COPILOT_LLM_PROVIDER: mock
       ORBITOPS_EMULATOR_METRICS_URL: http://ntn-metrics-emulator:8000/metrics
@@ -50,7 +52,7 @@ services:
     depends_on:
       - ntn-metrics-emulator
     ports:
-      - "9090:9090"
+      - "${COMPOSE_BIND:-127.0.0.1}:9090:9090"
     volumes:
       - ../observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     command:
@@ -65,7 +67,7 @@ services:
     depends_on:
       - prometheus
     ports:
-      - "3000:3000"
+      - "${COMPOSE_BIND:-127.0.0.1}:3000:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
@@ -85,6 +87,6 @@ services:
     depends_on:
       - copilot-api
     ports:
-      - "5173:80"
+      - "${COMPOSE_BIND:-127.0.0.1}:5173:80"
     volumes:
       - ../services/digital-twin-ui/dist:/usr/share/nginx/html:ro

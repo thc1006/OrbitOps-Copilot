@@ -127,14 +127,22 @@ def main() -> int:
     )
     ac_drift_failures = 0  # K fix: track AC-drift-specific failures locally
     ac_count = 0
+    # Tightened skip rule: only exempt lines that are explicit ADR-007
+    # migration breadcrumbs (markdown blockquote starting with `>` and
+    # naming v1, OR a literal "ADR-007 migration table" mention). Earlier
+    # heuristic ("any line containing 'migration'") false-negated real
+    # leaks like "plan migration of evidence.confidence away".
+    import re
+
+    ADR_BREADCRUMB = re.compile(r"^\s*>\s*v1:")  # `> v1: …` quoted history
+    ADR_TABLE_REF = re.compile(r"ADR-007 migration table", re.IGNORECASE)
+
     for ac_file in sorted(AC_DIR.glob("AC-*.md")):
         ac_count += 1
         text = ac_file.read_text(encoding="utf-8")
-        # Skip lines that are themselves ADR / migration notes (legitimate
-        # mentions of v1 paths in historical context).
         scanned_lines = [
             line for line in text.splitlines()
-            if "v1:" not in line and "ADR-007" not in line and "migration" not in line.lower()
+            if not ADR_BREADCRUMB.match(line) and not ADR_TABLE_REF.search(line)
         ]
         scanned_text = "\n".join(scanned_lines)
         for needle, why in forbidden_v1_paths:

@@ -28,17 +28,47 @@ cd "$ROOT"
 R=$'\e[31m'; Y=$'\e[33m'; G=$'\e[32m'; X=$'\e[0m'
 
 # ── Self-test ───────────────────────────────────────────
-# Plant a canary, run the scan against /tmp, expect a hit. Used by
-# `make verify` to prove the gate is not a placebo.
+# Plant ONE canary per pattern category, run the scan against /tmp, and
+# require ALL of them to fire. Earlier version planted a single multi-token
+# string ("NCTU thc1006 also@gmail.com") which would still trip even if any
+# one pattern silently regressed — the test wasn't telling us *which* category
+# was broken. Now each category gets its own canary file.
 if [ "${1:-}" = "--self-test" ]; then
   td="$(mktemp -d)"
   trap 'rm -rf "$td"' EXIT
-  printf 'canary: NCTU thc1006 also@gmail.com\n' > "$td/canary.md"
-  if SELFTEST_ROOT="$td" "$0" --root "$td" >/dev/null 2>&1; then
-    printf "${R}check-no-secrets self-test FAILED: canary not detected${X}\n"
+
+  declare -A canaries=(
+    ["school.md"]="canary: NCTU department"
+    ["school-email.md"]="canary: alice@ee.nctu.edu.tw"
+    ["personal-handle.md"]="canary: hctsai1006 commit author"
+    ["gmail.md"]="canary: someone@gmail.com"
+    ["aws.md"]="canary: AKIAABCDEFGHIJKLMNOP"
+    ["openai.md"]="canary: sk-abc123def456ghi789jkl012mno345pqr678st"
+    ["private-key.md"]="canary: -----BEGIN RSA PRIVATE KEY-----"
+  )
+
+  failed=()
+  for fname in "${!canaries[@]}"; do
+    printf '%s\n' "${canaries[$fname]}" > "$td/$fname"
+  done
+
+  # Run the scan ONCE; expect every canary file to be reported.
+  scan_output="$("$0" --root "$td" 2>&1 || true)"
+  for fname in "${!canaries[@]}"; do
+    if ! printf '%s' "$scan_output" | grep -q "$fname"; then
+      failed+=("$fname (${canaries[$fname]})")
+    fi
+    # Tear down before next iteration; preserves isolation if you add stateful checks later.
+  done
+
+  if [ "${#failed[@]}" -gt 0 ]; then
+    printf "${R}check-no-secrets self-test FAILED: these categories did not fire:${X}\n"
+    for f in "${failed[@]}"; do
+      printf "  - %s\n" "$f"
+    done
     exit 1
   fi
-  printf "${G}check-no-secrets self-test ok: canary correctly detected${X}\n"
+  printf "${G}check-no-secrets self-test ok: all %d categories fired${X}\n" "${#canaries[@]}"
   exit 0
 fi
 
@@ -128,7 +158,11 @@ for i in "${!PATTERNS[@]}"; do
       *docs/adr/*) continue ;;
     esac
     hits+=( "$label	$line" )
-  done < <(grep "${COMMON_GREP_FLAGS[@]}" "$pat" "$SCAN_ROOT" 2>/dev/null || true)
+    # Use --regexp=PATTERN so patterns that begin with `-` (e.g. PEM
+    # `-----BEGIN PRIVATE KEY-----`) aren't reparsed as options by some
+    # grep implementations (notably ugrep, which is a /usr/bin/grep on
+    # certain Linux distros).
+  done < <(grep "${COMMON_GREP_FLAGS[@]}" --regexp="$pat" "$SCAN_ROOT" 2>/dev/null || true)
 done
 
 # Pre-commit can pass --staged to scan only staged files
