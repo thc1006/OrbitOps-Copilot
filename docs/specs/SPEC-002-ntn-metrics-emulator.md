@@ -65,7 +65,7 @@
 
 完整定義 / 範圍 / event→metric mapping 見 `docs/contracts/metrics.md`。
 
-`orbitops_beam_elevation_deg` 由 G7（PR #34）加入：sin-shaped over `scenario.duration_seconds`，peak 由 optional `scenario.satellite.pass_peak_elevation_deg` 決定（預設 55°，schema-bounded ≤ 90°）。`elevation_deg()` 在 producer 端強制 clamp 到 `[0, 90]` 以滿足 metrics-contract 上界（見 `_compute.ELEVATION_CEILING_DEG`）。
+`orbitops_beam_elevation_deg` 由 G7（PR #34）加入：sinusoidal over `scenario.duration_seconds`，peak 由 optional `scenario.satellite.pass_peak_elevation_deg` 決定（預設 55°，schema-bounded ≤ 90°）。Producer 強制 clamp 到 `[0, 90]` 以滿足 metrics-contract 上界。完整 behavioral 定義（peak、shape、clamp 半開區間） + schema 欄位的權威來源見 `docs/contracts/metrics.md` §3 row 9 + `tests/contracts/scenario.schema.json`。
 
 **HTTP API**（單數路徑，加 `/scenario/tick` 取代背景 tick loop 以利 deterministic 測試）：
 
