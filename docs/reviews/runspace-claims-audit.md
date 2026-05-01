@@ -82,8 +82,8 @@ This is process; not auto-fixed in this branch.
 
 | # | Source | Claim | Reality (post-PR-#34/#130) | Verdict | Action |
 |---|---|---|---|---|---|
-| R1 | 06.P4 | UC1 cites `orbitops_snr_db{beam_id="beam-1"}` | v1 name; canonical is `orbitops_beam_snr_db` (PR #130 / ADR-007 v1→v2 rename) | **DRIFTED** | Renamed to v2 in this PR |
-| R2 | 06.P5 | UC2 mentions "mock pod health drop" | `orbitops_pod_health` was removed in v1→v2 migration (`metrics.md §7`); replaced by `orbitops_gateway_available` for gateway-fallback flow | **DRIFTED** | Reframed to `orbitops_handover_state` + `orbitops_gateway_available` |
+| R1 | 06.P4 | UC1 cites `orbitops_snr_db{beam_id="beam-1"}` | v1 name; canonical is `orbitops_beam_snr_db` (per ADR-007 v1→v2 schema migration; `metrics.md §7` migration table row 1) | **DRIFTED** | Renamed to v2 in this PR |
+| R2 | 06.P5 | UC2 mentions "mock pod health drop" | `orbitops_pod_health` was removed in ADR-007 v1→v2 migration (`metrics.md §7`); replaced by `orbitops_gateway_available` for gateway-fallback flow | **DRIFTED** | Reframed to `orbitops_handover_state` + `orbitops_gateway_available` |
 | R3 | 06.P5 | "5-step runbook" | v2 schema (ADR-007) hoisted *what / why / risk* to top-level (`summary` / `likely_cause` / `risk_if_ignored`); `recommended_actions[]` carries 3–4 ranked actions; coverage ≥ "5 steps" but shape differs | **DRIFTED** (framing) | Reworded with v2 schema reference + ADR pointer |
 | R4 | 08/0:20–0:40 | Stack lists "CesiumJS" as current | UI has zero `cesium` references in `package.json` or `src/`; CLAUDE.md §9 explicitly defers CesiumJS pass viz to P1 | **OVERCLAIM** | Moved to "P1 roadmap" callout in same line; current stack now reads "FastAPI, React + Material UI" |
 | R5 | 08/0:40–1:10 | "Emulator emits SNR, SINR, latency, packet loss, Doppler residual, elevation, handover state" (7) | Actual: 9 `orbitops_*` gauges — claim missed `gateway_available` + `anomaly_active` (and elevation is the post-G7 addition) | **UNDERCOUNT** | Now lists all 9 |
