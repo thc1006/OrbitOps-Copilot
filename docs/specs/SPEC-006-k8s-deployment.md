@@ -65,7 +65,7 @@ docker-compose 是 dev 快路徑，K8s 才是「真實部署形貌」。沒有 K
 | `deploy/kind/cluster.yaml` | kind v0.31.0 cluster config |
 | `tests/k8s-smoke/healthz.sh` | 啟動 cluster + apply + 等 ready + curl /healthz |
 
-**Make targets**：`kind-up`、`kind-down`、`k8s-apply`、`k8s-smoke`。
+**Make targets**：`kind-up`、`kind-down`、`k8s-apply`、`k8s-smoke`、`k8s-reload-observability`（VS-7；防 obs ConfigMap 在 PR merge 後沒被 apply 而漂移；idempotent）。
 
 ## 8. Acceptance criteria
 

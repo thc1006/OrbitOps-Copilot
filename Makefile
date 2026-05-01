@@ -13,7 +13,7 @@ PIP  := $(VENV)/bin/pip
 # ---------- Help ----------
 .PHONY: help
 help:
-	@awk 'BEGIN {FS = ":.*##"; printf "Targets:\n"} /^[a-zA-Z_-]+:.*?##/ {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*##"; printf "Targets:\n"} /^[a-zA-Z0-9_-]+:.*?##/ {printf "  \033[36m%-26s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 # ---------- Bootstrap ----------
 .PHONY: bootstrap
@@ -92,6 +92,19 @@ k8s-apply: ## Dry-run apply Kustomize overlay (validation only; no cluster conta
 .PHONY: k8s-smoke
 k8s-smoke: ## Run scripts/k8s-smoke-test.sh (static; --live for cluster checks)
 	scripts/k8s-smoke-test.sh
+
+.PHONY: k8s-reload-observability
+k8s-reload-observability: ## Re-apply Kustomize overlay + restart Grafana/Prometheus (use after observability/** changes)
+	# VS-7. Driver: PR #34 elevation panel landed in git but live cluster ran
+	# the pre-PR-#34 ConfigMap because no `kubectl apply` ran post-merge —
+	# Grafana provisioning's `updateIntervalSeconds=30` only re-reads when
+	# the ConfigMap changes, and the ConfigMap doesn't change without apply.
+	# This target closes that loop. Idempotent. Requires kubeconfig pointing
+	# at the target cluster.
+	kustomize build --load-restrictor=LoadRestrictionsNone deploy/k8s/overlays/local | kubectl apply -f -
+	kubectl -n orbitops rollout restart deployment/grafana deployment/prometheus
+	kubectl -n orbitops rollout status deployment/grafana --timeout=90s
+	kubectl -n orbitops rollout status deployment/prometheus --timeout=90s
 
 # ---------- Schema / contracts ----------
 .PHONY: schema-check
