@@ -12,6 +12,7 @@
  * the history.
  */
 import { describe, expect, test } from "vitest";
+import { StrictMode, type ReactNode } from "react";
 import { renderHook } from "@testing-library/react";
 
 import { useMetricsHistory } from "./useMetricsHistory";
@@ -110,5 +111,23 @@ describe("useMetricsHistory", () => {
     rerender({ latest: s1 });
     rerender({ latest: s1 });
     expect(result.current).toHaveLength(1);
+  });
+
+  // ─── self-/review: StrictMode dev double-mount ─────────────────────
+  // main.tsx wraps the app in <StrictMode>, which deliberately runs
+  // every effect's setup-cleanup-setup cycle twice on mount in dev. Without
+  // a reference-equality dedup, our useEffect's setHistory(=> [...h, latest])
+  // fires twice on first mount, leaving the same snapshot in history twice.
+  // Production builds skip the second cycle, so the bug is dev-only — but
+  // dev is where we develop, so the chart would visually show duplicate
+  // first-tick on every page load. Lock the fix in here.
+  test("StrictMode double-mount does NOT double-push the first snapshot", () => {
+    const s1 = snap(0, { "beam-1": 12 });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <StrictMode>{children}</StrictMode>
+    );
+    const { result } = renderHook(() => useMetricsHistory(s1), { wrapper });
+    expect(result.current).toHaveLength(1);
+    expect(result.current[0]).toBe(s1);
   });
 });
