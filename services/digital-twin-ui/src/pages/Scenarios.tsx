@@ -189,7 +189,7 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
       <SectionHeader
         category="Cluster"
         title="Scenarios"
-        subtitle="Load a scenario into the emulator and advance simulated time. The Sprint-1 baseline ships one preset (beam-degradation-001); custom JSON support lands in VS-3."
+        subtitle="Load a scenario into the emulator and advance simulated time. Sprint-1 ships 3 presets (beam-degradation-001 / handover-failure-001 / gateway-fallback-001); custom JSON support lands in VS-3."
       />
 
       <Stack direction={{ xs: "column", lg: "row" }} spacing={3}>
