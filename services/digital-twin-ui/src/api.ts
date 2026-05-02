@@ -207,7 +207,7 @@ export function parsePromText(text: string): PromSample[] {
 
 const SNR_DEGRADED_THRESHOLD = 8;
 
-function computeBeams(samples: PromSample[]): BeamView[] {
+export function computeBeams(samples: PromSample[]): BeamView[] {
   const byBeam = new Map<string, Partial<BeamView>>();
   const get = (id: string) => {
     let b = byBeam.get(id);
