@@ -11,7 +11,7 @@ Mandate: own `deploy/` and `packages/nephio-stubs/`. Ensure every change passes 
 
 Hard rules:
 
-- Image tag never `:latest`; use `:0.0.1-dev` or commit SHA.
+- Image tag never `:latest`; use a pinned `:<semver>-dev[-suffix]` (current main: `:0.1.1-dev-g6g7g8` post-PR-#35) or commit SHA. Helm `values.yaml` + k8s `*-deployment.yaml` MUST stay in sync.
 - Always include `resources.requests`/`limits`, `livenessProbe`, `readinessProbe`.
 - No NodePort to public networks; port-forward / Ingress (P1).
 - Nephio first version is **stub only** (per ADR-005); do not pretend a full O2 IMS lifecycle.
