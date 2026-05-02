@@ -87,21 +87,24 @@ Where tests exist, audit shows:
 
 All on backlog; not regressions.
 
-## Auto-applied this PR
+## scripts/check-tdd-discipline.sh
 
-`scripts/check-tdd-discipline.sh` — advisory script that, given a branch, reports:
+Initially shipped advisory by this audit's PR. **Upgraded 2026-05-02** by `chore/tdd-discipline-blocking` to support `--mode=blocking`:
 
-- commit count
-- presence of `red:` or `red(...)` prefixed commits
-- test-file vs source-file commit ordering
-
-Hooked into `verify.sh` as gate 1b (advisory; does not fail). Operator runs `BRANCH=feat/foo ./scripts/check-tdd-discipline.sh` ad-hoc.
-
-## Recommendations (not auto-applied)
-
-| ID | Action | Sprint |
+| Mode | When | Behavior |
 |---|---|---|
-| T-1 | Per-PR rule in CONTRIBUTING.md: ≥ 2 commits, first matches `^red[(:]`. | this sprint, doc-only |
-| T-2 | CI job `tdd-history-check` enforces T-1 on PR merge. | Sprint 2 |
-| T-3 | Add an integration test for `_grounding.is_supported_question` heuristic boundary cases. | Sprint 2 |
-| T-4 | Wire `coverage.py` over copilot-api → fail PR if coverage < 80%. | Sprint 2 |
+| advisory (default) | `verify.sh` gate 1b on every push, including legacy branches | Warn-only; exit 0 always |
+| blocking | CI job `tdd-discipline` on `pull_request` only | Exit 1 when production code touched (services/**/*.py\|.ts\|.tsx) without `^red[(:]` ancestor and without `[skip-tdd]` escape |
+
+Operator can still run ad-hoc: `BRANCH=feat/foo BASE=main ./scripts/check-tdd-discipline.sh` (advisory) or `--mode=blocking` to dry-run the CI gate locally.
+
+Self-test: `./tests/unit/test_check_tdd_discipline.sh` exercises 5 paths (red+green pass / missing-red fail / docs-only out-of-scope / `[skip-tdd]` hatch / advisory never blocks). The CI job runs this before the live gate so a regex regression can't silently flip the gate's polarity.
+
+## Recommendations
+
+| ID | Action | Sprint | Status |
+|---|---|---|---|
+| T-1 | Per-PR rule: ≥ 2 commits, first matches `^red[(:]`; documented in `scripts/check-tdd-discipline.sh` header comment + the CI gate's failure message. | Sprint 1 | **Documented 2026-05-02 by `chore/tdd-discipline-blocking`** |
+| T-2 | CI job `tdd-discipline` enforces T-1 on PRs that touch production code (services/**/*.py\|.ts\|.tsx). Out-of-scope filter for docs/CI/deploy/scripts changes. `[skip-tdd]` escape hatch for justified edge cases. | Sprint 2 | **Resolved 2026-05-02 by `chore/tdd-discipline-blocking`** — blocking gate live; self-tested in `tests/unit/test_check_tdd_discipline.sh` (5 paths). |
+| T-3 | Add an integration test for `_grounding.is_supported_question` heuristic boundary cases. | Sprint 2 | Open |
+| T-4 | Wire `coverage.py` over copilot-api → fail PR if coverage < 80%. | Sprint 2 | Open |

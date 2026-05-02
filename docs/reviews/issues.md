@@ -30,15 +30,16 @@
 
 ---
 
-## I-3 (High) — TDD red→green commits not preserved in branch history
+## I-3 (RESOLVED 2026-05-02) — ~~TDD red→green commits not preserved in branch history~~
 
 | Field | Value |
 |---|---|
-| Severity | **High** |
+| Severity | ~~**High**~~ → **RESOLVED** |
+| Resolved by | `chore/tdd-discipline-blocking` (PR-pending; commits the script + CI job + tests) |
 | File | All 8 feature branches (each is a single commit) |
-| Problem | CLAUDE.md §12.2 mandates "失敗測試必須先存在於 git history". Each branch ships as one squashed commit. Audit cannot prove tests were written first. |
-| Recommended fix | Per future PR: two commits minimum (`red:` + `green:`). Add CI lint that checks branch HEAD ancestor for at least one `^red[(:]` commit before merge. See `scripts/check-tdd-discipline.sh` (auto-added in this review PR; advisory only). |
-| Suggested test | Future branch passes when `git log --pretty=%s baseline..HEAD \| grep -E '^red[(:]'` returns ≥ 1 line. |
+| Original problem | CLAUDE.md §12.2 mandates "失敗測試必須先存在於 git history". Each branch ships as one squashed commit. Audit cannot prove tests were written first. |
+| Resolution | `scripts/check-tdd-discipline.sh` upgraded from advisory→blocking with `--mode=blocking`. New CI job `tdd-discipline` runs on `pull_request` and fails when a PR touches `services/**/*.py|.ts|.tsx` without ≥1 `^red[(:]`-tagged ancestor commit. Scope filter excludes docs / scripts / deploy / CI / test-only changes. Escape hatch: `[skip-tdd]` token in any commit subject (banner-printed; reviewers must justify use). Self-test in `tests/unit/test_check_tdd_discipline.sh` covers 5 paths so the gate's polarity can't silently flip. |
+| Suggested test | `tests/unit/test_check_tdd_discipline.sh` covers: red+green pass, missing-red fail, docs-only out-of-scope, `[skip-tdd]` hatch, advisory-never-blocks. CI runs the self-test before the live gate. |
 | Owner role | `architect` (process) + `implementer` (per-PR) |
 | Estimated effort | 0 (process change; 5 min/PR thereafter) |
 
