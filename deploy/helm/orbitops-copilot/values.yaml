@@ -2,6 +2,7 @@ global:
   namespace: orbitops
 
 emulator:
+  enabled: true
   image:
     repository: orbitops/ntn-metrics-emulator
     # PR #35 bumped both emulator + copilot to this tag (G6/G7/G8 sprint-1 spec parity).
@@ -20,8 +21,17 @@ emulator:
       memory: "256Mi"
   scenario:
     path: /scenarios/beam-degradation.json
+    # ConfigMap rendered by Kustomize configMapGenerator from
+    # `packages/scenarios/*.json` — NOT by this chart. Helm-only deploys
+    # must `kubectl apply -f` (or render via kustomize) before install.
+    configMapName: orbitops-scenarios
+  # CORS allowlist for browser calls into the emulator. Sprint-1 demo
+  # default = local NodePort overlay (kubeadm InternalIP 31.41.34.19).
+  # Override per-deployment for a different node IP / ingress hostname.
+  corsAllowedOrigins: "http://localhost:5173,http://localhost:30073,http://31.41.34.19:30073"
 
 copilot:
+  enabled: true
   image:
     repository: orbitops/copilot-api
     tag: "0.1.1-dev-g6g7g8"
@@ -40,6 +50,16 @@ copilot:
     provider: mock
     openaiBaseUrl: ""
     openaiModel: ""
+  # PR #47 review #47-3: this URL must match the rendered Service DNS.
+  # Default = bare `ntn-metrics-emulator` which only resolves correctly
+  # when the chart's emulator Service ALSO ends up at that name (i.e.
+  # the Kustomize-style fixed naming, not the Helm release-prefixed
+  # convention). For a stock Helm install with `orbitops.fullname`
+  # prefix in effect, override this to the rendered name (Sprint-2 ADR
+  # will resolve the architectural choice — either drop the prefix
+  # for these Services, or template the ConfigMaps so URLs match).
+  emulatorMetricsUrl: "http://ntn-metrics-emulator:8000/metrics"
+  corsAllowedOrigins: "http://localhost:5173,http://localhost:30073,http://31.41.34.19:30073"
 
 # Phase H.2 — UI / Prometheus / Grafana templates added 2026-05-02 to bring
 # the Helm chart in line with the Kustomize overlay (was drifted: chart only
