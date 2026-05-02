@@ -181,6 +181,26 @@ export default function Copilot({ data }: CopilotProps) {
               </Box>
             )}
 
+            {response.risk_if_ignored && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="overline" color="text.secondary">
+                  Risk if ignored
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mt: 0.5,
+                    p: 1.5,
+                    borderLeft: 3,
+                    borderColor: "warning.main",
+                    bgcolor: "action.hover",
+                  }}
+                >
+                  {response.risk_if_ignored}
+                </Typography>
+              </Box>
+            )}
+
             {response.evidence.metrics_used.length > 0 && (
               <Box sx={{ mb: 3 }}>
                 <Typography variant="overline" color="text.secondary">
@@ -225,6 +245,52 @@ export default function Copilot({ data }: CopilotProps) {
                 </Box>
               </>
             )}
+
+            {/* Evidence metadata: per-ADR-004, the v2 Evidence model fields are
+                metrics_used / logs_used / scenario_id / time_window_seconds /
+                timestamp. metrics_used is rendered above as the citation list;
+                this footer surfaces the other 4 so the demo presenter can prove
+                the response is bound to a specific scenario + time window. */}
+            <Divider sx={{ my: 2 }} />
+            <Stack
+              direction="row"
+              spacing={3}
+              flexWrap="wrap"
+              useFlexGap
+              sx={{
+                fontFamily: monoFamily,
+                fontSize: "0.6875rem",
+                color: "text.secondary",
+              }}
+            >
+              <Box>
+                <Typography variant="overline" color="text.secondary" sx={{ display: "block" }}>
+                  scenario_id
+                </Typography>
+                <Box>{response.evidence.scenario_id ?? "(none)"}</Box>
+              </Box>
+              <Box>
+                <Typography variant="overline" color="text.secondary" sx={{ display: "block" }}>
+                  time_window_seconds
+                </Typography>
+                <Box>{response.evidence.time_window_seconds ?? "—"}</Box>
+              </Box>
+              <Box>
+                <Typography variant="overline" color="text.secondary" sx={{ display: "block" }}>
+                  timestamp
+                </Typography>
+                <Box>{response.evidence.timestamp}</Box>
+              </Box>
+              <Box>
+                <Typography variant="overline" color="text.secondary" sx={{ display: "block" }}>
+                  logs_used
+                </Typography>
+                <Box>
+                  {response.evidence.logs_used.length} entr{response.evidence.logs_used.length === 1 ? "y" : "ies"}
+                  {response.evidence.logs_used.length === 0 && " (Loki integration is Sprint-2 VS-10)"}
+                </Box>
+              </Box>
+            </Stack>
 
             {response.error && (
               <Typography variant="caption" sx={{ display: "block", mt: 2, color: "error.main" }}>
