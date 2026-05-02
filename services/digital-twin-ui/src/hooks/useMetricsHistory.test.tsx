@@ -130,4 +130,26 @@ describe("useMetricsHistory", () => {
     expect(result.current).toHaveLength(1);
     expect(result.current[0]).toBe(s1);
   });
+
+  // ─── round-2 deep /review: maxSize=0 edge case ─────────────────────
+  // Original guard was `next.length > maxSize ? slice(-maxSize) : next`.
+  // For maxSize=0: length always > 0, AND JS treats `slice(-0)` as
+  // `slice(0)` which returns the FULL array — so the history would grow
+  // unbounded (memory leak). Defensive: maxSize<=0 means "keep zero".
+  test("maxSize=0 keeps history empty regardless of snapshot count", () => {
+    const { result, rerender } = renderHook(
+      ({ latest }: { latest: MetricsSnapshot | null }) =>
+        useMetricsHistory(latest, 0),
+      {
+        initialProps: {
+          latest: snap(0, { "beam-1": 12 }) as MetricsSnapshot | null,
+        },
+      },
+    );
+    expect(result.current).toEqual([]);
+
+    rerender({ latest: snap(5, { "beam-1": 11 }) });
+    rerender({ latest: snap(10, { "beam-1": 10 }) });
+    expect(result.current).toEqual([]);
+  });
 });
