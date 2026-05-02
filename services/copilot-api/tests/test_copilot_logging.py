@@ -116,3 +116,90 @@ def test_ask_emits_structured_log_with_status_and_question_chars(
     assert "beam-1 healthy right now" not in rendered, (
         "question text leaked into log record dict — privacy contract violated"
     )
+
+
+# ─── round-2 /review B: /explain + /runbook audit asymmetry ─────────
+# SPEC-003 covers all three endpoints. /ask logs but /explain + /runbook
+# don't — the audit trail is incomplete. Operator can't trace which
+# anomaly_type was queried via /explain or /runbook, which classification
+# was returned, or whether the response was ok / INSUFFICIENT.
+
+
+@pytest.fixture
+def explain_request_body() -> dict:
+    """Minimal valid /explain or /runbook body. Empty metrics_snapshot
+    deliberately drives the INSUFFICIENT_EVIDENCE path so the test
+    doesn't need a real LLM provider configured."""
+    return {
+        "anomaly_type": "snr_drop",
+        "metrics_snapshot": [],
+        "logs": [],
+    }
+
+
+def test_explain_emits_structured_log(
+    client: TestClient,
+    caplog: pytest.LogCaptureFixture,
+    explain_request_body: dict,
+) -> None:
+    with caplog.at_level(logging.INFO, logger="copilot_api.main"):
+        r = client.post("/explain", json=explain_request_body)
+    assert r.status_code == 200
+
+    matching = [
+        rec
+        for rec in caplog.records
+        if rec.name == "copilot_api.main" and getattr(rec, "msg", None) == "explain"
+    ]
+    assert len(matching) == 1, (
+        f"expected 1 explain log line; got {len(matching)}"
+    )
+    rec = matching[0]
+    body = r.json()
+    assert getattr(rec, "status", None) == body["status"]
+    # anomaly_type appears on the request and should appear in the log
+    # so an operator can correlate "what was asked about" with status.
+    assert getattr(rec, "anomaly_type", None) == "snr_drop"
+
+
+def test_runbook_emits_structured_log(
+    client: TestClient,
+    caplog: pytest.LogCaptureFixture,
+    explain_request_body: dict,
+) -> None:
+    with caplog.at_level(logging.INFO, logger="copilot_api.main"):
+        r = client.post("/runbook", json=explain_request_body)
+    assert r.status_code == 200
+
+    matching = [
+        rec
+        for rec in caplog.records
+        if rec.name == "copilot_api.main" and getattr(rec, "msg", None) == "runbook"
+    ]
+    assert len(matching) == 1, (
+        f"expected 1 runbook log line; got {len(matching)}"
+    )
+    rec = matching[0]
+    body = r.json()
+    assert getattr(rec, "status", None) == body["status"]
+    assert getattr(rec, "anomaly_type", None) == "snr_drop"
+
+
+def test_ask_explain_runbook_log_msg_distinguishable(
+    client: TestClient,
+    caplog: pytest.LogCaptureFixture,
+    explain_request_body: dict,
+) -> None:
+    """Three endpoints must emit three distinct `msg` tags so the log
+    stream can be filtered per-endpoint."""
+    with caplog.at_level(logging.INFO, logger="copilot_api.main"):
+        client.post("/ask", json={"question": "Is beam-1 healthy?"})
+        client.post("/explain", json=explain_request_body)
+        client.post("/runbook", json=explain_request_body)
+
+    msgs = {
+        getattr(rec, "msg", None)
+        for rec in caplog.records
+        if rec.name == "copilot_api.main"
+    }
+    assert {"ask", "explain", "runbook"}.issubset(msgs)
