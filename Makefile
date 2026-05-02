@@ -93,14 +93,14 @@ k8s-apply: ## Dry-run apply Kustomize overlay (validation only; no cluster conta
 k8s-smoke: ## Run scripts/k8s-smoke-test.sh (static; --live for cluster checks)
 	scripts/k8s-smoke-test.sh
 
+# VS-7 (k8s-reload-observability): the live cluster Grafana ConfigMap
+# can lag git when an obs PR merges without `kubectl apply` afterwards.
+# Grafana provisioning's `updateIntervalSeconds=30` only re-reads the
+# dashboard when the ConfigMap *changes* — and it doesn't change unless
+# you apply. This target closes that loop. Idempotent. Requires
+# kubeconfig pointing at the target cluster.
 .PHONY: k8s-reload-observability
 k8s-reload-observability: ## Re-apply Kustomize overlay + restart Grafana/Prometheus (use after observability/** changes)
-	# VS-7. Driver: PR #34 elevation panel landed in git but live cluster ran
-	# the pre-PR-#34 ConfigMap because no `kubectl apply` ran post-merge —
-	# Grafana provisioning's `updateIntervalSeconds=30` only re-reads when
-	# the ConfigMap changes, and the ConfigMap doesn't change without apply.
-	# This target closes that loop. Idempotent. Requires kubeconfig pointing
-	# at the target cluster.
 	kustomize build --load-restrictor=LoadRestrictionsNone deploy/k8s/overlays/local | kubectl apply -f -
 	kubectl -n orbitops rollout restart deployment/grafana deployment/prometheus
 	kubectl -n orbitops rollout status deployment/grafana --timeout=90s
