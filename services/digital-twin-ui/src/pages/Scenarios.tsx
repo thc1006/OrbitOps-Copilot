@@ -41,7 +41,7 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
   const [busy, setBusy] = useState(false);
   const [tickSeconds, setTickSeconds] = useState(30);
   const [feedback, setFeedback] = useState<{
-    severity: "success" | "error" | "info";
+    severity: "success" | "error" | "info" | "warning";
     text: string;
   } | null>(null);
 
@@ -90,13 +90,30 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
     try {
       const loaded = await loadScenario(PRESET_BEAM_DEGRADATION);
       const ticked = await tickScenario(READY_TICK_SECONDS);
-      setFeedback({
-        severity: ticked.active_anomalies.length ? "success" : "info",
-        text:
-          `Ready for Copilot · ${loaded.loaded} loaded, ` +
-          `t = ${ticked.t}s · active: ${ticked.active_anomalies.join(", ") || "(none)"} · ` +
-          `Open the Copilot tab and ask "Which beam is degrading and why?"`,
-      });
+      // PR #42 review (Copilot bot): an empty `active_anomalies` after
+      // the tick means we did NOT actually land in the anomaly window
+      // (scenario shifted, or the tick constant fell outside the event
+      // range). Reporting "Ready for Copilot" in that state would be
+      // misleading — /ask will return INSUFFICIENT_EVIDENCE. Surface
+      // it as a warning so the demo presenter sees the problem before
+      // recording.
+      if (ticked.active_anomalies.length === 0) {
+        setFeedback({
+          severity: "warning",
+          text:
+            `${loaded.loaded} loaded but NO anomaly is active at t=${ticked.t}s ` +
+            `— Copilot will return INSUFFICIENT_EVIDENCE. ` +
+            `Re-load and try a different tick value, or check the scenario file.`,
+        });
+      } else {
+        setFeedback({
+          severity: "success",
+          text:
+            `Ready for Copilot · ${loaded.loaded} loaded, ` +
+            `t = ${ticked.t}s · active: ${ticked.active_anomalies.join(", ")} · ` +
+            `Open the Copilot tab and ask "Which beam is degrading and why?"`,
+        });
+      }
       refetchMetrics();
     } catch (e) {
       setFeedback({ severity: "error", text: (e as Error).message });

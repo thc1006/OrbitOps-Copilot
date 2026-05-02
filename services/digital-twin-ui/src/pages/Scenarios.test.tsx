@@ -47,7 +47,7 @@ describe("Scenarios — Ready for Copilot affordance", () => {
     expect(btn).toBeTruthy();
   });
 
-  test("clicking it calls loadScenario then tickScenario(90)", async () => {
+  test("clicking it calls loadScenario then tickScenario(90), in that order", async () => {
     const loadSpy = vi
       .spyOn(api, "loadScenario")
       .mockResolvedValue({
@@ -73,6 +73,14 @@ describe("Scenarios — Ready for Copilot affordance", () => {
       // beam-degradation scenario inside its snr_drop window (t=60..150).
       expect(tickSpy).toHaveBeenCalledWith(90);
     });
+
+    // PR #42 review (Copilot bot): pin the SEQUENCING contract — load
+    // must complete before tick. Without this, a future parallel/
+    // out-of-order impl would still pass the call-count assertions but
+    // would race the emulator's state machine.
+    expect(loadSpy.mock.invocationCallOrder[0]).toBeLessThan(
+      tickSpy.mock.invocationCallOrder[0],
+    );
   });
 
   test("after success it shows 'Ready for Copilot' status and lists snr_drop active", async () => {
@@ -115,5 +123,35 @@ describe("Scenarios — Ready for Copilot affordance", () => {
       expect(alert.textContent).toMatch(/network down/i);
     });
     expect(tickSpy).not.toHaveBeenCalled();
+  });
+
+  test("when tick returns NO active anomalies, alert is a warning that mentions INSUFFICIENT_EVIDENCE", async () => {
+    // PR #42 review (Copilot bot): an empty `active_anomalies` after the
+    // tick means we did NOT actually land in the anomaly window. Reporting
+    // "Ready for Copilot" in that state would be misleading. Pin the
+    // contract: severity=warning + explicit INSUFFICIENT_EVIDENCE warning.
+    vi.spyOn(api, "loadScenario").mockResolvedValue({
+      loaded: "beam-degradation-001",
+      t: 0,
+      beams: 3,
+      gateways: 1,
+    });
+    vi.spyOn(api, "tickScenario").mockResolvedValue({
+      t: 90,
+      active_anomalies: [], // scenario shifted, or constant fell outside window
+    });
+
+    render(wrap());
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /ready for copilot/i }));
+
+    await waitFor(() => {
+      const alert = screen.getByRole("alert");
+      // MUI severity="warning" maps to .MuiAlert-standardWarning className.
+      expect(alert.className).toMatch(/Warning/);
+      expect(alert.textContent).toMatch(/INSUFFICIENT_EVIDENCE/);
+      // Must NOT pretend it's ready.
+      expect(alert.textContent).not.toMatch(/Ready for Copilot/);
+    });
   });
 });
