@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Accepted — Sprint-1 subset shipped 2026-05-02 (Prometheus 5 s scrape + Grafana 8-panel dashboard + provisioning + check-observability.sh contract gate). Sprint-2 Loki mock-logs (VS-10) + Tempo (optional) still pending. |
+| Status | Accepted — Sprint-1 subset shipped 2026-05-02 (Prometheus 5 s scrape + Grafana 8-panel dashboard + provisioning + check-observability.sh contract gate). **Sprint-2 VS-10a shipped 2026-05-02** (structured JSON logging on emulator + copilot via per-service `_logging.py` JsonFormatter; closed I-9). **Sprint-2 VS-10b.1 shipped 2026-05-02** (Loki 3.4.0 + promtail 3.4.0 in docker-compose; promtail tails container stdout via docker.sock and labels `service=<container_name>`; Grafana Loki datasource auto-provisioned at uid `loki`; copilot-api `_log_retrieval.LokiLogScraper` class + 7 contract tests). Sprint-2 VS-10b.2 (wire LokiLogScraper into /ask retrieval so `evidence.logs_used` populates) + Tempo (optional) still pending. |
 | Owner | observability-engineer |
 | Sprint | 1 (VS-2) + Sprint 2 (VS-10) |
 | Depends on | SPEC-002 |
