@@ -36,7 +36,7 @@ docker-compose 是 dev 快路徑，K8s 才是「真實部署形貌」。沒有 K
 
 ## 5. Inputs
 
-- 4 個 service 的 Docker image（CI build 後 tag `:0.0.1-dev` 或 commit SHA）。
+- 4 個 service 的 Docker image（pinned semver tag；current main: `:0.1.1-dev-g6g7g8` for emulator + copilot post-PR-#35; UI still `:0.1.0-dev`; never `:latest`）。Helm `values.yaml` + k8s `*-deployment.yaml` 必須同步。
 - ConfigMap：scenario JSON（`packages/scenarios/*.json`）。
 - Helm values（`deploy/helm/orbitops-copilot/values.yaml`）。
 
