@@ -35,6 +35,15 @@ export function useMetricsHistory(
   useEffect(() => {
     if (!latest) return;
     setHistory((h) => {
+      // Reference-equality dedup at the head — covers two cases:
+      //   1. StrictMode dev double-mount fires this effect twice with
+      //      the same `latest` → without dedup, history gains the same
+      //      snapshot twice on first mount.
+      //   2. Defensive: any future effect that re-fires for the same
+      //      reference (e.g. parent re-creating wrapper objects).
+      // Production polling never hits this path because useMetricsPoll
+      // produces a new `data` object on each fetch resolve.
+      if (h.length > 0 && h[h.length - 1] === latest) return h;
       const next = [...h, latest];
       return next.length > maxSize ? next.slice(-maxSize) : next;
     });
