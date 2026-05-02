@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Accepted (Sprint 1 — substantively shipped 2026-05-02) |
+| Status | Accepted — Sprint-1 subset shipped 2026-05-02 (UI shell + Overview/Beams/Anomalies/Gateways/Scenarios/Copilot pages + Ready-for-Copilot affordance + full evidence display per ADR-007 v2). Sprint-2 Recharts time-series (VS-9) and Sprint-3 CesiumJS pass viz (VS-13) still pending. |
 | Owner | architect + observability-engineer |
 | Sprint | 1 (VS-1, VS-3) + Sprint 2 (VS-9) + Sprint 3 (VS-13) |
 | Depends on | SPEC-002, SPEC-003 |
@@ -18,7 +18,7 @@
 
 ## 3. Scope
 
-- React 19 + Vite 8 + TypeScript 6 + Tailwind 4 + Recharts。
+- **Sprint-1 actual stack** (per `services/digital-twin-ui/package.json` on `main`): React 18.3 + Vite 7 + TypeScript 5.9 + Material UI 6 + react-router 6. **No Tailwind** (dropped in the v0.2 redesign per `package.json::_note`; MUI handles styling). Recharts lands in Sprint-2 VS-9. **Forward-target** (Sprint-3 / VS-13 per ADR-008): React 19 + Vite 8 + TS 6, in lockstep with the CesiumJS pass viz upgrade.
 - **Sprint 1**：UI shell + `<CopilotPanel />` + 顯示 evidence JSON viewer + `<RunbookView />` 摺疊（VS-1 + VS-3）。
 - **Sprint 2**：時序圖 + anomaly inject 按鈕（VS-9）。
 - **Sprint 3**：CesiumJS 1.140 satellite pass + beam coverage cone（VS-13）。
@@ -105,7 +105,7 @@
 
 | ID | Risk | Mitigation |
 |---|---|---|
-| R-S004-1 | Vite 8 / TS 6 / Tailwind 4 / React 19 重大版本 plugin 不相容 | UI shell 先 build 通過再加功能；plugins 升級走 ADR |
+| R-S004-1 | Sprint-3 forward jump (Vite 7 → 8 / TS 5.9 → 6 / React 18.3 → 19) plugin 不相容 | Sprint-1 stack pinned per ADR-008; upgrade lands in VS-13 alongside CesiumJS migration |
 | R-S004-2 | Bundle 超 500 KB（CesiumJS 大） | Sprint 3 evaluate code-splitting；CesiumJS lazy import |
 | R-S004-3 | i18n key 漏 → 螢幕現 raw key | CI 跑 `i18next-parser` 比對 key；missing 為 error |
 | R-S004-4 | 截圖 / 影片露 OS toolbar / hostname | `runspace-pitch` skill checklist 強制 |

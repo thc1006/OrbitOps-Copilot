@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Accepted (Sprint 1 — substantively shipped 2026-05-02; v2 contract per ADR-007 + G7 elevation gauge per PR #34) |
+| Status | Accepted — Sprint-1 fully shipped 2026-05-02 (FastAPI + 9 `orbitops_*` gauges + `/scenario/{load,tick,current}` + v2 contract per ADR-007 + G7 elevation gauge per PR #34). No later-sprint work scoped on this SPEC. |
 | Owner | ran-ntn-engineer + observability-engineer |
 | Sprint | 1 (VS-1, VS-2, VS-3, VS-5) |
 | Depends on | SPEC-001 (scenario v2) |
@@ -22,7 +22,7 @@
 - FastAPI + prometheus-client：暴露 `/metrics`（Prometheus exposition）、`/healthz`、`/scenarios/load`、`/scenarios/current`、`/anomaly/inject`。
 - Tick loop 每 `ORBITOPS_TICK_SECONDS`（預設 1）算一次 metrics。
 - Anomaly injection：scenario 內預定義 + runtime POST 注入。
-- 10 個 metric 名（見 §7），對應 `metrics.schema.json` enum。
+- 9 個 `orbitops_*` metric（見 §7 + `docs/contracts/metrics.md` §3 row 1..9），對應 `metrics.schema.json` enum。
 - Deterministic：給同 scenario + 同 t + 同 seed → 同值。
 
 ## 4. Non-scope

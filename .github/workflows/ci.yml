@@ -150,15 +150,13 @@ jobs:
           cache-dependency-path: services/digital-twin-ui/package-lock.json
       - name: install
         run: npm ci
-      - name: typecheck (tsc --noEmit)
-        run: npm run typecheck
       - name: vitest
         # Vitest covers App routing, MetricNumber + StatusChip components,
-        # api.ts parser, and the Scenarios Ready-for-Copilot affordance
-        # (26 tests across 5 files as of 2026-05-02).
+        # api.ts parser + computeBeams, and the Scenarios + Beams + Anomalies
+        # + Copilot page rendering contracts.
         run: npm run test
-      - name: vite build
-        # Catches the kind of regression that doesn't show up in vitest:
-        # broken vite config, asset-resolution issues, type-only imports
-        # missing from runtime, etc.
+      - name: vite build (includes tsc --noEmit)
+        # `npm run build` is `tsc --noEmit && vite build` per package.json,
+        # so this single step covers BOTH typecheck and bundle — no separate
+        # typecheck step needed (PR #46 bot review #46-5: dedupe).
         run: npm run build

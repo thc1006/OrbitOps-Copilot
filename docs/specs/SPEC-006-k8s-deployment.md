@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Accepted (Sprint 1 — substantively shipped 2026-05-02) |
+| Status | Accepted — Sprint-1 subset shipped 2026-05-02 (Kustomize base + overlay/local + kubeadm live deploy + `make k8s-reload-observability` per VS-7). Sprint-2 Helm chart full templates (VS-7) + ArgoCD App reference (VS-11) and Sprint-3 Nephio kpt (VS-17) still pending. |
 | Owner | k8s-platform-engineer |
 | Sprint | 1 (VS-6 carry-over) + Sprint 2 (VS-7, VS-11) + Sprint 3 (VS-17) |
 | Depends on | SPEC-002, SPEC-003, SPEC-004, SPEC-005 |

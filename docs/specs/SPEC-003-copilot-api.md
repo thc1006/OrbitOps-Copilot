@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Accepted (Sprint 1 — substantively shipped 2026-05-02) |
+| Status | Accepted — Sprint-1 subset shipped 2026-05-02 (FakeLLMProvider + /ask /explain /runbook /healthz /metrics; v2 response schema; 4-class anomaly classifier). Sprint-2 OpenAICompatibleProvider (VS-8) + Loki evidence integration (VS-10) still pending. |
 | Owner | llm-copilot-engineer |
 | Sprint | 1 (VS-1, VS-3, VS-4) + Sprint 2 (VS-8, VS-10) |
 | Depends on | SPEC-002 |
