@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Accepted — Sprint-1 subset shipped 2026-05-02 (Kustomize base + overlay/local + kubeadm live deploy + `make k8s-reload-observability` per VS-7). Sprint-2 Helm chart full templates (VS-7) + ArgoCD App reference (VS-11) and Sprint-3 Nephio kpt (VS-17) still pending. |
+| Status | Accepted — Sprint-1 shipped 2026-05-02 (Kustomize base + overlay/local + kubeadm live deploy + `make k8s-reload-observability`). Sprint-2 VS-7 **partial** (Helm chart now has 5 service templates + per-service `enabled` flag + env-var parity with Kustomize emulator/copilot; `helm template` + `helm lint` clean). Outstanding for VS-7 full: Helm Service-name strategy must reconcile with Kustomize-managed ConfigMaps' hard-coded scrape targets — Helm `release-fullname-prefix` Services don't match `ntn-metrics-emulator.orbitops.svc.cluster.local` in the prometheus ConfigMap (PR #47 bot review #47-3/4/5). Resolution = ADR pending: drop the prefix for Service metadata or vendor the ConfigMaps into the chart. Sprint-2 ArgoCD App reference (VS-11) + Sprint-3 Nephio kpt (VS-17) also pending. |
 | Owner | k8s-platform-engineer |
 | Sprint | 1 (VS-6 carry-over) + Sprint 2 (VS-7, VS-11) + Sprint 3 (VS-17) |
 | Depends on | SPEC-002, SPEC-003, SPEC-004, SPEC-005 |
@@ -19,7 +19,7 @@ docker-compose 是 dev 快路徑，K8s 才是「真實部署形貌」。沒有 K
 ## 3. Scope
 
 - **Sprint 1（VS-6）**：Kustomize base + overlay/local；kind cluster；首個 smoke test。
-- **Sprint 2（VS-7）**：Helm chart skeleton 完整化；`helm template` 通過。
+- **Sprint 2（VS-7）**：Helm chart skeleton 完整化；`helm template` 通過。**Partial 2026-05-02** — chart now has 5 service templates (emulator + copilot + ui + prometheus + grafana); each gated by its own `<svc>.enabled` flag (emulator/copilot too, per PR #47 bot review #47-1); values.yaml has per-service section; `helm lint` returns 0 failed. **Outstanding for VS-7 full**: external ConfigMaps managed by Kustomize do NOT come from `configMapGenerator` for prom + grafana provisioning — they're checked-in YAML at `deploy/k8s/base/{prometheus,grafana}-configmap.yaml` (PR #47 bot review #47-2); only the Grafana dashboards ConfigMap is generator-backed. AND the prom config + grafana datasource ConfigMaps hard-code Service DNS at fixed names (e.g. `ntn-metrics-emulator.orbitops.svc.cluster.local`), which don't match this chart's `release-fullname-prefix` Service names — a stock Helm install will come up but Prom won't scrape and Grafana won't connect. Resolution choice is an ADR (option A: chart Services use bare names matching Kustomize; option B: chart vendors / Helm-templates the ConfigMaps so URLs reference rendered names). Tracked Sprint-2.
 - **Sprint 2（VS-11）**：ArgoCD App YAML reference（不需 mgmt cluster）。
 - **Sprint 3（VS-17）**：Nephio kpt package stub（per ADR-005）。
 - 4 個 service（emulator、copilot、ui、obs stack）皆有 Deployment + Service + ConfigMap。
