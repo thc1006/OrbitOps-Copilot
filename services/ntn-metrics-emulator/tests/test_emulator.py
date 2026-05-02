@@ -380,8 +380,12 @@ def test_inject_same_type_twice_appends_two_events(client: TestClient) -> None:
     assert len(matching) == 3, (
         f"expected 3 snr_drop@beam-1 events (1 baseline + 2 injects); got {len(matching)}"
     )
-    # active_anomaly_types still de-dupes
-    assert r2.json()["currently_active"].count("snr_drop") <= 1
+    # active_anomaly_types de-dupes by type — even with 2 same-type events,
+    # currently_active surfaces snr_drop exactly once. The previous form
+    # `<= 1` was tautological because `active_anomaly_types` returns a
+    # sorted set; tightened per round-3 /review (C1) to `== 1` so the
+    # assertion verifies BOTH presence AND uniqueness.
+    assert r2.json()["currently_active"].count("snr_drop") == 1
 
 
 def test_inject_t_end_preserves_fractional_duration(client: TestClient) -> None:
