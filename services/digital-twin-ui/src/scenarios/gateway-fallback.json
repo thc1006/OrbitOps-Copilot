@@ -32,7 +32,7 @@
     "keywords": [
       "gateway",
       "fallback",
-      "pod_health",
+      "orbitops_gateway_available",
       "failover"
     ],
     "target": "gateway-pod-1",

@@ -34,16 +34,17 @@ describe("Anomalies — H.1.2 description coverage", () => {
     expect(screen.getByText(/No active anomalies/i)).toBeInTheDocument();
   });
 
-  // All 5 producer-emitted scenario event types + the 1 Copilot-derived
-  // classification. Each must have a description longer than the fallback
-  // "Unknown anomaly type" string.
+  // All 5 producer-emitted scenario event types must have non-fallback
+  // descriptions. Copilot-derived classifications (e.g.
+  // doppler_compensation_warning) are intentionally NOT in this dictionary —
+  // they only appear via Copilot response on the Copilot page; see the
+  // module-level comment in Anomalies.tsx.
   test.each([
     ["snr_drop", /link-adaptation threshold/i],
     ["handover_failure", /handover did not complete/i],
     ["doppler_spike", /Scenario-injected Doppler/i],
     ["gateway_outage", /gateway availability/i],
     ["packet_loss_spike", /packet-loss ratio jumped/i],
-    ["doppler_compensation_warning", /2 kHz early-warning gate/i],
   ])("describes %s with non-fallback text", (kind, pattern) => {
     render(wrap(snapshotWithAnomalies([kind])));
     expect(screen.getByText(pattern)).toBeInTheDocument();
