@@ -10,22 +10,37 @@ import {
   YAxis,
 } from "recharts";
 
-import type { MetricsSnapshot } from "../types";
+import type { BeamView, MetricsSnapshot } from "../types";
 
-// Pure transforms — kept exported so tests can hit them without
-// rendering Recharts (jsdom can't measure SVG layout, so chart-component
-// tests carry overhead).
+// Pure transforms — exported so tests hit them without rendering Recharts.
+//
+// Generalized over BeamMetricKey (replaces the SNR-only helpers from
+// the previous BeamSnrChart). Other chart components — sparklines on
+// Copilot, latency / doppler / packet-loss panels — share these.
+
+export type BeamMetricKey = Extract<
+  keyof BeamView,
+  | "snr_db"
+  | "sinr_db"
+  | "latency_ms"
+  | "packet_loss_ratio"
+  | "doppler_residual_hz"
+  | "elevation_deg"
+>;
 
 interface ChartRow {
   t: number;
   [beamId: string]: number;
 }
 
-export function snapshotsToChartData(history: MetricsSnapshot[]): ChartRow[] {
+export function snapshotsToChartData(
+  history: MetricsSnapshot[],
+  metric: BeamMetricKey,
+): ChartRow[] {
   return history.map((snap) => {
     const row: ChartRow = { t: snap.t_seconds };
     for (const b of snap.beams) {
-      row[b.beam_id] = b.snr_db;
+      row[b.beam_id] = b[metric] as number;
     }
     return row;
   });
@@ -33,34 +48,38 @@ export function snapshotsToChartData(history: MetricsSnapshot[]): ChartRow[] {
 
 export function beamIdsFromHistory(history: MetricsSnapshot[]): string[] {
   if (history.length === 0) return [];
-  // Use the LATEST snapshot's beam set (not a union across history).
-  // Reason: scenario reload mid-poll changes the beam set; rendering a
-  // Line for a beam that no longer exists draws a ghost-flatline that
-  // confuses operators reading the chart.
+  // LATEST snapshot's beam set (not union). Reason: scenario reload
+  // mid-poll changes the beam set; rendering a Line for a beam that
+  // no longer exists draws a ghost-flatline that confuses operators.
   return history[history.length - 1].beams.map((b) => b.beam_id);
 }
 
-// Per-line stroke colors. Keep within the design system's primary +
-// 4 secondary accents; cycle if a scenario somehow has more beams.
 const LINE_COLORS = ["#0055ff", "#00b894", "#fdcb6e", "#ff7675", "#a29bfe"];
 
-interface BeamSnrChartProps {
+interface BeamMetricChartProps {
   history: MetricsSnapshot[];
+  metric: BeamMetricKey;
+  title: string;
+  unit: string;
 }
 
 /**
- * Recharts LineChart of per-beam SNR over time.
+ * Recharts time-series of one BeamView field per beam_id.
  *
- * One Line per beam_id; X = `t_seconds` from the snapshot; Y = `snr_db`.
- * Empty history renders a placeholder rather than an empty axis frame —
- * during the first 5 s after page load the parent has 0 snapshots, and
- * an empty chart looks like a bug.
+ * Generalized from the SNR-only BeamSnrChart. Each chart instance picks
+ * its own metric (snr_db / latency_ms / doppler_residual_hz / …) and
+ * supplies a title + unit for axis labels and the empty-history hint.
  *
- * `isAnimationActive={false}` keeps tests deterministic (Recharts'
- * default 1500 ms tween fights vitest's snapshot timing).
+ * `isAnimationActive={false}` keeps test snapshot timing deterministic
+ * (Recharts' default 1500 ms tween fights vitest assertions).
  */
-export default function BeamSnrChart({ history }: BeamSnrChartProps) {
-  const data = snapshotsToChartData(history);
+export default function BeamMetricChart({
+  history,
+  metric,
+  title,
+  unit,
+}: BeamMetricChartProps) {
+  const data = snapshotsToChartData(history, metric);
   const beamIds = beamIdsFromHistory(history);
 
   if (data.length === 0) {
@@ -74,11 +93,13 @@ export default function BeamSnrChart({ history }: BeamSnrChartProps) {
         }}
       >
         <Typography variant="body2" color="text.secondary">
-          No history yet — wait for the next /metrics scrape (5 s cadence).
+          {title}: no history yet — wait for the next /metrics scrape (5 s cadence).
         </Typography>
       </Box>
     );
   }
+
+  const yLabel = `${title} (${unit})`;
 
   return (
     <ResponsiveContainer width="100%" height={240}>
@@ -91,7 +112,7 @@ export default function BeamSnrChart({ history }: BeamSnrChartProps) {
           tickFormatter={(v: number) => `${v}s`}
         />
         <YAxis
-          label={{ value: "SNR (dB)", angle: -90, position: "insideLeft" }}
+          label={{ value: yLabel, angle: -90, position: "insideLeft" }}
           domain={["auto", "auto"]}
         />
         <Tooltip />

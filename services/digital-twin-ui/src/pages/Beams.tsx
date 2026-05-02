@@ -1,12 +1,29 @@
-import { Box, Paper, Typography } from "@mui/material";
+import { Box, Paper, Stack, Typography } from "@mui/material";
 
 import SectionHeader from "../components/SectionHeader";
 import StatusChip from "../components/StatusChip";
 import MetricNumber from "../components/MetricNumber";
-import BeamSnrChart from "../components/BeamSnrChart";
+import BeamMetricChart, {
+  type BeamMetricKey,
+} from "../components/BeamMetricChart";
 import { useMetricsHistory } from "../hooks/useMetricsHistory";
 import { monoFamily } from "../theme";
 import type { MetricsSnapshot } from "../types";
+
+// VS-9b.3: render 3 time-series charts (SNR / Latency / Doppler) above
+// the per-beam table. PacketLoss intentionally NOT rendered — it
+// rarely changes outside an injected anomaly window, and 4 stacked
+// charts crowd the viewport. Add a 4th panel later if pitch demand
+// surfaces it.
+const BEAMS_PAGE_CHARTS: ReadonlyArray<{
+  metric: BeamMetricKey;
+  title: string;
+  unit: string;
+}> = [
+  { metric: "snr_db", title: "SNR", unit: "dB" },
+  { metric: "latency_ms", title: "Latency", unit: "ms" },
+  { metric: "doppler_residual_hz", title: "Doppler residual", unit: "Hz" },
+] as const;
 
 interface BeamsProps {
   data: MetricsSnapshot | null;
@@ -27,15 +44,24 @@ export default function Beams({ data }: BeamsProps) {
         subtitle="Per-beam SNR / SINR / latency / packet loss / Doppler residual / elevation / handover state. Sourced from the 9 orbitops_* gauges in /metrics (see docs/contracts/metrics.md §3)."
       />
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography
-          variant="overline"
-          sx={{ color: "text.secondary", display: "block", mb: 1 }}
-        >
-          SNR (dB) — last {history.length} sample(s)
-        </Typography>
-        <BeamSnrChart history={history} />
-      </Paper>
+      <Stack spacing={2} sx={{ mb: 3 }}>
+        {BEAMS_PAGE_CHARTS.map(({ metric, title, unit }) => (
+          <Paper key={metric} sx={{ p: 3 }}>
+            <Typography
+              variant="overline"
+              sx={{ color: "text.secondary", display: "block", mb: 1 }}
+            >
+              {title} ({unit}) — last {history.length} sample(s)
+            </Typography>
+            <BeamMetricChart
+              history={history}
+              metric={metric}
+              title={title}
+              unit={unit}
+            />
+          </Paper>
+        ))}
+      </Stack>
 
       <Paper sx={{ p: 0, overflowX: "auto" }}>
         <Box

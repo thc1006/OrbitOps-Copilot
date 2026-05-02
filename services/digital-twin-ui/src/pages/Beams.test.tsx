@@ -68,43 +68,87 @@ describe("Beams — H.1.1 elevation column contract", () => {
   });
 });
 
-// ─── VS-9b.2 — BeamSnrChart integration ───────────────────────────────
+// ─── VS-9b.3 — BeamMetricChart integration (replaces VS-9b.2 SNR-only) ──
 // Mock the chart at the boundary so this page-level test asserts WIRING
-// (Beams hands history to BeamSnrChart) without re-validating the
-// chart's internal Recharts rendering (covered in BeamSnrChart.test.tsx).
-//
-// useMetricsHistory needs at least one effect cycle to push the prop
-// snapshot into its internal state. testing-library/react flushes
-// effects synchronously after `render()`, so the mocked chart sees
-// history.length=1 after the first render with a non-null `data` prop.
+// (Beams hands history + metric metadata to BeamMetricChart) without
+// re-validating the chart's internal Recharts rendering (covered in
+// BeamMetricChart.test.tsx). The mock surfaces the metric prop on the
+// rendered DOM so the assertions below can verify each of the 3 chart
+// instances (SNR / Latency / Doppler) gets its own metric.
 import { vi } from "vitest";
 
-vi.mock("../components/BeamSnrChart", () => ({
-  default: ({ history }: { history: MetricsSnapshot[] }) => (
-    <div data-testid="beam-snr-chart" data-history-length={history.length}>
-      mocked-chart history-len={history.length}
+vi.mock("../components/BeamMetricChart", () => ({
+  default: ({
+    history,
+    metric,
+    title,
+    unit,
+  }: {
+    history: MetricsSnapshot[];
+    metric: string;
+    title: string;
+    unit: string;
+  }) => (
+    <div
+      data-testid={`chart-${metric}`}
+      data-history-length={history.length}
+      data-title={title}
+      data-unit={unit}
+    >
+      mocked-{metric} history-len={history.length}
     </div>
   ),
 }));
 
-describe("Beams — VS-9b.2 BeamSnrChart integration", () => {
-  test("renders BeamSnrChart placeholder with empty history when data is null", () => {
-    render(wrap(null));
-    const chart = screen.getByTestId("beam-snr-chart");
-    expect(chart).toBeInTheDocument();
-    expect(chart.dataset.historyLength).toBe("0");
-  });
-
-  test("hands the latest snapshot to BeamSnrChart (history grows on data prop)", () => {
+describe("Beams — VS-9b.3 multi-metric chart integration", () => {
+  test("renders 3 BeamMetricChart instances (SNR / Latency / Doppler)", () => {
     render(wrap(snapshotWith({})));
-    const chart = screen.getByTestId("beam-snr-chart");
-    // useMetricsHistory accumulates; after first commit the hook's
-    // useEffect has fired and pushed the prop snapshot in.
-    expect(Number(chart.dataset.historyLength)).toBe(1);
+    expect(screen.getByTestId("chart-snr_db")).toBeInTheDocument();
+    expect(screen.getByTestId("chart-latency_ms")).toBeInTheDocument();
+    expect(screen.getByTestId("chart-doppler_residual_hz")).toBeInTheDocument();
   });
 
-  test("renders the SNR (dB) chart caption above the table", () => {
+  test("each chart receives matching title + unit pair", () => {
+    render(wrap(snapshotWith({})));
+    expect(screen.getByTestId("chart-snr_db").dataset.title).toBe("SNR");
+    expect(screen.getByTestId("chart-snr_db").dataset.unit).toBe("dB");
+    expect(screen.getByTestId("chart-latency_ms").dataset.title).toBe(
+      "Latency",
+    );
+    expect(screen.getByTestId("chart-latency_ms").dataset.unit).toBe("ms");
+    expect(screen.getByTestId("chart-doppler_residual_hz").dataset.title).toBe(
+      "Doppler residual",
+    );
+    expect(screen.getByTestId("chart-doppler_residual_hz").dataset.unit).toBe(
+      "Hz",
+    );
+  });
+
+  test("hands history to ALL 3 charts (history grows on data prop)", () => {
+    render(wrap(snapshotWith({})));
+    // useMetricsHistory accumulates; after first commit the hook's
+    // useEffect has fired and pushed the prop snapshot in. All 3 charts
+    // share the same history (different metrics, same window).
+    for (const m of ["snr_db", "latency_ms", "doppler_residual_hz"]) {
+      expect(
+        Number(screen.getByTestId(`chart-${m}`).dataset.historyLength),
+      ).toBe(1);
+    }
+  });
+
+  test("empty data → all 3 charts get history.length=0", () => {
+    render(wrap(null));
+    for (const m of ["snr_db", "latency_ms", "doppler_residual_hz"]) {
+      expect(screen.getByTestId(`chart-${m}`).dataset.historyLength).toBe("0");
+    }
+  });
+
+  test("renders the SNR / Latency / Doppler captions above the table", () => {
     render(wrap(null));
     expect(screen.getByText(/SNR \(dB\) — last/i)).toBeInTheDocument();
+    expect(screen.getByText(/Latency \(ms\) — last/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Doppler residual \(Hz\) — last/i),
+    ).toBeInTheDocument();
   });
 });
