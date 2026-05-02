@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Accepted — Sprint-1 shipped 2026-05-02 (Kustomize base + overlay/local + kubeadm live deploy + `make k8s-reload-observability`). **Sprint-2 VS-7 shipped 2026-05-02** (Helm chart has 5 service templates + per-service `enabled` flag + env-var parity with Kustomize emulator/copilot; Service names mirror the Kustomize bare names per **ADR-009**, so a stock `helm install` resolves DNS identically to `kubectl apply -k`; `helm template` + `helm lint` clean; `verify.sh` 5b/5 helm gate exercises both). Sprint-2 ArgoCD App reference (VS-11) + Sprint-3 Nephio kpt (VS-17) still pending. |
+| Status | Accepted — Sprint-1 shipped 2026-05-02 (Kustomize base + overlay/local + kubeadm live deploy + `make k8s-reload-observability`). **Sprint-2 VS-7 shipped 2026-05-02** (Helm chart 5 service templates + per-service `enabled` flag + env-var parity + Service names mirror Kustomize bare names per **ADR-009**). **Sprint-2 VS-11 shipped 2026-05-02** (ArgoCD `Application` reference at `deploy/argocd/orbitops-copilot.yaml` — Kustomize-driven sync, auto-prune + self-heal, finalizer for cascade-delete; opt-in usage in `deploy/argocd/README.md`; chart-driven sibling deferred Sprint-3+ pending ADR-009 adoption story). Sprint-3 Nephio kpt (VS-17) still pending. |
 | Owner | k8s-platform-engineer |
 | Sprint | 1 (VS-6 carry-over) + Sprint 2 (VS-7, VS-11) + Sprint 3 (VS-17) |
 | Depends on | SPEC-002, SPEC-003, SPEC-004, SPEC-005 |
@@ -20,7 +20,7 @@ docker-compose 是 dev 快路徑，K8s 才是「真實部署形貌」。沒有 K
 
 - **Sprint 1（VS-6）**：Kustomize base + overlay/local；kind cluster；首個 smoke test。
 - **Sprint 2（VS-7）**：Helm chart skeleton 完整化；`helm template` + `helm lint` 通過 (verify.sh 5b/5 gate). **Shipped 2026-05-02** — chart has 5 service templates (emulator + copilot + ui + prometheus + grafana); each gated by its own `<svc>.enabled` flag; values.yaml has per-service section; **Service `metadata.name` mirrors the Kustomize bare names per ADR-009** so a stock `helm install` resolves DNS identically to compose / Kustomize (Prom scrapes work, copilot reaches emulator out of box). Deployment `metadata.name` keeps the `release-fullname-prefix` Helm idiom (DNS doesn't depend on Deployment name; selectors use `app.kubernetes.io/name` labels). External ConfigMaps (`orbitops-scenarios`, `orbitops-prometheus-config`, `orbitops-grafana-provisioning`) come from checked-in `deploy/k8s/base/*-configmap.yaml` (kustomize `resources:`, NOT `configMapGenerator`); only `orbitops-grafana-dashboards` is generator-backed. Helm-only deploys must apply those CMs first; Sprint-3 may vendor them into the chart if multi-release-per-namespace ever becomes a requirement (would need its own ADR superseding ADR-009).
-- **Sprint 2（VS-11）**：ArgoCD App YAML reference（不需 mgmt cluster）。
+- **Sprint 2（VS-11）**：ArgoCD App YAML reference（不需 mgmt cluster）— **Shipped 2026-05-02** at `deploy/argocd/orbitops-copilot.yaml`. Kustomize-driven sync; auto-prune + self-heal; `argocd.argoproj.io/sync-wave: "0"`; `resources-finalizer.argocd.argoproj.io` for cascade-delete; `CreateNamespace=true` so a fresh cluster install needs no namespace bootstrap; retry policy bounded (5 attempts, max 3min backoff) so genuine sync failures surface as Degraded. Pure reference — verify.sh's offline gate parses the YAML for structural sanity but does NOT kubeconform-strict validate (Argo CRD schema not in kubeconform's default set; opt-in command in `deploy/argocd/README.md`). Why Kustomize and not Helm: per ADR-009 the chart cannot adopt resources that already exist in the target namespace, so Kustomize-driven gives the cleanest first-install experience for the demo; sibling chart Application is Sprint-3+ once `--set adopt=true` lands.
 - **Sprint 3（VS-17）**：Nephio kpt package stub（per ADR-005）。
 - 4 個 service（emulator、copilot、ui、obs stack）皆有 Deployment + Service + ConfigMap。
 - 每個 Deployment 帶 `resources.requests/limits` + `livenessProbe` + `readinessProbe`。
@@ -46,7 +46,7 @@ docker-compose 是 dev 快路徑，K8s 才是「真實部署形貌」。沒有 K
 - `deploy/k8s/overlays/local/`：local-tuned overlay。
 - `deploy/helm/orbitops-copilot/`：Chart.yaml + values + templates。
 - `deploy/kind/cluster.yaml` / `deploy/k3d/cluster.yaml`：本機 cluster 設定。
-- `deploy/k8s/base/argocd-app.yaml`（Sprint 2）：ArgoCD App 範例。
+- `deploy/argocd/orbitops-copilot.yaml`（Sprint 2 VS-11 — shipped 2026-05-02）：ArgoCD `Application` 範例（指向 `deploy/k8s/overlays/local`，opt-in usage 文件 `deploy/argocd/README.md`）. Lives in `deploy/argocd/` not `deploy/k8s/base/` — Application 是 ArgoCD CRD，住在 `argocd` namespace 由 ArgoCD 管，放進 base 會讓每次 kustomize render 都試圖 apply 一個 CR 到沒裝 ArgoCD 的 cluster。
 - `packages/nephio-stubs/orbitops-groundstation-package/`（Sprint 3）：kpt package。
 - `tests/k8s-smoke/`：smoke test bash + curl 腳本。
 

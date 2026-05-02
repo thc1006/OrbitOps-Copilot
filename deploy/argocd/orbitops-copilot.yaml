@@ -1,0 +1,98 @@
+# ArgoCD Application — orbitops-copilot
+#
+# Reference manifest for the Sprint-2 VS-11 deliverable. Apply this to a
+# cluster that already has ArgoCD installed (in the `argocd` namespace).
+# OrbitOps does NOT bundle ArgoCD — this file is the connector.
+#
+# Path of choice: Kustomize overlay/local (NOT the Helm chart). The chart
+# (per ADR-009) cannot adopt resources that already exist in the target
+# namespace, so a Kustomize-driven sync gives the cleanest first-install
+# experience for the demo. A future Sprint-3+ enhancement may add a sibling
+# Application that uses `source.helm` once the chart's adoption story is
+# settled.
+#
+# Usage:
+#   1. Install ArgoCD into your cluster (any flavor: kind, k3d, kubeadm).
+#   2. Wait for argocd-server Deployment Ready.
+#   3. kubectl apply -f deploy/argocd/orbitops-copilot.yaml
+#   4. ArgoCD will reconcile `deploy/k8s/overlays/local` into the
+#      `orbitops` namespace and self-heal on drift.
+#
+# Validation:
+#   The Application kind is an ArgoCD CRD, not a built-in K8s type.
+#   verify.sh's `k8s static smoke` gate validates against the kustomize
+#   base only (which does NOT include this file), so this manifest is
+#   exercised by `python3 -c "import yaml; ..."` parsing only — anything
+#   stricter requires the ArgoCD CRD schema, which is out of scope for
+#   the offline gate. Tracked Sprint-3+.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: orbitops-copilot
+  namespace: argocd
+  # Sync wave: deploy this Application before any sibling Apps that
+  # depend on the orbitops namespace existing (none currently).
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  finalizers:
+    # Cascade-delete on Application removal — `kubectl delete application
+    # orbitops-copilot -n argocd` will remove the orbitops namespace too.
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/thc1006/OrbitOps-Copilot.git
+    targetRevision: main
+    # Kustomize-driven sync. ArgoCD detects `kustomization.yaml` in this
+    # path and runs `kustomize build` — same artifact verify.sh validates.
+    path: deploy/k8s/overlays/local
+    kustomize: {}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: orbitops
+
+  syncPolicy:
+    automated:
+      # Prune resources that no longer exist in git. Combined with the
+      # finalizer above, removing the Application cleanly removes all
+      # orbitops resources.
+      prune: true
+      # Revert manual `kubectl edit` changes back to git state. The demo
+      # is a single source of truth; out-of-band edits are bugs to fix
+      # in git, not states to preserve in the cluster.
+      selfHeal: true
+    syncOptions:
+      # Create the `orbitops` namespace if it doesn't exist (no separate
+      # namespace bootstrap step needed in the demo flow).
+      - CreateNamespace=true
+      # `kustomize build` may emit `kind: Namespace` redundantly; let the
+      # apply succeed even if a namespace pre-exists from a prior install.
+      - ServerSideApply=true
+    retry:
+      # Back off and retry on transient sync errors (image pull races,
+      # API throttling on first install). Bounded so a genuinely-broken
+      # state surfaces as Degraded rather than retry-storming forever.
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Conservative pruning protections — avoid deleting ConfigMaps that
+  # external tools (e.g., the operator's own kubectl session) created
+  # for ad-hoc debugging. The orbitops demo doesn't write extra CMs at
+  # runtime, so this is mostly defensive.
+  ignoreDifferences:
+    - group: ""
+      kind: ConfigMap
+      name: orbitops-grafana-dashboards
+      jsonPointers:
+        # Kustomize's configMapGenerator hashes the dashboard JSON into
+        # the ConfigMap suffix; ArgoCD sees that as drift on every commit
+        # to observability/grafana/dashboards/. Ignore the suffix metadata
+        # so the diff stays clean. Sprint-3+ may revisit if dashboard
+        # rotation becomes a use case.
+        - /metadata/labels/kustomize.config.k8s.io~1stash
