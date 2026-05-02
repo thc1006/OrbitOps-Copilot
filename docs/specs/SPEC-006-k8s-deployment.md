@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Draft |
+| Status | Accepted (Sprint 1 — substantively shipped 2026-05-02) |
 | Owner | k8s-platform-engineer |
 | Sprint | 1 (VS-6 carry-over) + Sprint 2 (VS-7, VS-11) + Sprint 3 (VS-17) |
 | Depends on | SPEC-002, SPEC-003, SPEC-004, SPEC-005 |

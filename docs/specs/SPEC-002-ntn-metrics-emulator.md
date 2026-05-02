@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Draft (Sprint 1 contract amendment 2026-04-30) |
+| Status | Accepted (Sprint 1 — substantively shipped 2026-05-02; v2 contract per ADR-007 + G7 elevation gauge per PR #34) |
 | Owner | ran-ntn-engineer + observability-engineer |
 | Sprint | 1 (VS-1, VS-2, VS-3, VS-5) |
 | Depends on | SPEC-001 (scenario v2) |

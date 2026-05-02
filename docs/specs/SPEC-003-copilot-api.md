@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Draft |
+| Status | Accepted (Sprint 1 — substantively shipped 2026-05-02) |
 | Owner | llm-copilot-engineer |
 | Sprint | 1 (VS-1, VS-3, VS-4) + Sprint 2 (VS-8, VS-10) |
 | Depends on | SPEC-002 |

@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Draft |
+| Status | Accepted (Sprint 1 — substantively shipped 2026-05-02) |
 | Owner | architect + release-engineer |
 | Sprint | 3 (VS-14, VS-15, VS-16, VS-17, VS-18) |
 | Depends on | SPEC-001..006 |

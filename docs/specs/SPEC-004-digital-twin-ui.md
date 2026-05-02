@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Draft |
+| Status | Accepted (Sprint 1 — substantively shipped 2026-05-02) |
 | Owner | architect + observability-engineer |
 | Sprint | 1 (VS-1, VS-3) + Sprint 2 (VS-9) + Sprint 3 (VS-13) |
 | Depends on | SPEC-002, SPEC-003 |
