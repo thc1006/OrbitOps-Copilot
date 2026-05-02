@@ -16,9 +16,20 @@ OrbitOps Copilot is a Kubernetes-deployable sandbox combining a NTN scenario gen
 
 See `docs/00_research_2026_04.md` for full sources.
 
-## Status — **Sprint 0 skeleton (P0 in progress)**
+## Status — **Sprint 1 P0 substantively complete** (as of 2026-05-02)
 
-This repo currently contains the **engineering constitution + skeleton + Phase 1 research + Phase 2 design**. Functional implementation begins in Sprint 1. See `PROJECT_STATUS.md`.
+| Layer | State |
+|---|---|
+| Services | 3 long-running deployed in kubeadm: `ntn-metrics-emulator`, `copilot-api`, `digital-twin-ui` (all `Running`). `scenario-generator` is a Python CLI / lib used by emulator + tests, not a long-running service. |
+| Backend metrics | 9 `orbitops_*` Prometheus gauges (per `docs/contracts/metrics.md`); copilot-api also exposes `/metrics` (G6 RED metrics) |
+| Copilot anomaly classifications | 4 types (snr_drop, handover_failure, gateway_outage, doppler_compensation_warning); `FakeLLMProvider` returns evidence-grounded `summary` + `likely_cause` + 3–4 `recommended_actions` + `risk_if_ignored` per ADR-007 v2 schema |
+| Live cluster | kubeadm `cloudnative-dev-telco`; 5 pods Running; Prometheus scrapes both services; Grafana 8-panel dashboard (incl. beam elevation, panel id=8) |
+| TDD | 84 pytest (83 passed + 1 xfail-strict for voice S2-07); 26 vitest |
+| Submission gates | `verify.sh` 5/5 + CI 6 jobs |
+
+**What's still pending for the RunSpace submission**: pitch-deck PDF render, demo video recording (90 s + 3 min), and a **UI completeness sweep** (Phase H — see `docs/reviews/runspace-claims-audit.md` "Deferred nits" + the Sprint-2 backlog) covering Beams elevation column / Anomalies dictionary expansion / 3-scenario UI loadability / Copilot full-evidence display.
+
+**Sprint 2 brings**: real LLM provider (Ollama / vLLM via OpenAI-compatible adapter), Loki mock-logs integration, Recharts time-series, ArgoCD App reference. See `PROJECT_STATUS.md` for the live-state snapshot.
 
 ## Quickstart
 
