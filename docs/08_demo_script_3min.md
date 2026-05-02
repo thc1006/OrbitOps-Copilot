@@ -36,12 +36,16 @@
 ### Pre-roll (off-camera; ≤ 30 s)
 
 1. Bring the stack up (one of):
-   - **docker-compose path**: `make dev-up` → wait for `make dev-up` healthcheck completion (~5 s).
-   - **k8s path**: `make k8s-up` (containerd kubeadm; uses sudo) OR `make k8s-up-kind` (kind cluster). Both wait for pods Ready before returning.
+   - **docker-compose path**: `make dev-up` brings up emulator + copilot + Prom + Grafana. The UI is gated behind a compose `profiles: ["ui"]` flag (see `deploy/docker-compose.yml`), so the on-camera 4-step flow ALSO needs:
+     ```bash
+     docker compose -f deploy/docker-compose.yml --profile ui up -d digital-twin-ui
+     ```
+     (UI assets must be pre-built into `services/digital-twin-ui/dist/` via `npm run build`; the compose service serves them via nginx.)
+   - **k8s path**: `make k8s-up` (containerd kubeadm; uses sudo) OR `make k8s-up-kind` (kind cluster). Both bring up all services including UI; wait for pods Ready before returning.
 2. Confirm endpoints respond:
    - emulator: `curl -fsS http://localhost:8000/healthz` (compose) or `:30080` (k8s NodePort).
    - copilot:  `curl -fsS http://localhost:8001/healthz` (compose) or `:30081`.
-   - UI:       `curl -fsS http://localhost:5173` (compose dev) or `:30073` (k8s NodePort).
+   - UI:       `curl -fsS http://localhost:5173` (compose, after `--profile ui`) or `:30073` (k8s NodePort).
    - grafana:  `:30030` (k8s) or `:3000` (compose).
 
 ### On-camera 4-step click flow
