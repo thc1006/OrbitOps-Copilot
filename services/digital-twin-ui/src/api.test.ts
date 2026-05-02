@@ -196,7 +196,7 @@ describe("injectAnomaly timeout", () => {
         { type: "snr_drop" as AnomalyType },
         { timeoutMs: 50 },
       ),
-    ).rejects.toThrow(/timeout|abort/i);
+    ).rejects.toThrow(/timed out|timeout|abort/i);
     const elapsed = Date.now() - start;
     expect(elapsed).toBeGreaterThanOrEqual(40);
     expect(elapsed).toBeLessThan(500);
