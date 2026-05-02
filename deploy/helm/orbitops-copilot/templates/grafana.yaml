@@ -1,0 +1,78 @@
+{{- if .Values.grafana.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "orbitops.fullname" . }}-grafana
+  labels:
+    {{- include "orbitops.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: grafana
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: grafana
+        app.kubernetes.io/part-of: orbitops-copilot
+    spec:
+      containers:
+        - name: grafana
+          image: "{{ .Values.grafana.image.repository }}:{{ .Values.grafana.image.tag }}"
+          imagePullPolicy: {{ .Values.grafana.image.pullPolicy }}
+          # Sprint-1 demo defaults (admin/admin + anonymous Viewer). SAFE
+          # ONLY for the local-overlay deploy. Sprint-2 hardening tracked
+          # in docs/reviews/security-review.md S-3.
+          env:
+            - { name: GF_SECURITY_ADMIN_USER,     value: {{ .Values.grafana.admin.user | quote }} }
+            - { name: GF_SECURITY_ADMIN_PASSWORD, value: {{ .Values.grafana.admin.password | quote }} }
+            - { name: GF_USERS_ALLOW_SIGN_UP,     value: "false" }
+            - { name: GF_AUTH_ANONYMOUS_ENABLED,  value: {{ .Values.grafana.anonymous.enabled | quote }} }
+            - { name: GF_AUTH_ANONYMOUS_ORG_ROLE, value: {{ .Values.grafana.anonymous.orgRole | quote }} }
+          ports: [{ containerPort: 3000, name: http }]
+          volumeMounts:
+            - { name: provisioning-datasources, mountPath: /etc/grafana/provisioning/datasources, readOnly: true }
+            - { name: provisioning-dashboards,  mountPath: /etc/grafana/provisioning/dashboards,  readOnly: true }
+            - { name: dashboards,               mountPath: /var/lib/grafana/dashboards,           readOnly: true }
+            - { name: data,                     mountPath: /var/lib/grafana }
+          resources:
+{{ toYaml .Values.grafana.resources | indent 12 }}
+          livenessProbe:
+            httpGet: { path: /api/health, port: 3000 }
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /api/health, port: 3000 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        # NB: provisioning ConfigMaps + dashboard ConfigMap are NOT rendered
+        # by this chart — they come from the Kustomize overlay's
+        # configMapGenerator (sourced from observability/grafana/{provisioning,
+        # dashboards}). For Helm-only deployments, kubectl-apply them first.
+        - name: provisioning-datasources
+          configMap:
+            name: {{ .Values.grafana.configMaps.provisioning }}
+            items: [{ key: datasource.yaml, path: prometheus.yaml }]
+        - name: provisioning-dashboards
+          configMap:
+            name: {{ .Values.grafana.configMaps.provisioning }}
+            items: [{ key: dashboard-provider.yaml, path: orbitops.yaml }]
+        - name: dashboards
+          configMap:
+            name: {{ .Values.grafana.configMaps.dashboards }}
+        - name: data
+          emptyDir:
+            sizeLimit: {{ .Values.grafana.dataSizeLimit }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "orbitops.fullname" . }}-grafana
+  labels:
+    {{- include "orbitops.labels" . | nindent 4 }}
+spec:
+  selector: { app.kubernetes.io/name: grafana }
+  ports:
+    - { name: http, port: {{ .Values.grafana.service.port }}, targetPort: 3000 }
+{{- end -}}

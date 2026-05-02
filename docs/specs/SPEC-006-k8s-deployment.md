@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Accepted — Sprint-1 subset shipped 2026-05-02 (Kustomize base + overlay/local + kubeadm live deploy + `make k8s-reload-observability` per VS-7). Sprint-2 Helm chart full templates (VS-7) + ArgoCD App reference (VS-11) and Sprint-3 Nephio kpt (VS-17) still pending. |
+| Status | Accepted — Sprint-1 + Sprint-2 VS-7 shipped 2026-05-02 (Kustomize base + overlay/local + kubeadm live deploy + `make k8s-reload-observability` + Helm chart full templates: emulator + copilot + ui + prometheus + grafana, `helm template` + `helm lint` clean). Sprint-2 ArgoCD App reference (VS-11) + Sprint-3 Nephio kpt (VS-17) still pending. |
 | Owner | k8s-platform-engineer |
 | Sprint | 1 (VS-6 carry-over) + Sprint 2 (VS-7, VS-11) + Sprint 3 (VS-17) |
 | Depends on | SPEC-002, SPEC-003, SPEC-004, SPEC-005 |
@@ -19,7 +19,7 @@ docker-compose 是 dev 快路徑，K8s 才是「真實部署形貌」。沒有 K
 ## 3. Scope
 
 - **Sprint 1（VS-6）**：Kustomize base + overlay/local；kind cluster；首個 smoke test。
-- **Sprint 2（VS-7）**：Helm chart skeleton 完整化；`helm template` 通過。
+- **Sprint 2（VS-7）**：Helm chart skeleton 完整化；`helm template` 通過。✓ shipped 2026-05-02 — chart now has 5 service templates (emulator + copilot + ui + prometheus + grafana); each gated by `<svc>.enabled` for selective install; values.yaml has per-service section; `helm lint` returns 0 failed. ConfigMaps for Prom/Grafana stay externally-managed (created by Kustomize configMapGenerator from `observability/`); `helm install` for those services requires `kubectl apply -f` of the obs ConfigMaps first. Vendoring those into the chart is on Sprint-3 backlog.
 - **Sprint 2（VS-11）**：ArgoCD App YAML reference（不需 mgmt cluster）。
 - **Sprint 3（VS-17）**：Nephio kpt package stub（per ADR-005）。
 - 4 個 service（emulator、copilot、ui、obs stack）皆有 Deployment + Service + ConfigMap。
