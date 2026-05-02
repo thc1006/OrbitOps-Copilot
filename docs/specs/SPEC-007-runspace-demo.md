@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Accepted (Sprint 1 — substantively shipped 2026-05-02) |
+| Status | Draft (Sprint 3 deliverable — pitch deck PDF, demo videos, exiftool scrub all still pending; ACs S007-1..5 not yet met) |
 | Owner | architect + release-engineer |
 | Sprint | 3 (VS-14, VS-15, VS-16, VS-17, VS-18) |
 | Depends on | SPEC-001..006 |
