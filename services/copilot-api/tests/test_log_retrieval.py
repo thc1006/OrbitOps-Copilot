@@ -159,3 +159,40 @@ def test_loki_log_scraper_handles_empty_result() -> None:
     transport = httpx.MockTransport(handler)
     scraper = LokiLogScraper("http://loki:3100", transport=transport)
     assert scraper.fetch_recent(since_seconds=300) == []
+
+
+def test_loki_log_scraper_skips_malformed_entries() -> None:
+    """Defense-in-depth (round-2 /review A7): a single bad value-pair
+    must NOT drop the whole query result. Real-world failure modes:
+    Loki itself (rare) or a proxy/CDN re-encoding the response between
+    Loki and the scraper. One corrupt entry shouldn't wipe N-1 good
+    entries from evidence — partial > zero."""
+    from copilot_api._log_retrieval import LokiLogScraper
+
+    body = {
+        "data": {
+            "result": [
+                {
+                    "stream": {"service": "copilot-api"},
+                    "values": [
+                        ["1714660800000000000", "good line 1"],
+                        ["not-a-number", "bad timestamp"],  # malformed
+                        ["1714660801000000000", "good line 2"],
+                    ],
+                },
+            ],
+        },
+    }
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=body)
+
+    transport = httpx.MockTransport(handler)
+    scraper = LokiLogScraper("http://loki:3100", transport=transport)
+    out = scraper.fetch_recent(since_seconds=300)
+
+    # Bad entry skipped; 2 good kept.
+    assert len(out) == 2, (
+        f"expected 2 good entries (1 malformed skipped); got {len(out)}: {out}"
+    )
+    assert all("good line" in c.line for c in out)
