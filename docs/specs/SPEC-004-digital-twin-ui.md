@@ -64,6 +64,12 @@
 - `<TimeSeriesChart />`（VS-9）：Recharts；y 軸單位 dB / ms / Hz。
 - `<SatellitePassViz />`（VS-13）：CesiumJS。
 
+**Demo affordances** (Scenarios page, VS-8 full)：
+
+- "Load preset" button — load `beam-degradation-001` only (t=0, no tick).
+- "Tick + Ns" button + ButtonGroup quick-picks (10/30/60/90 s) — manual time advance.
+- **"Ready for Copilot"** button (one-click) — combines `loadScenario` + `tickScenario(90)` into a single action so a fresh demo session lands inside the snr_drop window (t=60..150) and `/ask` never returns `INSUFFICIENT_EVIDENCE` on the first question. Closes the UX nit raised in `docs/reviews/demo-path-audit-2026-05-01.md`. Test contract pinned in `services/digital-twin-ui/src/pages/Scenarios.test.tsx` (4 cases including error-path).
+
 **Types** (`src/types/index.ts`)：與 `tests/contracts/copilot-response.schema.json` 對應的 TS interfaces；用 `json-schema-to-typescript` 自動生（CI 跑檢查）。
 
 ## 8. Acceptance criteria
