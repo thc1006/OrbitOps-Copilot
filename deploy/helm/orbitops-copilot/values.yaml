@@ -4,7 +4,9 @@ global:
 emulator:
   image:
     repository: orbitops/ntn-metrics-emulator
-    tag: "0.0.1-dev"
+    # PR #35 bumped both emulator + copilot to this tag (G6/G7/G8 sprint-1 spec parity).
+    # Helm chart was drifted at 0.0.1-dev pre-PR-G; aligned here.
+    tag: "0.1.1-dev-g6g7g8"
     pullPolicy: IfNotPresent
   replicaCount: 1
   service:
@@ -22,7 +24,7 @@ emulator:
 copilot:
   image:
     repository: orbitops/copilot-api
-    tag: "0.0.1-dev"
+    tag: "0.1.1-dev-g6g7g8"
     pullPolicy: IfNotPresent
   replicaCount: 1
   service:
