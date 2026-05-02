@@ -81,18 +81,13 @@ spec:
         factor: 2
         maxDuration: 3m
 
-  # Conservative pruning protections — avoid deleting ConfigMaps that
-  # external tools (e.g., the operator's own kubectl session) created
-  # for ad-hoc debugging. The orbitops demo doesn't write extra CMs at
-  # runtime, so this is mostly defensive.
-  ignoreDifferences:
-    - group: ""
-      kind: ConfigMap
-      name: orbitops-grafana-dashboards
-      jsonPointers:
-        # Kustomize's configMapGenerator hashes the dashboard JSON into
-        # the ConfigMap suffix; ArgoCD sees that as drift on every commit
-        # to observability/grafana/dashboards/. Ignore the suffix metadata
-        # so the diff stays clean. Sprint-3+ may revisit if dashboard
-        # rotation becomes a use case.
-        - /metadata/labels/kustomize.config.k8s.io~1stash
+  # Note (deep /review on PR #50, 2026-05-02): a previous draft of this
+  # manifest had an `ignoreDifferences` block claiming to suppress drift
+  # from the Kustomize configMapGenerator hash on the dashboards CM. That
+  # was wrong on two counts: (1) Kustomize writes the hash into
+  # `metadata.name`, not into a label — there is no
+  # `kustomize.config.k8s.io/stash` label to ignore; (2) when dashboard
+  # JSON changes, the rendered CM name changes in lock-step on both sides
+  # of the GitOps boundary, so ArgoCD's natural delete-old + create-new
+  # is the *correct* behavior, not a drift to mask. The block was
+  # functionally a no-op AND misleading; removed.
