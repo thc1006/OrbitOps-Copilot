@@ -125,6 +125,38 @@ describe("Scenarios — Ready for Copilot affordance", () => {
     expect(tickSpy).not.toHaveBeenCalled();
   });
 
+  test("on tick failure AFTER load succeeds, error mentions partial state (loaded, t=0)", async () => {
+    // PR #42 review (Copilot bot, round 2): split try/catch contract.
+    // If load succeeds but tick fails, the emulator is in a partial state
+    // (loaded, t=0). The error message must (a) NOT pretend nothing
+    // happened, and (b) tell the user how to recover.
+    vi.spyOn(api, "loadScenario").mockResolvedValue({
+      loaded: "beam-degradation-001",
+      t: 0,
+      beams: 3,
+      gateways: 1,
+    });
+    vi.spyOn(api, "tickScenario").mockRejectedValue(new Error("tick HTTP 503"));
+
+    render(wrap());
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /ready for copilot/i }));
+
+    await waitFor(() => {
+      const alert = screen.getByRole("alert");
+      // Error message must reference the loaded state explicitly.
+      expect(alert.textContent).toMatch(/beam-degradation-001/);
+      // Must mention t=0 so the user knows tick didn't run.
+      expect(alert.textContent).toMatch(/t=0/);
+      // Must surface the actual underlying error.
+      expect(alert.textContent).toMatch(/tick HTTP 503/);
+    });
+    // refetchMetrics must have been called once (after the successful
+    // load) so the UI doesn't show stale data — even though the tick
+    // ultimately failed.
+    expect(refetchMetrics).toHaveBeenCalled();
+  });
+
   test("when tick returns NO active anomalies, alert is a warning that mentions INSUFFICIENT_EVIDENCE", async () => {
     // PR #42 review (Copilot bot): an empty `active_anomalies` after the
     // tick means we did NOT actually land in the anomaly window. Reporting

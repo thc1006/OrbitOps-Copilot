@@ -87,16 +87,33 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
   const handleReadyForCopilot = async () => {
     setBusy(true);
     setFeedback(null);
+
+    // PR #42 review (Copilot bot, round 2): split the load + tick into
+    // two try blocks. If load succeeds but tick fails, the emulator is
+    // in a partial state (loaded, t=0) — we need to (a) tell the user
+    // exactly that, not a generic error, and (b) still call
+    // refetchMetrics so the metrics view doesn't stay stale.
+    let loaded: Awaited<ReturnType<typeof loadScenario>>;
     try {
-      const loaded = await loadScenario(PRESET_BEAM_DEGRADATION);
+      loaded = await loadScenario(PRESET_BEAM_DEGRADATION);
+    } catch (e) {
+      setFeedback({
+        severity: "error",
+        text: `Load failed before any state changed: ${(e as Error).message}`,
+      });
+      setBusy(false);
+      return;
+    }
+    refetchMetrics();
+
+    try {
       const ticked = await tickScenario(READY_TICK_SECONDS);
-      // PR #42 review (Copilot bot): an empty `active_anomalies` after
-      // the tick means we did NOT actually land in the anomaly window
-      // (scenario shifted, or the tick constant fell outside the event
-      // range). Reporting "Ready for Copilot" in that state would be
-      // misleading — /ask will return INSUFFICIENT_EVIDENCE. Surface
-      // it as a warning so the demo presenter sees the problem before
-      // recording.
+      // An empty `active_anomalies` after the tick means we did NOT
+      // actually land in the anomaly window (scenario shifted, or the
+      // tick constant fell outside the event range). Reporting "Ready
+      // for Copilot" in that state would be misleading — /ask will
+      // return INSUFFICIENT_EVIDENCE. Surface it as a warning so the
+      // demo presenter sees the problem before recording.
       if (ticked.active_anomalies.length === 0) {
         setFeedback({
           severity: "warning",
@@ -116,7 +133,12 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
       }
       refetchMetrics();
     } catch (e) {
-      setFeedback({ severity: "error", text: (e as Error).message });
+      setFeedback({
+        severity: "error",
+        text:
+          `${loaded.loaded} loaded (t=0) but tick failed: ${(e as Error).message}. ` +
+          `Click "Tick + Ns" to retry, or "Load preset" to reset.`,
+      });
     } finally {
       setBusy(false);
     }
