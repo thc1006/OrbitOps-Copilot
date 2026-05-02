@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Accepted — Sprint-1 subset shipped 2026-05-02 (UI shell + Overview/Beams/Anomalies/Gateways/Scenarios/Copilot pages + Ready-for-Copilot affordance + full evidence display per ADR-007 v2). Sprint-2 Recharts time-series (VS-9) and Sprint-3 CesiumJS pass viz (VS-13) still pending. |
+| Status | Accepted — Sprint-1 subset shipped 2026-05-02 (UI shell + Overview/Beams/Anomalies/Gateways/Scenarios/Copilot pages + Ready-for-Copilot affordance + full evidence display per ADR-007 v2). **Sprint-2 VS-9b.1 shipped 2026-05-02** (Anomalies-page inject UI: 5 buttons one-per-producer-event-type wired to `/anomaly/inject` from PR #51; `injectAnomaly()` typed wrapper in `api.ts` with 5s AbortController timeout matching askCopilot pattern). Sprint-2 VS-9b.2 Recharts time-series (`useMetricsHistory` hook + LineChart on Beams + sparkline on Copilot) and Sprint-3 CesiumJS pass viz (VS-13) still pending. |
 | Owner | architect + observability-engineer |
 | Sprint | 1 (VS-1, VS-3) + Sprint 2 (VS-9) + Sprint 3 (VS-13) |
 | Depends on | SPEC-002, SPEC-003 |

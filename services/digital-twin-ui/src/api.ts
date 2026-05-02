@@ -313,3 +313,78 @@ export const env_ = {
   PROMETHEUS_BASE,
   GRAFANA_BASE,
 };
+
+// ─── /anomaly/inject (VS-9a backend wired to Anomalies-page button) ────
+
+import type { InjectAnomalyInput, InjectAnomalyResult } from "./types";
+
+/**
+ * POST /anomaly/inject — runtime-mutates the loaded scenario's events list
+ * so the Anomalies page button can surface anomalies without editing JSON.
+ *
+ * Throws Error on non-2xx so the calling component can render a banner.
+ * (Differs from askCopilot which always resolves to a CopilotResponse:
+ * Copilot needs a "show ERROR in chat" UX; inject is a one-shot action
+ * where failure should be loud.)
+ *
+ * Bounded by `timeoutMs` (default 5s, matching DEFAULT_TIMEOUT_MS) so a
+ * hung emulator doesn't wedge the UI's pending state forever — without
+ * this, packet loss / GC pauses would leave all 5 inject buttons disabled
+ * until the operator reloads the page (self-/review C4).
+ */
+export async function injectAnomaly(
+  input: InjectAnomalyInput,
+  options: { signal?: AbortSignal; timeoutMs?: number } = {},
+): Promise<InjectAnomalyResult> {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort("timeout"), timeoutMs);
+
+  let onAbort: (() => void) | null = null;
+  if (options.signal) {
+    if (options.signal.aborted) controller.abort("caller-abort");
+    else {
+      onAbort = () => controller.abort("caller-abort");
+      options.signal.addEventListener("abort", onAbort, { once: true });
+    }
+  }
+
+  try {
+    const r = await fetch(`${EMULATOR_BASE}/anomaly/inject`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+      signal: controller.signal,
+    });
+    if (!r.ok) {
+      let detail = "";
+      try {
+        const body = (await r.json()) as { error?: string };
+        detail = body.error ?? "";
+      } catch {
+        // ignore — fall back to status-only message
+      }
+      throw new Error(
+        `/anomaly/inject HTTP ${r.status}${detail ? `: ${detail}` : ""}`,
+      );
+    }
+    return (await r.json()) as InjectAnomalyResult;
+  } catch (err) {
+    const name = (err as { name?: string })?.name ?? "";
+    if (name === "AbortError") {
+      const reason = String(controller.signal.reason ?? "");
+      if (reason === "timeout") {
+        throw new Error(
+          `/anomaly/inject timed out after ${timeoutMs}ms (emulator unreachable?)`,
+        );
+      }
+      throw new Error(`/anomaly/inject was cancelled`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+    if (onAbort && options.signal) {
+      options.signal.removeEventListener("abort", onAbort);
+    }
+  }
+}

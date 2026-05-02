@@ -1,10 +1,19 @@
-import { Alert, Box, Paper, Stack, Typography } from "@mui/material";
+import { useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Paper,
+  Stack,
+  Typography,
+} from "@mui/material";
 import EventNoteRoundedIcon from "@mui/icons-material/EventNoteRounded";
 
 import SectionHeader from "../components/SectionHeader";
 import StatusChip from "../components/StatusChip";
 import { monoFamily } from "../theme";
-import type { MetricsSnapshot } from "../types";
+import { injectAnomaly } from "../api";
+import type { AnomalyType, MetricsSnapshot } from "../types";
 
 interface AnomaliesProps {
   data: MetricsSnapshot | null;
@@ -30,8 +39,45 @@ const ANOMALY_DESCRIPTIONS: Record<string, string> = {
     "Per-beam packet-loss ratio jumped (orbitops_packet_loss_ratio adds 0.3, capped at 0.5). Usually downstream of an RF / buffer hiccup, not a root cause in itself.",
 };
 
+// Producer event types — mirror scenario.schema.json events.type enum.
+// Order matches the most-likely-demoed flow (snr_drop is the "hello world"
+// of the demo; handover and doppler are the runbook-trigger scenarios).
+const INJECT_TYPES: readonly AnomalyType[] = [
+  "snr_drop",
+  "handover_failure",
+  "doppler_spike",
+  "gateway_outage",
+  "packet_loss_spike",
+] as const;
+
+interface InjectFeedback {
+  kind: "ok" | "err";
+  text: string;
+}
+
 export default function Anomalies({ data }: AnomaliesProps) {
   const active = data?.active_anomalies ?? [];
+  const [feedback, setFeedback] = useState<InjectFeedback | null>(null);
+  const [pending, setPending] = useState<AnomalyType | null>(null);
+
+  async function handleInject(type: AnomalyType): Promise<void> {
+    setPending(type);
+    setFeedback(null);
+    try {
+      const result = await injectAnomaly({ type });
+      setFeedback({
+        kind: "ok",
+        text: `Injected ${result.type} on ${result.target} (t=${result.t_start}…${result.t_end}). Currently active: ${result.currently_active.join(", ") || "(none)"}.`,
+      });
+    } catch (err) {
+      setFeedback({
+        kind: "err",
+        text: `Inject ${type} failed: ${(err as Error).message}`,
+      });
+    } finally {
+      setPending(null);
+    }
+  }
 
   return (
     <Box>
@@ -40,6 +86,39 @@ export default function Anomalies({ data }: AnomaliesProps) {
         title="Anomalies"
         subtitle="Live anomaly events reported by the emulator. The Sprint-1 emulator surfaces a single active anomaly type at a time; multi-anomaly listing is forward-compatible."
       />
+
+      {/* VS-9b.1: inject UI. One button per producer event type. Clicking
+          posts to /anomaly/inject with default target + 60s duration; the
+          metric stream surfaces the new anomaly on the next /metrics
+          scrape (Prometheus 5s scrape_interval). */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="overline" sx={{ color: "text.secondary" }}>
+          Inject anomaly (runtime override; resets on /scenario/load)
+        </Typography>
+        <Stack direction="row" spacing={1.5} sx={{ mt: 1.5, flexWrap: "wrap", rowGap: 1.5 }}>
+          {INJECT_TYPES.map((kind) => (
+            <Button
+              key={kind}
+              variant="outlined"
+              size="small"
+              disabled={pending !== null}
+              onClick={() => handleInject(kind)}
+              sx={{ fontFamily: monoFamily, textTransform: "none" }}
+            >
+              {pending === kind ? "Injecting…" : `Inject ${kind}`}
+            </Button>
+          ))}
+        </Stack>
+        {feedback && (
+          <Alert
+            severity={feedback.kind === "ok" ? "success" : "error"}
+            sx={{ mt: 2 }}
+            onClose={() => setFeedback(null)}
+          >
+            {feedback.text}
+          </Alert>
+        )}
+      </Paper>
 
       {active.length === 0 ? (
         <Alert severity="success" icon={<EventNoteRoundedIcon />}>
