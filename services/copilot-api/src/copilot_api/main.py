@@ -21,7 +21,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from . import _grounding, _retrieval
+from . import _grounding, _log_retrieval, _retrieval
 from ._logging import logger as _log
 from ._logging import setup_logging as _setup_logging
 from ._provider import FakeLLMProvider, LLMProvider
@@ -92,6 +92,15 @@ _provider: LLMProvider = FakeLLMProvider()
 _NULL_SCRAPER: _retrieval.MetricsScraper = _retrieval.NullScraper()
 _scraper: _retrieval.MetricsScraper = _retrieval.make_default_scraper()
 
+# VS-10b.2: log scraper for /ask evidence augmentation. Default = Null
+# (returns []) so /ask works fine without ORBITOPS_LOKI_URL set; when
+# Loki is configured, the same env-var-driven factory creates a real
+# LokiLogScraper. Integration / unit tests inject via _set_log_scraper().
+_NULL_LOG_SCRAPER: _log_retrieval.LogScraper = _log_retrieval.NullLogScraper()
+_log_scraper: _log_retrieval.LogScraper = _log_retrieval.make_default_log_scraper()
+
+_DEFAULT_LOG_WINDOW_SECONDS = 300
+
 
 def _set_provider(provider: LLMProvider) -> None:
     """Test/integration-only: swap the provider (e.g., to a recorded one)."""
@@ -108,6 +117,12 @@ def _set_scraper(scraper: _retrieval.MetricsScraper) -> None:
     """
     global _scraper
     _scraper = scraper
+
+
+def _set_log_scraper(scraper: _log_retrieval.LogScraper) -> None:
+    """Test/integration-only: swap the log scraper. VS-10b.2."""
+    global _log_scraper
+    _log_scraper = scraper
 
 
 def _now() -> datetime:
@@ -280,8 +295,26 @@ def _ask_impl(req: AskRequest) -> CopilotResponse:
             ),
         )
 
+    # VS-10b.2: query Loki for log evidence in the same time-window the
+    # caller asked about (default 300 s). Failure here MUST NOT break
+    # /ask — degrade to logs_used=[] + an "logs unavailable" entry in
+    # `unknowns` so the operator can debug. Mirrors the metrics-scraper
+    # graceful-degrade pattern above.
+    log_window = req.time_window_seconds or _DEFAULT_LOG_WINDOW_SECONDS
+    logs_used: list[LogCitation] = []
+    log_unavailable_note: str | None = None
+    try:
+        logs_used = list(_log_scraper.fetch_recent(since_seconds=log_window))
+    except Exception as exc:  # noqa: BLE001 — Loki down / parse / connect errors all degrade
+        log_unavailable_note = (
+            f"Logs unavailable: {type(exc).__name__}: {exc}. "
+            "Evidence is metrics-only; verify ORBITOPS_LOKI_URL and "
+            "promtail status."
+        )
+
     evidence = Evidence(
         metrics_used=metrics,
+        logs_used=logs_used,
         scenario_id=req.scenario_id,
         time_window_seconds=req.time_window_seconds,
         timestamp=_now(),
@@ -308,9 +341,13 @@ def _ask_impl(req: AskRequest) -> CopilotResponse:
             ),
         )
 
-    return _with_time_window_note(
-        req, _grounded(raw=raw, evidence=evidence, include_actions=True)
-    )
+    response = _grounded(raw=raw, evidence=evidence, include_actions=True)
+    # If logs were unavailable (Loki down / 5xx), surface that fact to
+    # the operator via `unknowns`. Don't fail the whole response — the
+    # metrics evidence is still valid grounding.
+    if log_unavailable_note is not None:
+        response.unknowns.append(log_unavailable_note)
+    return _with_time_window_note(req, response)
 
 
 def _log_explain_or_runbook(
