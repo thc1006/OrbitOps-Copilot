@@ -302,6 +302,133 @@ def scenario_current() -> dict[str, Any]:
     }
 
 
+# --- VS-9a: /anomaly/inject -----------------------------------------------
+# Runtime-mutates the loaded scenario's `events` list so the UI can surface
+# anomalies on demand (no scenario-edit + reload cycle). The inserted event
+# uses the contract shape from tests/contracts/scenario.schema.json so the
+# pure compute pipeline (`_compute._is_active`, `_compute.active_anomaly_types`)
+# treats it identically to scenario-baked events. Persists for the lifetime
+# of the loaded scenario; resets on /scenario/load.
+#
+# Defaults make the UI button trivial:
+#   - duration_seconds: 60 (long enough to be visible across multiple ticks)
+#   - target: first beam in scenario.beams (or first gateway for gateway_outage)
+
+_INJECT_VALID_TYPES = frozenset(
+    ("snr_drop", "handover_failure", "doppler_spike", "gateway_outage", "packet_loss_spike")
+)
+_GATEWAY_TARGETED_TYPES = frozenset(("gateway_outage",))
+
+
+def _default_inject_target(scenario: dict[str, Any], anomaly_type: str) -> str | None:
+    if anomaly_type in _GATEWAY_TARGETED_TYPES:
+        gateways = _compute.gateway_ids(scenario)
+        return gateways[0] if gateways else None
+    beams = scenario.get("beams", [])
+    return beams[0]["beam_id"] if beams else None
+
+
+def _valid_targets(scenario: dict[str, Any]) -> set[str]:
+    beam_ids = {b["beam_id"] for b in scenario.get("beams", [])}
+    return beam_ids | set(_compute.gateway_ids(scenario))
+
+
+@app.post("/anomaly/inject")
+async def anomaly_inject(request: Request) -> dict[str, Any]:
+    if _state["scenario"] is None:
+        raise HTTPException(status_code=409, detail={"error": "no scenario loaded"})
+
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail={"error": "body is not valid JSON"})
+    if not isinstance(body, dict):
+        raise HTTPException(
+            status_code=400, detail={"error": "body must be a JSON object"}
+        )
+
+    anomaly_type = body.get("type")
+    if anomaly_type not in _INJECT_VALID_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": f"'type' must be one of {sorted(_INJECT_VALID_TYPES)}",
+                "got": anomaly_type,
+            },
+        )
+
+    duration = body.get("duration_seconds", 60)
+    try:
+        duration = float(duration)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "'duration_seconds' must be a number"},
+        )
+    if duration <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "'duration_seconds' must be > 0"},
+        )
+
+    async with _state_lock:
+        scenario = _state["scenario"]
+        target = body.get("target") or _default_inject_target(scenario, anomaly_type)
+        if target is None:
+            raise HTTPException(
+                status_code=400,
+                detail={"error": "scenario has no beams/gateways to target"},
+            )
+        if target not in _valid_targets(scenario):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "'target' is not a known beam_id or gateway_id",
+                    "got": target,
+                    "known": sorted(_valid_targets(scenario)),
+                },
+            )
+
+        t_start = int(_state["t"])
+        event: dict[str, Any] = {
+            "t_offset_seconds": t_start,
+            "type": anomaly_type,
+            "target": target,
+            "duration_seconds": duration,
+        }
+        # Optional magnitudes — pass through if supplied so SNR/Doppler
+        # compute applies the same scaling baked-in scenarios use.
+        if "magnitude_db" in body:
+            try:
+                event["magnitude_db"] = float(body["magnitude_db"])
+            except (TypeError, ValueError):
+                raise HTTPException(
+                    status_code=400,
+                    detail={"error": "'magnitude_db' must be a number"},
+                )
+        if "magnitude_hz" in body:
+            try:
+                event["magnitude_hz"] = float(body["magnitude_hz"])
+            except (TypeError, ValueError):
+                raise HTTPException(
+                    status_code=400,
+                    detail={"error": "'magnitude_hz' must be a number"},
+                )
+
+        scenario.setdefault("events", []).append(event)
+        _refresh_metrics()
+        currently_active = _compute.active_anomaly_types(scenario, _state["t"])
+
+    return {
+        "type": anomaly_type,
+        "target": target,
+        "t_start": t_start,
+        "t_end": t_start + int(duration),
+        "duration_seconds": duration,
+        "currently_active": currently_active,
+    }
+
+
 @app.get("/metrics")
 def metrics() -> Response:
     return Response(content=generate_latest(_REGISTRY), media_type=CONTENT_TYPE_LATEST)
