@@ -224,3 +224,185 @@ def test_current_after_load_returns_scenario_id_and_t(client: TestClient) -> Non
     assert body["scenario_id"] == "beam-degradation-001"
     assert body["t"] == 30
     assert body["scenario"]["scenario_id"] == "beam-degradation-001"
+
+
+# --- VS-9a: /anomaly/inject ----------------------------------------
+# Per docs/specs/SPEC-002-ntn-metrics-emulator.md §Sprint-2, the UI needs
+# a runtime way to surface an anomaly without editing the scenario JSON
+# and reloading. The endpoint mutates `scenario["events"]` in-memory:
+# - 200 → adds an event with t_offset_seconds = current t, returns the
+#         active-anomaly types snapshot (so UI can render immediately).
+# - 400 → invalid type / target / duration_seconds.
+# - 409 → no scenario loaded.
+# Mirrors the validation surface of /scenario/load: enum from schema,
+# duration must be > 0. target defaults to first beam (or first gateway
+# for gateway_outage) when not supplied — keeps the UI button trivial.
+
+INJECT_TYPES = (
+    "snr_drop",
+    "handover_failure",
+    "doppler_spike",
+    "gateway_outage",
+    "packet_loss_spike",
+)
+
+
+def test_inject_409_when_no_scenario_loaded(client: TestClient) -> None:
+    r = client.post("/anomaly/inject", json={"type": "snr_drop"})
+    assert r.status_code == 409
+    assert "error" in r.json()
+
+
+def test_inject_returns_200_with_event_summary(client: TestClient) -> None:
+    client.post("/scenario/load", json=_load_scenario("beam-degradation"))
+    client.post("/scenario/tick", json={"seconds": 5})  # advance to t=5
+
+    r = client.post(
+        "/anomaly/inject",
+        json={"type": "snr_drop", "target": "beam-2", "duration_seconds": 30},
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["type"] == "snr_drop"
+    assert body["target"] == "beam-2"
+    assert body["t_start"] == 5
+    assert body["t_end"] == 35
+    assert body["duration_seconds"] == 30
+    # current active anomalies: snr_drop should be present immediately
+    assert "snr_drop" in body["currently_active"]
+
+
+def test_inject_400_invalid_type(client: TestClient) -> None:
+    client.post("/scenario/load", json=_load_scenario("beam-degradation"))
+    r = client.post("/anomaly/inject", json={"type": "not_a_real_anomaly"})
+    assert r.status_code == 400
+    assert "error" in r.json()
+
+
+def test_inject_400_negative_duration(client: TestClient) -> None:
+    client.post("/scenario/load", json=_load_scenario("beam-degradation"))
+    r = client.post(
+        "/anomaly/inject", json={"type": "snr_drop", "duration_seconds": -1}
+    )
+    assert r.status_code == 400
+    assert "error" in r.json()
+
+
+def test_inject_appears_in_active_anomalies_after_call(client: TestClient) -> None:
+    """Integration: post-inject, GET /scenario/current should reflect the
+    new event in active_anomalies; metrics surface should show
+    orbitops_anomaly_active for the type."""
+    client.post("/scenario/load", json=_load_scenario("beam-degradation"))
+
+    # at t=0 with no fired anomalies, beam-1's SNR is the baseline (no drop)
+    snr_baseline = _read_metric(client, "orbitops_beam_snr_db", {"beam_id": "beam-1"})
+
+    # inject snr_drop on beam-1 with magnitude 5dB
+    r = client.post(
+        "/anomaly/inject",
+        json={
+            "type": "snr_drop",
+            "target": "beam-1",
+            "duration_seconds": 60,
+            "magnitude_db": 5.0,
+        },
+    )
+    assert r.status_code == 200
+
+    # tick by 0 (no time advance) but a refresh should re-read events;
+    # ticking by 1 makes the assertion concrete.
+    client.post("/scenario/tick", json={"seconds": 1})
+
+    snr_after = _read_metric(client, "orbitops_beam_snr_db", {"beam_id": "beam-1"})
+    assert snr_after < snr_baseline - 3.0, (
+        f"expected SNR drop after inject; baseline={snr_baseline}, after={snr_after}"
+    )
+
+
+def test_inject_default_target_picks_first_beam(client: TestClient) -> None:
+    """target is optional. If not supplied, default = first beam in scenario
+    (for beam-targeted types) or first gateway (for gateway_outage)."""
+    client.post("/scenario/load", json=_load_scenario("beam-degradation"))
+    r = client.post("/anomaly/inject", json={"type": "snr_drop"})
+    assert r.status_code == 200, r.text
+    assert r.json()["target"] == "beam-1"
+
+
+def test_inject_default_target_picks_first_gateway_for_gateway_outage(
+    client: TestClient,
+) -> None:
+    client.post("/scenario/load", json=_load_scenario("gateway-fallback"))
+    r = client.post("/anomaly/inject", json={"type": "gateway_outage"})
+    assert r.status_code == 200, r.text
+    # Tightened from `startswith("gateway-")` per /review B3 — assert the
+    # exact first-gateway in `gateway-fallback.json` rather than any
+    # gateway-shaped string. Locks in the deterministic default.
+    assert r.json()["target"] == "gateway-pod-1"
+
+
+def test_inject_400_unknown_target(client: TestClient) -> None:
+    client.post("/scenario/load", json=_load_scenario("beam-degradation"))
+    r = client.post(
+        "/anomaly/inject", json={"type": "snr_drop", "target": "beam-999"}
+    )
+    assert r.status_code == 400
+    assert "error" in r.json()
+
+
+def test_inject_same_type_twice_appends_two_events(client: TestClient) -> None:
+    """Per /review B5 — locks in the *deliberately non-idempotent* behavior:
+    two injects of the same type/target append two distinct events. The
+    compute pipeline handles overlapping events (active_anomaly_types
+    de-dupes by type), so functionally this is a feature — multiple
+    injects extend visibility — not a bug. Documented here so a future
+    refactor toward "merge same-type injects" doesn't silently flip the
+    semantics."""
+    client.post("/scenario/load", json=_load_scenario("beam-degradation"))
+
+    r1 = client.post(
+        "/anomaly/inject",
+        json={"type": "snr_drop", "target": "beam-1", "duration_seconds": 30},
+    )
+    r2 = client.post(
+        "/anomaly/inject",
+        json={"type": "snr_drop", "target": "beam-1", "duration_seconds": 30},
+    )
+    assert r1.status_code == 200 and r2.status_code == 200
+
+    # Pull the live state via /scenario/current; count events of this type.
+    body = client.get("/scenario/current").json()
+    matching = [
+        ev
+        for ev in body["scenario"].get("events", [])
+        if ev["type"] == "snr_drop" and ev["target"] == "beam-1"
+    ]
+    # 1 from beam-degradation.json baseline + 2 from injects = 3
+    assert len(matching) == 3, (
+        f"expected 3 snr_drop@beam-1 events (1 baseline + 2 injects); got {len(matching)}"
+    )
+    # active_anomaly_types de-dupes by type — even with 2 same-type events,
+    # currently_active surfaces snr_drop exactly once. The previous form
+    # `<= 1` was tautological because `active_anomaly_types` returns a
+    # sorted set; tightened per round-3 /review (C1) to `== 1` so the
+    # assertion verifies BOTH presence AND uniqueness.
+    assert r2.json()["currently_active"].count("snr_drop") == 1
+
+
+def test_inject_t_end_preserves_fractional_duration(client: TestClient) -> None:
+    """Per /review B2 — `t_end` in the response must equal `t_start +
+    duration_seconds` exactly (float-preserving), not int-truncated. A
+    bug where `t_end = t_start + int(duration)` discards fractional
+    durations like 30.5s, making the response inconsistent with the
+    stored event."""
+    client.post("/scenario/load", json=_load_scenario("beam-degradation"))
+    r = client.post(
+        "/anomaly/inject", json={"type": "snr_drop", "duration_seconds": 30.5}
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    # Stored event keeps 30.5; response t_end must reflect that exactly.
+    assert body["duration_seconds"] == 30.5
+    assert body["t_end"] == body["t_start"] + 30.5, (
+        f"t_end must be t_start + 30.5 (got t_start={body['t_start']}, "
+        f"t_end={body['t_end']}); int-truncation bug regressed"
+    )
