@@ -54,6 +54,12 @@ export interface BeamView {
   packet_loss_ratio: number;
   doppler_residual_hz: number;
   handover_state: 0 | 1 | 2;
+  // Per-beam elevation in degrees (0..90); sourced from orbitops_beam_elevation_deg.
+  // Sin-shaped over scenario.duration_seconds with peak from
+  // scenario.satellite.pass_peak_elevation_deg (default 55°). Producer clamps
+  // to [0, 90] regardless of input. Added in PR #34 (G7) — UI surface
+  // landed in PR-Phase-H.1.1.
+  elevation_deg: number;
   health: BeamHealth;
 }
 

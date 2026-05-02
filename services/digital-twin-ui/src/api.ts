@@ -207,7 +207,7 @@ export function parsePromText(text: string): PromSample[] {
 
 const SNR_DEGRADED_THRESHOLD = 8;
 
-function computeBeams(samples: PromSample[]): BeamView[] {
+export function computeBeams(samples: PromSample[]): BeamView[] {
   const byBeam = new Map<string, Partial<BeamView>>();
   const get = (id: string) => {
     let b = byBeam.get(id);
@@ -220,6 +220,7 @@ function computeBeams(samples: PromSample[]): BeamView[] {
         packet_loss_ratio: NaN,
         doppler_residual_hz: NaN,
         handover_state: 0,
+        elevation_deg: NaN,
       };
       byBeam.set(id, b);
     }
@@ -247,6 +248,9 @@ function computeBeams(samples: PromSample[]): BeamView[] {
         break;
       case "orbitops_handover_state":
         get(id).handover_state = (s.value as 0 | 1 | 2) ?? 0;
+        break;
+      case "orbitops_beam_elevation_deg":
+        get(id).elevation_deg = s.value;
         break;
     }
   }

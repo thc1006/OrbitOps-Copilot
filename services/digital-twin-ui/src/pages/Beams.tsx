@@ -17,7 +17,7 @@ export default function Beams({ data }: BeamsProps) {
       <SectionHeader
         category="Workloads"
         title="Beams"
-        subtitle="Per-beam SNR / latency / packet loss / Doppler / handover state. Sourced from orbitops_beam_*  gauges in /metrics."
+        subtitle="Per-beam SNR / SINR / latency / packet loss / Doppler residual / elevation / handover state. Sourced from the 9 orbitops_* gauges in /metrics (see docs/contracts/metrics.md §3)."
       />
 
       <Paper sx={{ p: 0, overflowX: "auto" }}>
@@ -50,6 +50,7 @@ export default function Beams({ data }: BeamsProps) {
               <th>Latency</th>
               <th>Packet loss</th>
               <th>Doppler residual</th>
+              <th>Elevation</th>
               <th>Handover</th>
               <th>Status</th>
             </tr>
@@ -57,7 +58,7 @@ export default function Beams({ data }: BeamsProps) {
           <tbody>
             {beams.length === 0 && (
               <tr>
-                <td colSpan={8} style={{ textAlign: "center", padding: "48px 0", color: "#64748B" }}>
+                <td colSpan={9} style={{ textAlign: "center", padding: "48px 0", color: "#64748B" }}>
                   No beams. Load a scenario first.
                 </td>
               </tr>
@@ -83,6 +84,7 @@ export default function Beams({ data }: BeamsProps) {
                 <td><MetricNumber value={b.latency_ms} precision={1} unit="ms" /></td>
                 <td><MetricNumber value={b.packet_loss_ratio * 100} unit="%" /></td>
                 <td><MetricNumber value={b.doppler_residual_hz} precision={0} unit="Hz" /></td>
+                <td><MetricNumber value={b.elevation_deg} precision={1} unit="°" /></td>
                 <td>
                   <Typography
                     component="span"

@@ -26,6 +26,46 @@ import { monoFamily } from "../theme";
 // `vite.config.ts` aliases it. A mirror sidesteps the test-runner issue
 // without giving up drift detection.
 import PRESET_BEAM_DEGRADATION from "../scenarios/beam-degradation.json";
+import PRESET_HANDOVER_FAILURE from "../scenarios/handover-failure.json";
+import PRESET_GATEWAY_FALLBACK from "../scenarios/gateway-fallback.json";
+
+// 3 Sprint-1 preset scenarios. Custom-JSON load is VS-3 future. Adding a
+// preset here means: (a) drop the JSON into `packages/scenarios/`, (b) copy
+// to `src/scenarios/` mirror so verify.sh drift gate passes, (c) add an
+// entry below.
+type ScenarioPreset = {
+  id: string;
+  // Each scenario JSON has slightly different event shapes (snr_drop has
+  // magnitude_db; doppler_spike has magnitude_hz; etc.) — `Record<string,
+  // unknown>` matches `loadScenario`'s parameter type and lets all 3 fit.
+  // Server-side schema validation is the authoritative gate.
+  body: Record<string, unknown>;
+  label: string;
+  description: string;
+};
+const SCENARIO_PRESETS: ScenarioPreset[] = [
+  {
+    id: "beam-degradation-001",
+    body: PRESET_BEAM_DEGRADATION,
+    label: "Load beam-degradation",
+    description:
+      "3 beams (12.5 / 13.0 / 11.5 dB baseline). At t=60s, beam-1 drops 6 dB for 90 s (snr_drop). Walks AC-001.",
+  },
+  {
+    id: "handover-failure-001",
+    body: PRESET_HANDOVER_FAILURE,
+    label: "Load handover-failure",
+    description:
+      "At t=90s, beam-1 enters handover_failure for 60 s (state=2) plus a concurrent doppler_spike t=90..120. Tick to t=120 to land mid-window. Walks AC-002.",
+  },
+  {
+    id: "gateway-fallback-001",
+    body: PRESET_GATEWAY_FALLBACK,
+    label: "Load gateway-fallback",
+    description:
+      "Gateway-outage scenario. orbitops_gateway_available drops to 0 during the event window. Walks AC-002 (gateway path).",
+  },
+];
 
 interface ScenariosProps {
   refetchMetrics: () => void;
@@ -45,11 +85,11 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
     text: string;
   } | null>(null);
 
-  const handleLoad = async () => {
+  const handleLoad = async (preset: ScenarioPreset = SCENARIO_PRESETS[0]) => {
     setBusy(true);
     setFeedback(null);
     try {
-      const r = await loadScenario(PRESET_BEAM_DEGRADATION);
+      const r = await loadScenario(preset.body);
       setFeedback({
         severity: "success",
         text: `Loaded ${r.loaded}: ${r.beams} beams, ${r.gateways} gateway(s).`,
@@ -149,42 +189,55 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
       <SectionHeader
         category="Cluster"
         title="Scenarios"
-        subtitle="Load a scenario into the emulator and advance simulated time. The Sprint-1 baseline ships one preset (beam-degradation-001); custom JSON support lands in VS-3."
+        subtitle="Load a scenario into the emulator and advance simulated time. Sprint-1 ships 3 presets (beam-degradation-001 / handover-failure-001 / gateway-fallback-001); custom JSON support lands in VS-3."
       />
 
       <Stack direction={{ xs: "column", lg: "row" }} spacing={3}>
         <Paper sx={{ p: 3, flex: 1 }}>
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
-            Preset · beam-degradation-001
+            Presets — 3 Sprint-1 scenarios
           </Typography>
           <Typography variant="body2" sx={{ mb: 2 }}>
-            3 beams (12.5 / 13.0 / 11.5 dB baseline). At t=60s, beam-1 drops 6 dB
-            for 90 s (snr_drop anomaly). Use this to walk through AC-001.
+            Click a preset to POST it to <code>/scenario/load</code> on the emulator.
+            Custom-JSON load is VS-3 future work. <strong>Ready for Copilot</strong>{" "}
+            (below) is a one-click <em>load + tick to t={READY_TICK_SECONDS}s</em> for{" "}
+            <code>beam-degradation-001</code> only — designed so a fresh demo session
+            lands inside the snr_drop window before Copilot is asked anything.
           </Typography>
-          <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
-            <Button
-              variant="contained"
-              onClick={handleLoad}
-              disabled={busy}
-              startIcon={<PlayArrowRoundedIcon />}
-            >
-              Load preset
-            </Button>
-            <Button
-              variant="contained"
-              color="success"
-              onClick={handleReadyForCopilot}
-              disabled={busy}
-              startIcon={<RocketLaunchRoundedIcon />}
-            >
-              Ready for Copilot
-            </Button>
+          <Stack spacing={1.5}>
+            {SCENARIO_PRESETS.map((preset) => (
+              <Box key={preset.id}>
+                <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
+                  <Button
+                    variant="contained"
+                    onClick={() => handleLoad(preset)}
+                    disabled={busy}
+                    startIcon={<PlayArrowRoundedIcon />}
+                    sx={{ minWidth: 220 }}
+                  >
+                    {preset.label}
+                  </Button>
+                  {preset.id === "beam-degradation-001" && (
+                    <Button
+                      variant="contained"
+                      color="success"
+                      onClick={handleReadyForCopilot}
+                      disabled={busy}
+                      startIcon={<RocketLaunchRoundedIcon />}
+                    >
+                      Ready for Copilot
+                    </Button>
+                  )}
+                </Stack>
+                <Typography
+                  variant="caption"
+                  sx={{ mt: 0.5, display: "block", color: "text.secondary" }}
+                >
+                  {preset.description}
+                </Typography>
+              </Box>
+            ))}
           </Stack>
-          <Typography variant="caption" sx={{ mt: 1.5, display: "block", color: "text.secondary" }}>
-            <strong>Ready for Copilot</strong>: one-click load + tick to t={READY_TICK_SECONDS}s
-            (mid-anomaly). Use this before recording the demo so /ask never returns
-            INSUFFICIENT_EVIDENCE on the first question.
-          </Typography>
           <Box
             component="pre"
             sx={{

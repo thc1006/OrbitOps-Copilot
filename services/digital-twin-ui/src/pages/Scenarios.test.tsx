@@ -125,6 +125,52 @@ describe("Scenarios — Ready for Copilot affordance", () => {
     expect(tickSpy).not.toHaveBeenCalled();
   });
 
+  // PR #45 bot #45-3: H.1.3 added 3 presets; pin that the 2 new buttons
+  // (handover-failure + gateway-fallback) actually call loadScenario with
+  // the correct preset body. Without this, a future regression in the
+  // SCENARIO_PRESETS array (e.g. mis-mapped preset.body) would silently
+  // load the wrong scenario.
+
+  test("clicking 'Load handover-failure' calls loadScenario with that preset", async () => {
+    const loadSpy = vi.spyOn(api, "loadScenario").mockResolvedValue({
+      loaded: "handover-failure-001",
+      t: 0,
+      beams: 3,
+      gateways: 1,
+    });
+    render(wrap());
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: /load handover-failure/i }),
+    );
+
+    await waitFor(() => {
+      expect(loadSpy).toHaveBeenCalledTimes(1);
+    });
+    const passedBody = loadSpy.mock.calls[0][0] as { scenario_id?: string };
+    expect(passedBody.scenario_id).toBe("handover-failure-001");
+  });
+
+  test("clicking 'Load gateway-fallback' calls loadScenario with that preset", async () => {
+    const loadSpy = vi.spyOn(api, "loadScenario").mockResolvedValue({
+      loaded: "gateway-fallback-001",
+      t: 0,
+      beams: 3,
+      gateways: 1,
+    });
+    render(wrap());
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: /load gateway-fallback/i }),
+    );
+
+    await waitFor(() => {
+      expect(loadSpy).toHaveBeenCalledTimes(1);
+    });
+    const passedBody = loadSpy.mock.calls[0][0] as { scenario_id?: string };
+    expect(passedBody.scenario_id).toBe("gateway-fallback-001");
+  });
+
   test("on tick failure AFTER load succeeds, error mentions partial state (loaded, t=0)", async () => {
     // PR #42 review (Copilot bot, round 2): split try/catch contract.
     // If load succeeds but tick fails, the emulator is in a partial state
