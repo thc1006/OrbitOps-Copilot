@@ -98,17 +98,22 @@ done
 # services/ that is NOT a test (services/<svc>/tests/** or *.test.*) and
 # NOT a README.
 file_in_scope() {
+  # Test infrastructure inside source trees — pytest's conftest.py is the
+  # canonical example (lives next to source code but is fixture infra, not
+  # production). Identified by strict /review on PR #49.
+  case "$1" in
+    */conftest.py|conftest.py) return 1 ;;
+  esac
   case "$1" in
     services/*/tests/*) return 1 ;;
     services/*/README.md) return 1 ;;
     *.test.ts|*.test.tsx|*.spec.ts|*.spec.tsx|*_test.py) return 1 ;;
-    services/*.py|services/**/*.py)    return 0 ;;
-    services/*.ts|services/**/*.ts)    return 0 ;;
-    services/*.tsx|services/**/*.tsx)  return 0 ;;
-  esac
-  # Fallback: any services/<svc>/(src|app)/... source file.
-  case "$1" in
-    services/*/src/*|services/*/app/*) return 0 ;;
+    # bash `case` `*` matches `/`, so `services/*.py` already covers
+    # arbitrary depth (services/foo/src/bar/baz.py). One pattern per
+    # extension is sufficient — `services/**/*.py` would be redundant.
+    services/*.py)   return 0 ;;
+    services/*.ts)   return 0 ;;
+    services/*.tsx)  return 0 ;;
   esac
   return 1
 }

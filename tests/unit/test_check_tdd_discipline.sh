@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # tests/unit/test_check_tdd_discipline.sh
 #
-# Smoke test for scripts/check-tdd-discipline.sh — covers the four
+# Smoke test for scripts/check-tdd-discipline.sh — covers the six
 # behaviorally-distinct paths the script gates on:
 #   1. Branch with a `red(SPEC-NNN):` commit                 → exit 0 (blocking)
 #   2. Branch w/o red, touching services/foo/src/bar.py      → exit 1 (blocking)
 #   3. Branch w/o red, only touching docs/                   → exit 0 (blocking, out-of-scope)
 #   4. Branch w/o red, touching services/, with [skip-tdd]   → exit 0 (blocking, escape hatch)
+#   5. Advisory mode against any state                       → exit 0 always
+#   6. conftest.py-only branch (pytest infra, not prod code) → exit 0 (out-of-scope)
 #
 # Without these, a typo or regex mistake in the script could silently flip
 # the gate's polarity and either let bad PRs through or block legitimate
@@ -95,6 +97,19 @@ git add services/foo/src/v.py
 git commit -q -m "feat: no test on advisory mode"
 if run_script --mode=advisory; then report_pass "case 5: advisory mode never blocks"
 else report_fail "case 5: advisory" "advisory mode wrongly returned non-zero"; fi
+
+# ─── Case 6: conftest.py-only branch is out of scope ───
+# Strict /review on PR #49 found that `services/foo/conftest.py` (NOT
+# under tests/) was previously matching the in-scope `services/*.py`
+# pattern. conftest.py is pytest fixture infra, not production code,
+# so a branch that only touches conftest.py must NOT be blocked.
+case_n=6
+setup_repo "$case_n"
+echo "import pytest" > services/foo/conftest.py
+git add services/foo/conftest.py
+git commit -q -m "refactor: tighten pytest fixture in conftest"
+if run_script --mode=blocking; then report_pass "case 6: conftest.py-only is out of scope"
+else report_fail "case 6: conftest.py" "blocked when it shouldn't (pytest infra)"; fi
 
 cd /
 
