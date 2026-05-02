@@ -137,10 +137,19 @@ fi
 # Both `helm lint` and `helm template` are blocking when helm is on PATH.
 if [ -d deploy/helm/orbitops-copilot ]; then
   if command -v helm >/dev/null 2>&1; then
-    info "5b/5 helm chart validation (lint + template)"
+    info "5b/5 helm chart validation (lint + template + ADR-009 service-name contract)"
     helm lint deploy/helm/orbitops-copilot >/dev/null
     helm template verify-render deploy/helm/orbitops-copilot >/dev/null
-    ok "helm chart lint + template pass"
+    # ADR-009 service-name contract — asserts Helm-rendered Service names
+    # exactly match Kustomize Service names. A regression (re-adding the
+    # release-fullname-prefix on Service kinds) renders/lints/installs fine
+    # but silently breaks Prom scrape because ConfigMaps hard-code bare DNS.
+    if command -v python3 >/dev/null 2>&1 && python3 -c "import yaml" >/dev/null 2>&1; then
+      python3 scripts/check-helm-service-names.py
+    else
+      warn "python3 + pyyaml required for ADR-009 service-name contract — skipping"
+    fi
+    ok "helm chart lint + template + ADR-009 contract pass"
   else
     warn "helm not installed; skipping locally — CI installs it and will run this gate"
   fi

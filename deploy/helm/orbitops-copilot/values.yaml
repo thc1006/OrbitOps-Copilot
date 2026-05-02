@@ -51,14 +51,11 @@ copilot:
     provider: mock
     openaiBaseUrl: ""
     openaiModel: ""
-  # PR #47 review #47-3: this URL must match the rendered Service DNS.
-  # Default = bare `ntn-metrics-emulator` which only resolves correctly
-  # when the chart's emulator Service ALSO ends up at that name (i.e.
-  # the Kustomize-style fixed naming, not the Helm release-prefixed
-  # convention). For a stock Helm install with `orbitops.fullname`
-  # prefix in effect, override this to the rendered name (Sprint-2 ADR
-  # will resolve the architectural choice — either drop the prefix
-  # for these Services, or template the ConfigMaps so URLs match).
+  # ADR-009: chart Service names mirror the Kustomize bare names, so this
+  # default URL resolves correctly out of box. Bare hostname uses kubernetes'
+  # DNS search-domain expansion to resolve `ntn-metrics-emulator` → the
+  # Service in the same namespace, regardless of which namespace the chart
+  # is installed into.
   emulatorMetricsUrl: "http://ntn-metrics-emulator:8000/metrics"
   corsAllowedOrigins: "http://localhost:5173,http://localhost:30073,http://31.41.34.19:30073"
 

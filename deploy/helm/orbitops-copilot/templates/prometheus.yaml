@@ -57,7 +57,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "orbitops.fullname" . }}-prometheus
+  # ADR-009: bare Service name so Grafana's checked-in datasource ConfigMap
+  # (`http://prometheus.orbitops.svc.cluster.local:9090`) resolves correctly.
+  name: prometheus
   labels:
     {{- include "orbitops.labels" . | nindent 4 }}
 spec:
