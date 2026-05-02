@@ -6,7 +6,7 @@
 |---|---|---|
 | 1 | **OrbitOps Copilot** | Tagline: "A cloud-native operations digital twin for B5G LEO ground stations." Visual: Mermaid simplified arch. |
 | 2 | **The Gap** | TASA B5G LEO 1A (CesiumAstro Vireo Ka, ~2027) and 1B (YTTEK SDR, ~2030) — payloads contracted; **ground-station operations toolchain remains public whitespace**. Cite: TASA mission page; Via Satellite 2025-04-01; YTTEK 2026-01-16 announcement. |
-| 3 | **What it is** | Cloud-native sandbox + evidence-grounded LLM copilot. Inputs: satellite pass / beam / handover / Doppler / SNR / pod_health. Outputs: anomaly explanation + 5-step runbook. |
+| 3 | **What it is** | Cloud-native sandbox + evidence-grounded LLM copilot. Inputs: 9 `orbitops_*` gauges (per-beam SNR / SINR / link latency / packet loss / Doppler residual / elevation / handover state, plus per-gateway availability and per-type anomaly-active). Outputs: structured anomaly explanation (`summary` + `likely_cause` + 3–4 `recommended_actions` + `risk_if_ignored`) per ADR-007 v2 schema. |
 | 4 | **Use Case 1 — Beam Quality Copilot** | screenshot of UI; user asks "which beam is degrading?"; copilot replies citing `orbitops_beam_snr_db{beam_id="beam-1"}` (v2 metric name). |
 | 5 | **Use Case 2 — Handover / Fallback Runbook** | screenshot; runbook with structured `summary` + `likely_cause` + 3–4 `recommended_actions` + `risk_if_ignored` (v2 schema, ADR-007); driven by `orbitops_handover_state` and `orbitops_gateway_available`. |
 | 6 | **Standards anchoring** | 3GPP Rel-19 frozen 2025-12 (regenerative payload, ISL, Store-and-Forward, IoT-NTN Phase 3, RedCap-NTN). Rel-20 freeze 2026-09 (Ku-band NR-NTN, GNSS-resilience). AI-RAN Alliance MWC 2026: "Platform & Infrastructure Orchestration" blueprint. |

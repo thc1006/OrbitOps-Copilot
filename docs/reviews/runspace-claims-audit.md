@@ -80,7 +80,7 @@ This is process; not auto-fixed in this branch.
 
 ## Internal claims — drift findings (8)
 
-| # | Source | Claim | Reality (post-PR-#34/#130) | Verdict | Action |
+| # | Source | Claim | Reality (post-PR-#34..#38, ADR-007) | Verdict | Action |
 |---|---|---|---|---|---|
 | R1 | 06.P4 | UC1 cites `orbitops_snr_db{beam_id="beam-1"}` | v1 name; canonical is `orbitops_beam_snr_db` (per ADR-007 v1→v2 schema migration; `metrics.md §7` migration table row 1) | **DRIFTED** | Renamed to v2 in this PR |
 | R2 | 06.P5 | UC2 mentions "mock pod health drop" | `orbitops_pod_health` was removed in ADR-007 v1→v2 migration (`metrics.md §7`); replaced by `orbitops_gateway_available` for gateway-fallback flow | **DRIFTED** | Reframed to `orbitops_handover_state` + `orbitops_gateway_available` |
@@ -129,3 +129,16 @@ Combined with the original 2026-04-30 audit (75 claims sampled, 0 over-claim at 
 1. `make audit-claims` script that greps for v1 metric names + ADR-superseded vocabulary across `docs/**/*.md`. Add as VS-9 in backlog.
 2. Whenever `docs/contracts/metrics.md` migration table grows, this audit re-runs as part of the PR.
 3. Whenever ADR-007-style schema changes ship, `docs/06–08` runbook framing must be re-checked for "5-step" language or evidence-block key drift.
+
+## Deferred nits from PR #39 + #42 bot review (post-2026-05-02)
+
+The following 4 review-comment nits are deliberately deferred (backlog candidate VS-10):
+
+| ID | Where | Nit | Why deferred |
+|---|---|---|---|
+| nit-1 | `docs/08:8` row 1:10 | label selector uses single quote `beam_id='beam-1'`; rest of repo uses double quote `beam_id="beam-1"` | Doc-only consistency; visible only in markdown source |
+| nit-2 | `docs/reviews/runspace-claims-audit.md:89` R5 | reality cell uses shorthand `gateway_available + anomaly_active` (this audit doc itself uses shorthand) | Doc-internal style; canonical names appear elsewhere |
+| nit-3 | `services/digital-twin-ui/src/pages/Scenarios.test.tsx:47` | `expect(btn).toBeTruthy()` after `getByRole(...)` is redundant (getByRole throws on missing) | Test style; behavior unchanged |
+| nit-4 | `services/digital-twin-ui/src/pages/Scenarios.test.tsx:152` | `alert.className.match(/Warning/)` is brittle to MUI version bumps | Test style; better assertion exists but requires test refactor |
+
+Picked up in a single Sprint-2 sweep PR alongside VS-9 (`make audit-claims`).
