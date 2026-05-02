@@ -56,23 +56,26 @@ Pytest patterns:
 - `it.todo(...)` / `test.todo(...)` for vitest equivalents.
 - Tests must NOT silently pass when the feature isn't done.
 
-## 4. Python services (Pydantic v2 / FastAPI / pytest)
+## 4. Python services (FastAPI / Pydantic v2 / pytest)
 
 - `from __future__ import annotations` at top of every file
 - Public functions have type hints
-- HTTP error responses use `c.JSON(status, gin.H{...})`-style structure: `{"status":"fail","error": msg}` — never raw `err.Error()` text
+- HTTP errors raised as `fastapi.HTTPException(status_code=…, detail={"error": "...", "message": "...", "path": [...]})`. Per-app exception handlers (e.g. `services/ntn-metrics-emulator/src/ntn_metrics_emulator/main.py:_http_exception_handler`) flatten that into `{"error": "..."}` on the wire. Never `raise Exception(...)` directly to clients; never let `str(exc)` leak.
 - `logging.getLogger(__name__)` — never `print()`
-- Tests are colocated with the module (`foo.py` next to `foo_test.py`)
-- Table-driven test pattern preferred
+- Tests live under `services/<service>/tests/test_*.py` (per-service test dir, NOT colocated). Pytest discovers them via per-service `pyproject.toml`.
+- Table-driven / parametrized test pattern preferred (`@pytest.mark.parametrize`).
+- TDD red phase uses `@pytest.mark.xfail(strict=True, reason="...sprint task ref...")` so an accidental pass surfaces. Real "skip" is rare; xfail is the default.
 
 ## 5. TypeScript / React UI (digital-twin-ui)
 
-- React 19 + MUI 6 + react-router 6
-- **No `any`** — use `unknown` + type guards or define real interfaces. Errors typed as `ApiError`
-- All `console.error` must funnel through `src/utils/logger.ts`
-- Functional components + hooks only (exception: `ErrorBoundary` is a class)
-- `import { type Foo } from '...'` (explicit `type` for type-only imports)
-- API calls use `fetch` wrapped in `src/api.ts`; component bodies don't reach for `globalThis.fetch` directly
+- React **18.3** + MUI **6** + react-router **6** (React 19 is a Sprint-3 / VS-13 target per SPEC-004 §3 + `services/digital-twin-ui/README.md`; pinned to 18 today for stability with the CesiumJS migration).
+- Vite 7 + TypeScript 5.9 (per `services/digital-twin-ui/package.json`).
+- **No `any`** — use `unknown` + type guards or define real interfaces.
+- API errors handled via the `buildErrorResponse(unknownsLine, errorLabel)` helper in `src/api.ts`, which produces a `CopilotResponse` with `status: "ERROR"` + populated `unknowns[]`. There is no separate `ApiError` type — error info rides on the same response shape so callers don't have to branch.
+- `console.error` is currently allowed only in `src/components/ErrorBoundary.tsx` (the React error-boundary fallback). Anywhere else, prefer surfacing through the response shape or component state. (A formal `src/utils/logger.ts` is on the Sprint-2 backlog; until then, the ErrorBoundary call stays.)
+- Functional components + hooks only (exception: `ErrorBoundary` IS a class — required by React's `componentDidCatch` API).
+- `import { type Foo } from '...'` (explicit `type` for type-only imports — ESLint config TBD; convention enforced manually for now).
+- All API calls go through `src/api.ts` (typed `loadScenario`, `tickScenario`, `askCopilot`, `fetchMetricsSnapshot`); component bodies never reach for `globalThis.fetch` directly.
 
 ## 6. K8s deploy + observability
 
