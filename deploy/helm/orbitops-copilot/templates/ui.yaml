@@ -36,7 +36,8 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "orbitops.fullname" . }}-ui
+  # ADR-009: bare Service name mirrors Kustomize / compose contract.
+  name: digital-twin-ui
   labels:
     {{- include "orbitops.labels" . | nindent 4 }}
 spec:

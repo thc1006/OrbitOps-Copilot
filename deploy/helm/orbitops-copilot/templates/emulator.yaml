@@ -53,7 +53,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "orbitops.fullname" . }}-emulator
+  # ADR-009: Service `metadata.name` mirrors the Kustomize bare name so the
+  # Prometheus scrape targets in `deploy/k8s/base/prometheus-configmap.yaml`
+  # (and the bare-hostname env vars on copilot) resolve identically across
+  # compose / Kustomize / Helm. Deployment name keeps its release-prefix.
+  name: ntn-metrics-emulator
   labels:
     {{- include "orbitops.labels" . | nindent 4 }}
 spec:

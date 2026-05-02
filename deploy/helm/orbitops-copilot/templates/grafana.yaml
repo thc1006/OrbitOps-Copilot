@@ -73,7 +73,8 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "orbitops.fullname" . }}-grafana
+  # ADR-009: bare Service name mirrors Kustomize / compose contract.
+  name: grafana
   labels:
     {{- include "orbitops.labels" . | nindent 4 }}
 spec:
