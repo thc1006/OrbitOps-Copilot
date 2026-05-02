@@ -20,7 +20,7 @@ See `docs/00_research_2026_04.md` for full sources.
 
 | Layer | State |
 |---|---|
-| 4 services | `scenario-generator`, `ntn-metrics-emulator`, `copilot-api`, `digital-twin-ui` — all running |
+| Services | 3 long-running deployed in kubeadm: `ntn-metrics-emulator`, `copilot-api`, `digital-twin-ui` (all `Running`). `scenario-generator` is a Python CLI / lib used by emulator + tests, not a long-running service. |
 | Backend metrics | 9 `orbitops_*` Prometheus gauges (per `docs/contracts/metrics.md`); copilot-api also exposes `/metrics` (G6 RED metrics) |
 | Copilot anomaly classifications | 4 types (snr_drop, handover_failure, gateway_outage, doppler_compensation_warning); `FakeLLMProvider` returns evidence-grounded `summary` + `likely_cause` + 3–4 `recommended_actions` + `risk_if_ignored` per ADR-007 v2 schema |
 | Live cluster | kubeadm `cloudnative-dev-telco`; 5 pods Running; Prometheus scrapes both services; Grafana 8-panel dashboard (incl. beam elevation, panel id=8) |

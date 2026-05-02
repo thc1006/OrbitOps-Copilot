@@ -8,7 +8,9 @@
 
 ## Snapshot — current `main` state
 
-### Services (all 4 live in kubeadm `cloudnative-dev-telco`)
+### Services in kubeadm `cloudnative-dev-telco` (3 application + 2 observability)
+
+> `scenario-generator` is a Python CLI / lib (used by emulator + tests + golden-replay scripts), not a long-running deployment. Sprint-1 has 3 long-running app services + Prometheus + Grafana.
 
 | Service | Image | Endpoint | Sprint-1 deliverables |
 |---|---|---|---|
