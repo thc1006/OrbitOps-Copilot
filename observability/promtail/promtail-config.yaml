@@ -1,0 +1,43 @@
+# Promtail config — Sprint-2 VS-10b.1.
+#
+# Tails every Docker container's stdout via the json-file logging driver
+# (compose default). Labels each line with `service=<compose_container_name>`
+# so LogQL queries like `{service=~"orbitops-.*"}` pick up emulator +
+# copilot output and drop unrelated containers.
+#
+# Mounting (see docker-compose.yml promtail service):
+#   /var/lib/docker/containers : path that holds <container_id>-json.log
+#   /var/run/docker.sock       : read container metadata (NAME label)
+#
+# This is read-only access to the docker socket. For non-local deployment,
+# replace with the docker-driver Loki plugin or use Loki's HTTP push API
+# directly from each service.
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      # Service label = container_name (compose sets this from the
+      # `container_name:` directive). Pattern match drops the leading
+      # slash that docker reports.
+      - source_labels: ["__meta_docker_container_name"]
+        regex: "/(.*)"
+        target_label: service
+      # Drop noise: only forward containers whose name starts with
+      # `orbitops-` so prometheus/grafana/loki/promtail logs themselves
+      # don't get re-ingested in a loop.
+      - source_labels: ["__meta_docker_container_name"]
+        regex: "/orbitops-.*"
+        action: keep
