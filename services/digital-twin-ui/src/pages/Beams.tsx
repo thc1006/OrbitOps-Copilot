@@ -3,6 +3,8 @@ import { Box, Paper, Typography } from "@mui/material";
 import SectionHeader from "../components/SectionHeader";
 import StatusChip from "../components/StatusChip";
 import MetricNumber from "../components/MetricNumber";
+import BeamSnrChart from "../components/BeamSnrChart";
+import { useMetricsHistory } from "../hooks/useMetricsHistory";
 import { monoFamily } from "../theme";
 import type { MetricsSnapshot } from "../types";
 
@@ -12,6 +14,11 @@ interface BeamsProps {
 
 export default function Beams({ data }: BeamsProps) {
   const beams = data?.beams ?? [];
+  // VS-9b.2: accumulate snapshots into a 60-entry sliding window
+  // (5-minute trail at 5 s scrape cadence) so the LineChart has data to
+  // draw against. Hook is pure — passes through `data` from useMetricsPoll.
+  const history = useMetricsHistory(data);
+
   return (
     <Box>
       <SectionHeader
@@ -19,6 +26,16 @@ export default function Beams({ data }: BeamsProps) {
         title="Beams"
         subtitle="Per-beam SNR / SINR / latency / packet loss / Doppler residual / elevation / handover state. Sourced from the 9 orbitops_* gauges in /metrics (see docs/contracts/metrics.md §3)."
       />
+
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography
+          variant="overline"
+          sx={{ color: "text.secondary", display: "block", mb: 1 }}
+        >
+          SNR (dB) — last {history.length} sample(s)
+        </Typography>
+        <BeamSnrChart history={history} />
+      </Paper>
 
       <Paper sx={{ p: 0, overflowX: "auto" }}>
         <Box
