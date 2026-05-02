@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import FastForwardRoundedIcon from "@mui/icons-material/FastForwardRounded";
+import RocketLaunchRoundedIcon from "@mui/icons-material/RocketLaunchRounded";
 
 import SectionHeader from "../components/SectionHeader";
 import { loadScenario, tickScenario } from "../api";
@@ -72,6 +73,34 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
     }
   };
 
+  // VS-8 full — one-click `Ready for Copilot`: load + tick into the
+  // anomaly window so a fresh evaluator session never hits the
+  // INSUFFICIENT_EVIDENCE state on /ask. 90 s lands inside
+  // `beam-degradation-001`'s snr_drop event (t=60..150).
+  // PR #41 documents the manual 4-step equivalent in
+  // docs/08_demo_script_3min.md "Demo execution checklist".
+  const READY_TICK_SECONDS = 90;
+  const handleReadyForCopilot = async () => {
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const loaded = await loadScenario(PRESET_BEAM_DEGRADATION);
+      const ticked = await tickScenario(READY_TICK_SECONDS);
+      setFeedback({
+        severity: ticked.active_anomalies.length ? "success" : "info",
+        text:
+          `Ready for Copilot · ${loaded.loaded} loaded, ` +
+          `t = ${ticked.t}s · active: ${ticked.active_anomalies.join(", ") || "(none)"} · ` +
+          `Open the Copilot tab and ask "Which beam is degrading and why?"`,
+      });
+      refetchMetrics();
+    } catch (e) {
+      setFeedback({ severity: "error", text: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Box>
       <SectionHeader
@@ -89,7 +118,7 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
             3 beams (12.5 / 13.0 / 11.5 dB baseline). At t=60s, beam-1 drops 6 dB
             for 90 s (snr_drop anomaly). Use this to walk through AC-001.
           </Typography>
-          <Stack direction="row" spacing={1.5}>
+          <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
             <Button
               variant="contained"
               onClick={handleLoad}
@@ -98,7 +127,21 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
             >
               Load preset
             </Button>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={handleReadyForCopilot}
+              disabled={busy}
+              startIcon={<RocketLaunchRoundedIcon />}
+            >
+              Ready for Copilot
+            </Button>
           </Stack>
+          <Typography variant="caption" sx={{ mt: 1.5, display: "block", color: "text.secondary" }}>
+            <strong>Ready for Copilot</strong>: one-click load + tick to t={READY_TICK_SECONDS}s
+            (mid-anomaly). Use this before recording the demo so /ask never returns
+            INSUFFICIENT_EVIDENCE on the first question.
+          </Typography>
           <Box
             component="pre"
             sx={{
