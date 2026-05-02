@@ -37,8 +37,13 @@ schema_config:
         prefix: index_
         period: 24h
 
-# 24h retention matches Prometheus's tsdb.retention.time.
-# Local-demo only — production would set ~7d minimum.
+# Retention NB (round-2 /review C4): `retention_period` only marks chunks
+# eligible for deletion; it doesn't actually delete them. Real cleanup
+# requires a `compactor` block (intentionally omitted here — local demo
+# accumulates ~1.4 MB/day so disk is fine inside a 7-day RunSpace
+# window). Production would add `compactor` + `retention_enabled: true`
+# alongside this setting. Comment used to claim "matches Prom retention"
+# which is misleading without a compactor.
 limits_config:
   retention_period: 24h
   # Bound a runaway client; the OrbitOps services emit ~7200 lines/day

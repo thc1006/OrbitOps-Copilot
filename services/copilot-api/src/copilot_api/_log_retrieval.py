@@ -20,10 +20,17 @@ epoch (Loki's wire format). Configurable via the `since_seconds`
 parameter so callers can match the time_window_seconds the user passed
 on /ask.
 
-Errors: httpx.HTTPStatusError bubbles up. The caller (ask handler) is
-expected to wrap and degrade to evidence-empty + a "logs unavailable"
-note rather than 5xx-ing — same contract as the existing MetricsScraper
-failure handling in /ask.
+Errors (round-2 /review A8 clarification):
+  - httpx.HTTPStatusError on any non-2xx (4xx + 5xx)
+  - httpx.ConnectError / httpx.TimeoutException on transport failure
+  - json.JSONDecodeError on a 200-with-non-JSON-body response (proxy
+    error pages between scraper and Loki)
+  - Malformed individual value-pairs are silently skipped (see
+    `_parse_loki_response`); they do NOT abort the entire query.
+The caller (ask handler) should wrap with broad `except Exception` and
+degrade to evidence-empty + a "logs unavailable" note rather than 5xx-
+ing — same contract as the existing MetricsScraper failure handling
+in /ask.
 """
 
 from __future__ import annotations
@@ -107,14 +114,27 @@ def _parse_loki_response(body: dict) -> list[LogCitation]:
       ]}}
 
     Flatten to a chronologically-sorted list[LogCitation].
+
+    Defensive (round-2 /review A7): skip malformed value-pairs rather
+    than letting one bad entry abort the whole query. Loki itself is
+    reliable, but a proxy/CDN between scraper and Loki could mangle
+    one row. One corrupt entry must not wipe N-1 good entries from
+    evidence.logs_used.
     """
     out: list[LogCitation] = []
     for stream in body.get("data", {}).get("result", []):
         labels = stream.get("stream", {})
         source = labels.get("service", "?")
-        for ts_ns, line in stream.get("values", []):
-            ts = datetime.fromtimestamp(int(ts_ns) / 1e9, tz=timezone.utc)
-            out.append(LogCitation(source=source, line=line, timestamp=ts))
+        for entry in stream.get("values", []):
+            try:
+                ts_ns, line = entry  # 2-tuple unpack; TypeError if not iterable of 2
+                ts = datetime.fromtimestamp(int(ts_ns) / 1e9, tz=timezone.utc)
+                out.append(LogCitation(source=source, line=line, timestamp=ts))
+            except (TypeError, ValueError, OverflowError):
+                # Skip this row; continue with the rest. We don't log here
+                # because the logger itself ships through this same path
+                # in some demo configs — would create a noisy feedback loop.
+                continue
     out.sort(key=lambda c: c.timestamp)
     return out
 

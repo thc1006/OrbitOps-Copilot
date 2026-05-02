@@ -102,6 +102,12 @@ def test_loki_log_scraper_constructs_logql_query() -> None:
     assert end - start == 300 * 1_000_000_000, (
         f"end-start must equal 300s in nanoseconds; got {end - start}"
     )
+    # direction=forward locks chronological order (round-2 /review B5).
+    # If anyone removes this param, evidence panels would render
+    # newest-first which fights the natural reading order.
+    assert qs.get("direction") == "forward", (
+        f"direction must be 'forward'; got {qs.get('direction')!r}"
+    )
 
 
 def test_loki_log_scraper_raises_on_http_error() -> None:
