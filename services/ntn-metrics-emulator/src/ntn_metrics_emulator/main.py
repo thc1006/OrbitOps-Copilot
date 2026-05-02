@@ -423,7 +423,10 @@ async def anomaly_inject(request: Request) -> dict[str, Any]:
         "type": anomaly_type,
         "target": target,
         "t_start": t_start,
-        "t_end": t_start + int(duration),
+        # Preserve fractional duration in the response (per /review B2).
+        # `int(duration)` previously truncated 30.5s → 30s, making the
+        # response inconsistent with the stored event's duration_seconds.
+        "t_end": t_start + duration,
         "duration_seconds": duration,
         "currently_active": currently_active,
     }
