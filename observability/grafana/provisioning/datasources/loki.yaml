@@ -1,0 +1,26 @@
+# Grafana Loki datasource — Sprint-2 VS-10b.1.
+#
+# Provisions a Loki datasource pointing at the compose-network-internal
+# Loki service (http://loki:3100). Sibling of prometheus.yaml; both load
+# at Grafana startup so dashboards can mix metric + log panels without
+# manual datasource configuration.
+#
+# uid `loki` is used by future log-aware dashboard panels.
+
+apiVersion: 1
+
+datasources:
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+    jsonData:
+      # MaxLines = 1000 is Grafana's default; explicit so a dashboard
+      # contributor doesn't unknowingly hit a low limit when zooming
+      # into a noisy window.
+      maxLines: 1000
+      # 24h matches our Loki retention. Ranges beyond this period would
+      # surface "no data" — the explicit timeout flags the limit.
+      timeout: 60

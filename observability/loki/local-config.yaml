@@ -1,0 +1,50 @@
+# Loki single-binary local config — Sprint-2 VS-10b.1 demo only.
+#
+# Filesystem-backed, single-tenant, no auth. Suitable for `docker compose
+# up`; NOT for any non-local deployment. Production deployment would
+# configure object storage (S3/GCS), real auth, and proper retention
+# horizons. This file is the simplest possible config that ingests stdout
+# from the OrbitOps containers via promtail.
+#
+# Pinned to grafana/loki:3.4.0 (per docs/09 — current stable as of
+# Sprint-2 cut; docs/03 mentions 3.7.1 as a future-stable target).
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2026-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+# 24h retention matches Prometheus's tsdb.retention.time.
+# Local-demo only — production would set ~7d minimum.
+limits_config:
+  retention_period: 24h
+  # Bound a runaway client; the OrbitOps services emit ~7200 lines/day
+  # combined, so this ceiling is generous.
+  ingestion_rate_mb: 4
+  ingestion_burst_size_mb: 6
+
+ruler:
+  alertmanager_url: ""
