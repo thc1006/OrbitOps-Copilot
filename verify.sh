@@ -132,4 +132,18 @@ else
   warn "kustomize not installed; skipping locally — CI installs it and will run this gate"
 fi
 
+# ─── 5b. Helm chart validation (added per PR #47 deep /review Tier C) ───
+# Without this, future commits could break the chart and CI would stay green.
+# Both `helm lint` and `helm template` are blocking when helm is on PATH.
+if [ -d deploy/helm/orbitops-copilot ]; then
+  if command -v helm >/dev/null 2>&1; then
+    info "5b/5 helm chart validation (lint + template)"
+    helm lint deploy/helm/orbitops-copilot >/dev/null
+    helm template verify-render deploy/helm/orbitops-copilot >/dev/null
+    ok "helm chart lint + template pass"
+  else
+    warn "helm not installed; skipping locally — CI installs it and will run this gate"
+  fi
+fi
+
 info "all checks passed"

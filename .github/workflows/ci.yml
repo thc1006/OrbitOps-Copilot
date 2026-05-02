@@ -52,6 +52,12 @@ jobs:
           curl -sLo kubeconform.tar.gz https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
           tar -xzf kubeconform.tar.gz kubeconform
           sudo mv kubeconform /usr/local/bin/
+      - name: install helm
+        # PR #47 deep /review Tier C — without this, verify.sh's helm gate
+        # silently skips in CI (warn-only), and chart breakage stays invisible.
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.18.4
       - name: chmod +x scripts
         run: chmod +x verify.sh test.sh scripts/*.sh
       - name: ./verify.sh

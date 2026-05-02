@@ -46,10 +46,15 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 5
       volumes:
-        # NB: provisioning ConfigMaps + dashboard ConfigMap are NOT rendered
-        # by this chart — they come from the Kustomize overlay's
-        # configMapGenerator (sourced from observability/grafana/{provisioning,
-        # dashboards}). For Helm-only deployments, kubectl-apply them first.
+        # NB: neither ConfigMap is rendered by this chart.
+        # - `orbitops-grafana-provisioning` is checked-in
+        #   `deploy/k8s/base/grafana-configmap.yaml` (kustomize `resources:`).
+        # - `orbitops-grafana-dashboards` is the ONLY ConfigMap that's
+        #   actually `configMapGenerator`-backed (from
+        #   `observability/grafana/dashboards/*.json`).
+        # For Helm-only deployments, render the kustomize base
+        # (`kustomize build deploy/k8s/base`) and `kubectl apply -f` both
+        # ConfigMaps before `helm install`.
         - name: provisioning-datasources
           configMap:
             name: {{ .Values.grafana.configMaps.provisioning }}
