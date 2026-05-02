@@ -60,14 +60,19 @@ vi.mock("../api", async () => {
   const actual = await vi.importActual<typeof import("../api")>("../api");
   return {
     ...actual,
-    injectAnomaly: vi.fn(async () => ({
-      type: "snr_drop",
-      target: "beam-1",
-      t_start: 0,
-      t_end: 60,
-      duration_seconds: 60,
-      currently_active: ["snr_drop"],
-    })),
+    // Echo the requested type back so the per-type assertion below
+    // (`Injected handover_failure …`) exercises the input→output wiring
+    // rather than always seeing the same hardcoded type.
+    injectAnomaly: vi.fn(
+      async (input: { type: string; target?: string }) => ({
+        type: input.type,
+        target: input.target ?? "beam-1",
+        t_start: 0,
+        t_end: 60,
+        duration_seconds: 60,
+        currently_active: [input.type],
+      }),
+    ),
   };
 });
 

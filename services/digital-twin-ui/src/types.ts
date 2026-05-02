@@ -85,3 +85,31 @@ export interface PromSample {
   labels: Record<string, string>;
   value: number;
 }
+
+// Producer event types per scenario.schema.json events.type enum.
+// Mirrors the 5 valid `type` values accepted by POST /anomaly/inject.
+export type AnomalyType =
+  | "snr_drop"
+  | "handover_failure"
+  | "doppler_spike"
+  | "gateway_outage"
+  | "packet_loss_spike";
+
+// Request body for POST /anomaly/inject.
+export interface InjectAnomalyInput {
+  type: AnomalyType;
+  target?: string;
+  duration_seconds?: number;
+  magnitude_db?: number;
+  magnitude_hz?: number;
+}
+
+// Response body — mirrors the emulator's /anomaly/inject response.
+export interface InjectAnomalyResult {
+  type: string;
+  target: string;
+  t_start: number;
+  t_end: number;
+  duration_seconds: number;
+  currently_active: string[];
+}

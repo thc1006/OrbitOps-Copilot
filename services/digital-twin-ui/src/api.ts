@@ -313,3 +313,39 @@ export const env_ = {
   PROMETHEUS_BASE,
   GRAFANA_BASE,
 };
+
+// ─── /anomaly/inject (VS-9a backend wired to Anomalies-page button) ────
+
+import type { InjectAnomalyInput, InjectAnomalyResult } from "./types";
+
+/**
+ * POST /anomaly/inject — runtime-mutates the loaded scenario's events list
+ * so the Anomalies page button can surface anomalies without editing JSON.
+ *
+ * Throws Error on non-2xx so the calling component can render a banner.
+ * (Differs from askCopilot which always resolves to a CopilotResponse:
+ * Copilot needs a "show ERROR in chat" UX; inject is a one-shot action
+ * where failure should be loud.)
+ */
+export async function injectAnomaly(
+  input: InjectAnomalyInput,
+  signal?: AbortSignal,
+): Promise<InjectAnomalyResult> {
+  const r = await fetch(`${EMULATOR_BASE}/anomaly/inject`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+    signal,
+  });
+  if (!r.ok) {
+    let detail = "";
+    try {
+      const body = (await r.json()) as { error?: string };
+      detail = body.error ?? "";
+    } catch {
+      // ignore — fall back to status-only message
+    }
+    throw new Error(`/anomaly/inject HTTP ${r.status}${detail ? `: ${detail}` : ""}`);
+  }
+  return (await r.json()) as InjectAnomalyResult;
+}
