@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Draft |
+| Status | Accepted — Sprint-1 subset shipped 2026-05-02 (Prometheus 5 s scrape + Grafana 8-panel dashboard + provisioning + check-observability.sh contract gate). Sprint-2 Loki mock-logs (VS-10) + Tempo (optional) still pending. |
 | Owner | observability-engineer |
 | Sprint | 1 (VS-2) + Sprint 2 (VS-10) |
 | Depends on | SPEC-002 |
@@ -10,7 +10,7 @@
 
 ## 1. User story
 
-> 作為 ground-station operator，我想要在 Grafana 看到 beam SNR / SINR / latency / Doppler / handover state / beam elevation / pod health 一頁就懂；當 anomaly 注入後 30 秒內可見變化——**這樣我** 不必背 PromQL 就能知道 sandbox 正在發生什麼。
+> 作為 ground-station operator，我想要在 Grafana 看到 beam SNR / SINR / latency / packet loss / Doppler residual / beam elevation / handover state / gateway availability / active anomalies 一頁就懂；當 anomaly 注入後 30 秒內可見變化——**這樣我** 不必背 PromQL 就能知道 sandbox 正在發生什麼。
 
 ## 2. Problem
 
@@ -21,7 +21,7 @@ emulator 暴露 9 個 `orbitops_*` metric（`orbitops_beam_snr_db`、`orbitops_b
 - **Sprint 1（VS-2）**：Prometheus 3.11.3 scrape config + Grafana 13.0.1 dashboard JSON + provisioning。
 - **Sprint 2（VS-10）**：Loki 3.7.1 mock-logs integration + Tempo（optional）。
 - 30 秒 anomaly visibility SLA。
-- Dashboard 一頁含：pass timeline、beam SNR/SINR、latency、packet loss、Doppler residual、handover state、active anomalies、gateway availability、beam elevation（`orbitops_beam_elevation_deg`，PR #34 G7 加入；panel id=8）、pod health。`scripts/check-observability.sh` REQUIRED list 是這份 dashboard 的 contract gate — 任何新 metric 必須同時加入該 list 才會 CI-pass。
+- Dashboard 一頁含：pass timeline、beam SNR/SINR、latency、packet loss、Doppler residual、handover state、active anomalies、gateway availability、beam elevation（`orbitops_beam_elevation_deg`，PR #34 G7 加入；panel id=8）。`scripts/check-observability.sh` REQUIRED list 是這份 dashboard 的 contract gate — 任何新 metric 必須同時加入該 list 才會 CI-pass。**註**：`pod_health` 在 ADR-007 v1→v2 migration 中已移除；gateway-fallback 路徑改由 `orbitops_gateway_available` 提供。
 
 ## 4. Non-scope
 

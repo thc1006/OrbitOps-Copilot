@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Draft (Sprint 1 schema amendment 2026-04-30) |
+| Status | Accepted (Sprint 1 — substantively shipped 2026-05-02; schema v2 per ADR-007) |
 | Owner | ran-ntn-engineer |
 | Sprint | 1 (VS-1, VS-3, VS-5) |
 | Depends on | SPEC-000 |
