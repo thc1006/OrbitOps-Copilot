@@ -12,19 +12,31 @@
  * underlying SVG.
  */
 import { describe, expect, test, vi } from "vitest";
-import type { ReactNode } from "react";
+import { cloneElement, isValidElement, type ReactElement } from "react";
 import { render } from "@testing-library/react";
+
+interface ChartChildProps {
+  width?: number;
+  height?: number;
+}
 
 vi.mock("recharts", async () => {
   const actual = await vi.importActual<typeof import("recharts")>("recharts");
   return {
     ...actual,
-    // Replace ResponsiveContainer with a fixed-size div so child SVG can
-    // measure layout in jsdom. Real ResponsiveContainer relies on a
-    // ResizeObserver + getBoundingClientRect which jsdom can't provide.
-    ResponsiveContainer: ({ children }: { children: ReactNode }) => (
-      <div style={{ width: 600, height: 240 }}>{children}</div>
-    ),
+    // Replace ResponsiveContainer with a fixed-dimension shim. Real
+    // ResponsiveContainer measures its container with ResizeObserver +
+    // getBoundingClientRect (both 0 in jsdom) and clones its child with
+    // the measured width/height. We mimic the cloneElement step so the
+    // inner LineChart actually has a layout to draw against.
+    ResponsiveContainer: ({
+      children,
+    }: {
+      children: ReactElement<ChartChildProps>;
+    }) => {
+      if (!isValidElement(children)) return children;
+      return cloneElement(children, { width: 600, height: 240 });
+    },
   };
 });
 

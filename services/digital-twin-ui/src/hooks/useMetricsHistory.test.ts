@@ -80,7 +80,9 @@ describe("useMetricsHistory", () => {
     const { result, rerender } = renderHook(
       ({ latest }: { latest: MetricsSnapshot | null }) =>
         useMetricsHistory(latest),
-      { initialProps: { latest: null } },
+      // Cast widens the inferred type so subsequent rerender({ latest: s1 })
+      // type-checks against MetricsSnapshot, not just null.
+      { initialProps: { latest: null as MetricsSnapshot | null } },
     );
     expect(result.current).toEqual([]);
 
