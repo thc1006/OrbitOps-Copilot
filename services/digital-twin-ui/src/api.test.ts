@@ -168,3 +168,37 @@ describe("injectAnomaly", () => {
     expect(captured).toEqual({ type: "handover_failure" });
   });
 });
+
+// ─── VS-9b.1 self-/review Check-4: network-hang timeout ───────────────
+// If the emulator hangs (high latency / packet loss), injectAnomaly must
+// reject on a bounded timeout rather than wedge the UI's pending state
+// forever. Default 5s; overridable for tests via the options arg.
+
+describe("injectAnomaly timeout", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  test("rejects with timeout when fetch never resolves before timeoutMs", async () => {
+    // Mock that respects the AbortSignal — never resolves on its own,
+    // only rejects when the signal aborts.
+    globalThis.fetch = ((_url: string, init: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init.signal?.addEventListener("abort", () => {
+          reject(new DOMException("aborted", "AbortError"));
+        });
+      })) as typeof fetch;
+
+    const start = Date.now();
+    await expect(
+      injectAnomaly(
+        { type: "snr_drop" as AnomalyType },
+        { timeoutMs: 50 },
+      ),
+    ).rejects.toThrow(/timeout|abort/i);
+    const elapsed = Date.now() - start;
+    expect(elapsed).toBeGreaterThanOrEqual(40);
+    expect(elapsed).toBeLessThan(500);
+  });
+});
