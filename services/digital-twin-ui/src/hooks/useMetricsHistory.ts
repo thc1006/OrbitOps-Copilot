@@ -34,6 +34,14 @@ export function useMetricsHistory(
 
   useEffect(() => {
     if (!latest) return;
+    // Defensive: maxSize<=0 means "keep zero". Without this, the
+    // `next.length > maxSize ? slice(-maxSize) : next` fallback below
+    // would unbounded-grow on maxSize=0 because JS treats slice(-0) as
+    // slice(0) — returning the full array (round-2 /review F1).
+    if (maxSize <= 0) {
+      setHistory((h) => (h.length === 0 ? h : []));
+      return;
+    }
     setHistory((h) => {
       // Reference-equality dedup at the head — covers two cases:
       //   1. StrictMode dev double-mount fires this effect twice with
