@@ -137,6 +137,35 @@ jobs:
       - name: build copilot-api
         run: docker compose -f deploy/docker-compose.yml build copilot-api
 
+  tdd-discipline:
+    # Phase B (chore/tdd-discipline-blocking) — closes docs/reviews/issues.md
+    # I-3. Blocking on `pull_request` only; runs scripts/check-tdd-discipline.sh
+    # in --mode=blocking against the PR's commit range vs base branch. Fails
+    # when a PR touches services/**/*.py|.ts|.tsx without a `red(...)`-tagged
+    # commit ancestor (and without [skip-tdd] escape).
+    name: tdd discipline (red→green history)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # fetch-depth: 0 so `git log $BASE..HEAD` and `git diff $BASE..HEAD`
+          # see the full PR commit range, not just the merge commit.
+          fetch-depth: 0
+      - name: chmod +x
+        run: chmod +x scripts/check-tdd-discipline.sh tests/unit/test_check_tdd_discipline.sh
+      - name: self-test of the gate
+        # Without this, a regex regression in the gate could silently flip
+        # the gate's polarity and either let bad PRs through or block
+        # legitimate work. Self-test runs first so a broken gate fails CI
+        # before it ever touches the PR's actual history.
+        run: ./tests/unit/test_check_tdd_discipline.sh
+      - name: blocking check on PR commit range
+        env:
+          BASE: origin/${{ github.event.pull_request.base.ref }}
+          BRANCH: ${{ github.event.pull_request.head.sha }}
+        run: ./scripts/check-tdd-discipline.sh --mode=blocking
+
   ui-build:
     # Phase H Tier 3.A — without this job, regressions in the UI (TypeScript
     # errors, vitest failures, broken vite build) only surface on a developer's
