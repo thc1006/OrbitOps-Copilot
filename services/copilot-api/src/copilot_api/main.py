@@ -22,6 +22,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from . import _grounding, _retrieval
+from ._logging import logger as _log
+from ._logging import setup_logging as _setup_logging
 from ._provider import FakeLLMProvider, LLMProvider
 from .models import (
     AskRequest,
@@ -32,6 +34,10 @@ from .models import (
     MetricCitation,
     RecommendedAction,
 )
+
+# Idempotent — initialises root with the JsonFormatter on stdout. Safe
+# under repeated test imports (guarded by module-level flag).
+_setup_logging()
 
 app = FastAPI(title="copilot-api", version="0.1.0")
 
@@ -194,8 +200,37 @@ def _with_time_window_note(
     return response
 
 
+def _log_ask(req: AskRequest, resp: CopilotResponse) -> CopilotResponse:
+    """VS-10a: structured event log per /ask call.
+
+    PRIVACY CONTRACT: question TEXT is NOT logged — only its character
+    count. Prompt-injection attempts and PII in user questions must not
+    leak into stdout-tailed log streams. The `status` + evidence-counts
+    give enough audit trail for debugging.
+    """
+    _log.info(
+        "ask",
+        extra={
+            "status": resp.status,
+            "question_chars": len(req.question or ""),
+            "scenario_id": resp.evidence.scenario_id if resp.evidence else None,
+            "metrics_used": (
+                len(resp.evidence.metrics_used) if resp.evidence else 0
+            ),
+            "logs_used": (
+                len(resp.evidence.logs_used) if resp.evidence else 0
+            ),
+        },
+    )
+    return resp
+
+
 @app.post("/ask", response_model=CopilotResponse)
 def ask(req: AskRequest) -> CopilotResponse:
+    return _log_ask(req, _ask_impl(req))
+
+
+def _ask_impl(req: AskRequest) -> CopilotResponse:
     sanitized = _grounding.sanitize_text(req.question)
     if not _grounding.is_supported_question(sanitized):
         return _refused(
@@ -278,14 +313,45 @@ def ask(req: AskRequest) -> CopilotResponse:
     )
 
 
+def _log_explain_or_runbook(
+    msg: str, req: ExplainRequest, resp: CopilotResponse
+) -> CopilotResponse:
+    """VS-10a /review B: structured event log per /explain or /runbook call.
+
+    No PII sensitivity here — req.anomaly_type is a server-defined enum,
+    not user free-text. Logs anomaly_type so an operator can correlate
+    "what was asked about" with the returned status. Mirrors _log_ask's
+    response-object-only access pattern (no request body re-entry).
+    """
+    _log.info(
+        msg,
+        extra={
+            "status": resp.status,
+            "anomaly_type": req.anomaly_type,
+            "scenario_id": resp.evidence.scenario_id if resp.evidence else None,
+            "metrics_used": (
+                len(resp.evidence.metrics_used) if resp.evidence else 0
+            ),
+            "logs_used": (
+                len(resp.evidence.logs_used) if resp.evidence else 0
+            ),
+        },
+    )
+    return resp
+
+
 @app.post("/explain", response_model=CopilotResponse)
 def explain(req: ExplainRequest) -> CopilotResponse:
-    return _explain_or_runbook(req, include_actions=False)
+    return _log_explain_or_runbook(
+        "explain", req, _explain_or_runbook(req, include_actions=False)
+    )
 
 
 @app.post("/runbook", response_model=CopilotResponse)
 def runbook(req: ExplainRequest) -> CopilotResponse:
-    return _explain_or_runbook(req, include_actions=True)
+    return _log_explain_or_runbook(
+        "runbook", req, _explain_or_runbook(req, include_actions=True)
+    )
 
 
 def _explain_or_runbook(
