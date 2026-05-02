@@ -86,3 +86,85 @@ describe("computeBeams — H.1.1 elevation_deg switch case (PR #45 bot #45-5)", 
     expect(byId).toEqual({ "beam-1": 55, "beam-2": 42 });
   });
 });
+
+// ─── VS-9b.1 — injectAnomaly contract ────────────────────────────────
+// Wraps POST /anomaly/inject from PR #51. Required for the Anomalies-page
+// "Inject anomaly" button (the demo UX that lets evaluators see the
+// metric stream react to a fresh anomaly without editing scenario JSON).
+import { injectAnomaly } from "./api";
+import type { AnomalyType } from "./types";
+
+describe("injectAnomaly", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  test("posts to /anomaly/inject with the supplied body", async () => {
+    const calls: { url: string; init: RequestInit }[] = [];
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(
+        JSON.stringify({
+          type: "snr_drop",
+          target: "beam-1",
+          t_start: 0,
+          t_end: 60,
+          duration_seconds: 60,
+          currently_active: ["snr_drop"],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as typeof fetch;
+
+    const result = await injectAnomaly({
+      type: "snr_drop" as AnomalyType,
+      target: "beam-1",
+      duration_seconds: 60,
+    });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toMatch(/\/anomaly\/inject$/);
+    expect(calls[0].init.method).toBe("POST");
+    expect(JSON.parse(calls[0].init.body as string)).toEqual({
+      type: "snr_drop",
+      target: "beam-1",
+      duration_seconds: 60,
+    });
+    expect(result.type).toBe("snr_drop");
+    expect(result.currently_active).toContain("snr_drop");
+  });
+
+  test("propagates non-2xx as Error so the UI can render a banner", async () => {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ error: "no scenario loaded" }), {
+        status: 409,
+        headers: { "content-type": "application/json" },
+      })) as typeof fetch;
+
+    await expect(injectAnomaly({ type: "snr_drop" as AnomalyType })).rejects.toThrow(
+      /409|no scenario/i,
+    );
+  });
+
+  test("omits optional fields when not supplied", async () => {
+    let captured: unknown = null;
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      captured = JSON.parse(init.body as string);
+      return new Response(
+        JSON.stringify({
+          type: "handover_failure",
+          target: "beam-1",
+          t_start: 0,
+          t_end: 60,
+          duration_seconds: 60,
+          currently_active: ["handover_failure"],
+        }),
+        { status: 200 },
+      );
+    }) as typeof fetch;
+
+    await injectAnomaly({ type: "handover_failure" as AnomalyType });
+    expect(captured).toEqual({ type: "handover_failure" });
+  });
+});

@@ -51,3 +51,71 @@ describe("Anomalies — H.1.2 description coverage", () => {
     expect(screen.queryByText(/Unknown anomaly type/i)).not.toBeInTheDocument();
   });
 });
+
+// ─── VS-9b.1 — inject UI ─────────────────────────────────────────────
+import { vi } from "vitest";
+import { fireEvent, waitFor } from "@testing-library/react";
+
+vi.mock("../api", async () => {
+  const actual = await vi.importActual<typeof import("../api")>("../api");
+  return {
+    ...actual,
+    injectAnomaly: vi.fn(async () => ({
+      type: "snr_drop",
+      target: "beam-1",
+      t_start: 0,
+      t_end: 60,
+      duration_seconds: 60,
+      currently_active: ["snr_drop"],
+    })),
+  };
+});
+
+import { injectAnomaly } from "../api";
+
+describe("Anomalies — VS-9b.1 inject UI", () => {
+  test("renders 5 inject buttons (one per producer event type)", () => {
+    render(wrap(snapshotWithAnomalies([])));
+    // Producer event types per scenario.schema.json events.type enum.
+    for (const kind of [
+      "snr_drop",
+      "handover_failure",
+      "doppler_spike",
+      "gateway_outage",
+      "packet_loss_spike",
+    ]) {
+      expect(
+        screen.getByRole("button", { name: new RegExp(`inject.*${kind}`, "i") }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  test("clicking inject button calls injectAnomaly with that type", async () => {
+    const mockInject = vi.mocked(injectAnomaly);
+    mockInject.mockClear();
+    render(wrap(snapshotWithAnomalies([])));
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /inject.*snr_drop/i }),
+    );
+
+    await waitFor(() => {
+      expect(mockInject).toHaveBeenCalledTimes(1);
+    });
+    expect(mockInject).toHaveBeenCalledWith({ type: "snr_drop" });
+  });
+
+  test("inject success surfaces a confirmation banner referencing the type", async () => {
+    const mockInject = vi.mocked(injectAnomaly);
+    mockInject.mockClear();
+    render(wrap(snapshotWithAnomalies([])));
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /inject.*handover_failure/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/injected.*handover_failure/i)).toBeInTheDocument();
+    });
+  });
+});
