@@ -31,6 +31,12 @@ interface ScenariosProps {
   refetchMetrics: () => void;
 }
 
+// VS-8 full: lands inside the snr_drop window (t=60..150) of
+// beam-degradation-001 so /ask never returns INSUFFICIENT_EVIDENCE
+// on the first question after `Ready for Copilot` is clicked.
+// Module-scope so it doesn't reallocate every render.
+const READY_TICK_SECONDS = 90;
+
 export default function Scenarios({ refetchMetrics }: ScenariosProps) {
   const [busy, setBusy] = useState(false);
   const [tickSeconds, setTickSeconds] = useState(30);
@@ -75,11 +81,9 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
 
   // VS-8 full — one-click `Ready for Copilot`: load + tick into the
   // anomaly window so a fresh evaluator session never hits the
-  // INSUFFICIENT_EVIDENCE state on /ask. 90 s lands inside
-  // `beam-degradation-001`'s snr_drop event (t=60..150).
-  // PR #41 documents the manual 4-step equivalent in
-  // docs/08_demo_script_3min.md "Demo execution checklist".
-  const READY_TICK_SECONDS = 90;
+  // INSUFFICIENT_EVIDENCE state on /ask. The READY_TICK_SECONDS
+  // constant lives at module scope above; PR #41 documents the manual
+  // 4-step equivalent in docs/08_demo_script_3min.md "Demo execution checklist".
   const handleReadyForCopilot = async () => {
     setBusy(true);
     setFeedback(null);
