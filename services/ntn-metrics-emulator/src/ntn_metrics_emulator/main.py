@@ -39,6 +39,12 @@ from prometheus_client import (
 )
 
 from . import _compute
+from ._logging import logger as _log
+from ._logging import setup_logging as _setup_logging
+
+# Idempotent — guarded by module-level flag so repeated imports in tests
+# don't stack handlers. Configures root with the JsonFormatter on stdout.
+_setup_logging()
 
 app = FastAPI(title="ntn-metrics-emulator", version="0.1.0")
 
@@ -245,12 +251,22 @@ async def scenario_load(request: Request) -> dict[str, Any]:
         _state["t"] = 0
         _refresh_metrics()
 
-    return {
+    summary = {
         "loaded": body["scenario_id"],
         "t": 0,
         "beams": len(body["beams"]),
         "gateways": len(_compute.gateway_ids(body)),
     }
+    # VS-10a: structured event log. Operator-facing trace + future Loki feed.
+    _log.info(
+        "scenario.load",
+        extra={
+            "scenario_id": body["scenario_id"],
+            "beams": summary["beams"],
+            "gateways": summary["gateways"],
+        },
+    )
+    return summary
 
 
 @app.post("/scenario/tick")
@@ -287,7 +303,17 @@ async def scenario_tick(request: Request) -> dict[str, Any]:
         _refresh_metrics()
         t_now = _state["t"]
         active = _compute.active_anomaly_types(_state["scenario"], t_now)
+        scenario_id = _state["scenario"]["scenario_id"]
 
+    _log.info(
+        "scenario.tick",
+        extra={
+            "scenario_id": scenario_id,
+            "t_seconds": t_now,
+            "delta_seconds": seconds,
+            "active_anomalies": active,
+        },
+    )
     return {"t": t_now, "active_anomalies": active}
 
 
@@ -418,7 +444,18 @@ async def anomaly_inject(request: Request) -> dict[str, Any]:
         scenario.setdefault("events", []).append(event)
         _refresh_metrics()
         currently_active = _compute.active_anomaly_types(scenario, _state["t"])
+        scenario_id_now = scenario["scenario_id"]
 
+    _log.info(
+        "anomaly.inject",
+        extra={
+            "scenario_id": scenario_id_now,
+            "event_type": anomaly_type,
+            "target": target,
+            "t_start": t_start,
+            "duration_seconds": duration,
+        },
+    )
     return {
         "type": anomaly_type,
         "target": target,
