@@ -113,3 +113,112 @@ describe("Copilot — H.1.4 risk_if_ignored + evidence metadata", () => {
     expect(screen.queryByText(/Risk if ignored/i)).not.toBeInTheDocument();
   });
 });
+
+
+// ─── VS-9b.4 — MetricSparkline integration in Copilot evidence ────────
+// Mock MetricSparkline at the component boundary so this page-level
+// suite asserts WIRING (Copilot hands history + beamId + metric to the
+// sparkline) without re-validating the chart's internal Recharts
+// rendering (covered in MetricSparkline.test.tsx).
+
+vi.mock("../components/MetricSparkline", () => ({
+  default: ({
+    history,
+    beamId,
+    metric,
+  }: {
+    history: MetricsSnapshot[];
+    beamId: string;
+    metric: string;
+  }) => (
+    <div
+      data-testid={`mock-sparkline-${beamId}-${metric}`}
+      data-history-length={history.length}
+    >
+      mocked-sparkline {beamId} {metric}
+    </div>
+  ),
+}));
+
+const RESPONSE_TWO_CITATIONS: CopilotResponse = {
+  ...RESPONSE_WITH_RISK,
+  evidence: {
+    ...RESPONSE_WITH_RISK.evidence,
+    metrics_used: [
+      {
+        name: "orbitops_beam_snr_db",
+        labels: { beam_id: "beam-1" },
+        value: 6.5,
+        timestamp: "2026-05-03T01:00:00Z",
+      },
+      {
+        name: "orbitops_link_latency_ms",
+        labels: { beam_id: "beam-2" },
+        value: 42,
+        timestamp: "2026-05-03T01:00:00Z",
+      },
+    ],
+  },
+};
+
+const RESPONSE_GATEWAY_CITATION: CopilotResponse = {
+  ...RESPONSE_WITH_RISK,
+  evidence: {
+    ...RESPONSE_WITH_RISK.evidence,
+    metrics_used: [
+      {
+        name: "orbitops_gateway_available",
+        labels: { gateway_id: "gateway-pod-1" },
+        value: 0,
+        timestamp: "2026-05-03T01:00:00Z",
+      },
+    ],
+  },
+};
+
+describe("Copilot — VS-9b.4 sparkline wiring", () => {
+  test("renders one MetricSparkline per beam-keyed citation", async () => {
+    vi.spyOn(api, "askCopilot").mockResolvedValue(RESPONSE_TWO_CITATIONS);
+    render(wrap(SNAPSHOT));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /ask copilot/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("mock-sparkline-beam-1-snr_db"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("mock-sparkline-beam-2-latency_ms"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("does NOT render sparkline for gateway-keyed citations (no beam_id label)", async () => {
+    vi.spyOn(api, "askCopilot").mockResolvedValue(RESPONSE_GATEWAY_CITATION);
+    render(wrap(SNAPSHOT));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /ask copilot/i }));
+
+    // Citation text still renders (existing contract).
+    await waitFor(() => {
+      expect(screen.getByText(/orbitops_gateway_available/)).toBeInTheDocument();
+    });
+    // But no sparkline — the metric isn't beam-keyed.
+    expect(
+      screen.queryByTestId(/mock-sparkline-/),
+    ).not.toBeInTheDocument();
+  });
+
+  test("sparkline receives the same useMetricsHistory window Beams page does", async () => {
+    vi.spyOn(api, "askCopilot").mockResolvedValue(RESPONSE_WITH_RISK);
+    render(wrap(SNAPSHOT));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /ask copilot/i }));
+
+    await waitFor(() => {
+      const sl = screen.getByTestId("mock-sparkline-beam-1-snr_db");
+      // After first commit useMetricsHistory has pushed SNAPSHOT once.
+      expect(Number(sl.dataset.historyLength)).toBe(1);
+    });
+  });
+});
