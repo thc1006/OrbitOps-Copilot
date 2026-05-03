@@ -15,9 +15,25 @@ import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import AssistantRoundedIcon from "@mui/icons-material/AssistantRounded";
 
 import SectionHeader from "../components/SectionHeader";
+import MetricSparkline from "../components/MetricSparkline";
+import type { BeamMetricKey } from "../components/BeamMetricChart";
+import { useMetricsHistory } from "../hooks/useMetricsHistory";
 import { askCopilot } from "../api";
 import { monoFamily } from "../theme";
 import type { CopilotResponse, MetricsSnapshot } from "../types";
+
+// Map metric NAMES (from MetricCitation.name) to BeamView KEYS (used by
+// the sparkline). Citations come from the Prom exposition (gauge name);
+// BeamView is the parsed-into-typed-shape. Keep the mapping local so
+// adding a metric only touches one place.
+const METRIC_NAME_TO_BEAM_KEY: Record<string, BeamMetricKey> = {
+  orbitops_beam_snr_db: "snr_db",
+  orbitops_beam_sinr_db: "sinr_db",
+  orbitops_link_latency_ms: "latency_ms",
+  orbitops_packet_loss_ratio: "packet_loss_ratio",
+  orbitops_doppler_residual_hz: "doppler_residual_hz",
+  orbitops_beam_elevation_deg: "elevation_deg",
+};
 
 interface CopilotProps {
   data: MetricsSnapshot | null;
@@ -40,6 +56,11 @@ export default function Copilot({ data }: CopilotProps) {
   const [question, setQuestion] = useState(PRESET_QUESTIONS[0]);
   const [busy, setBusy] = useState(false);
   const [response, setResponse] = useState<CopilotResponse | null>(null);
+
+  // VS-9b.4: accumulate the same sliding-window history the Beams page
+  // uses, so each metric citation can render an inline sparkline of
+  // the cited (beam_id, metric) trajectory.
+  const history = useMetricsHistory(data);
 
   const ask = async (q: string) => {
     setBusy(true);
@@ -216,16 +237,41 @@ export default function Copilot({ data }: CopilotProps) {
                     color: "text.secondary",
                   }}
                 >
-                  {response.evidence.metrics_used.map((m, i) => (
-                    <li key={i}>
-                      {m.name}
-                      {Object.keys(m.labels).length > 0 ? `{${Object.entries(m.labels).map(([k, v]) => `${k}="${v}"`).join(",")}}` : ""}
-                      {" = "}
-                      <Box component="strong" sx={{ color: "text.primary" }}>
-                        {m.value}
+                  {response.evidence.metrics_used.map((m, i) => {
+                    // VS-9b.4: render an inline sparkline next to the
+                    // citation when the metric is one we have a beam-
+                    // keyed history for AND the citation has a beam_id
+                    // label. Other citation shapes (gateway-keyed,
+                    // unlabeled) skip the chart and keep just text.
+                    const beamKey = METRIC_NAME_TO_BEAM_KEY[m.name];
+                    const beamId = m.labels.beam_id;
+                    return (
+                      <Box component="li" key={i} sx={{ mb: 1.5 }}>
+                        <Box>
+                          {m.name}
+                          {Object.keys(m.labels).length > 0
+                            ? `{${Object.entries(m.labels).map(([k, v]) => `${k}="${v}"`).join(",")}}`
+                            : ""}
+                          {" = "}
+                          <Box component="strong" sx={{ color: "text.primary" }}>
+                            {m.value}
+                          </Box>
+                        </Box>
+                        {beamKey && beamId && (
+                          <Box
+                            data-testid={`sparkline-${m.name}-${beamId}`}
+                            sx={{ mt: 0.5, ml: -1 }}
+                          >
+                            <MetricSparkline
+                              history={history}
+                              beamId={beamId}
+                              metric={beamKey}
+                            />
+                          </Box>
+                        )}
                       </Box>
-                    </li>
-                  ))}
+                    );
+                  })}
                 </Box>
               </Box>
             )}
