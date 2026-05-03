@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: ui
-          image: orbitops/digital-twin-ui:0.1.0-dev
+          image: orbitops/digital-twin-ui:0.1.2-dev-sprint2
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80

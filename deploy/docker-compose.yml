@@ -1,8 +1,10 @@
 # OrbitOps Copilot — local dev compose for VS-2 observability slice.
 #
-# Brings up: ntn-metrics-emulator + copilot-api + prometheus + grafana.
-# Pinned to today's stable images (Prom v3.5, Grafana 11.4) — docs/09 future
-# targets (Prom 3.11, Grafana 13) upgrade alongside Sprint 3 dashboard work.
+# Brings up: ntn-metrics-emulator + copilot-api + prometheus + grafana
+# + loki + alloy + (profile-gated) digital-twin-ui.
+# Pinned to 2026-05-03 stable: Prom v3.11.3 (CVE-2025-13465+12816 fix
+# vs 3.5.0), Grafana 11.4.3 (CVE-2025-3260 fix), Alloy 1.6.1 (replaces
+# EOL promtail per ADR-010).
 #
 # Quick-start (from repo root):
 #   docker compose -f deploy/docker-compose.yml up -d
@@ -19,7 +21,7 @@ services:
       # with "forbidden path outside the build context" on `docker compose build`.
       context: ..
       dockerfile: services/ntn-metrics-emulator/Dockerfile
-    image: orbitops/ntn-metrics-emulator:0.1.1-dev-g6g7g8
+    image: orbitops/ntn-metrics-emulator:0.1.2-dev-sprint2
     container_name: orbitops-emulator
     ports:
       # Local-only by default. To expose on a shared host, override:
@@ -38,7 +40,7 @@ services:
       # share a build-context convention.
       context: ..
       dockerfile: services/copilot-api/Dockerfile
-    image: orbitops/copilot-api:0.1.1-dev-g6g7g8
+    image: orbitops/copilot-api:0.1.2-dev-sprint2
     container_name: orbitops-copilot
     depends_on:
       ntn-metrics-emulator:
@@ -50,7 +52,7 @@ services:
       ORBITOPS_EMULATOR_METRICS_URL: http://ntn-metrics-emulator:8000/metrics
 
   prometheus:
-    image: prom/prometheus:v3.5.0
+    image: prom/prometheus:v3.11.3
     container_name: orbitops-prometheus
     depends_on:
       - ntn-metrics-emulator
@@ -65,7 +67,7 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:11.4.0
+    image: grafana/grafana:11.4.3
     container_name: orbitops-grafana
     depends_on:
       - prometheus
@@ -86,10 +88,11 @@ services:
       - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     restart: unless-stopped
 
-  # VS-10b.1: Loki + promtail. Copilot's _log_retrieval.LokiLogScraper
-  # queries Loki at http://loki:3100; promtail tails container stdout
-  # via the docker socket and labels logs with service=<container_name>
-  # so the LogQL `{service=~"orbitops-.*"}` filter picks them up cleanly.
+  # VS-10b.1 (PR #56) added Loki + promtail. ADR-010 (2026-05-03)
+  # retired promtail (EOL March 2026) in favor of Grafana Alloy. Loki
+  # itself unchanged. Copilot's _log_retrieval.LokiLogScraper queries
+  # Loki at http://loki:3100; LogQL `{service=~"orbitops-.*"}` filter
+  # is shipper-agnostic.
   loki:
     image: grafana/loki:3.4.0
     container_name: orbitops-loki
@@ -100,12 +103,21 @@ services:
       - ../observability/loki/local-config.yaml:/etc/loki/local-config.yaml:ro
     restart: unless-stopped
 
-  promtail:
-    image: grafana/promtail:3.4.0
-    container_name: orbitops-promtail
+  # ADR-010 (2026-05-03): Grafana Alloy replaces promtail. River-syntax
+  # config in observability/alloy/config.alloy. Tails container stdout
+  # via the docker socket; labels service=<container_name>; filters
+  # to orbitops-* containers only (excludes Alloy's own logs from a
+  # re-ingestion loop). Pinned to v1.6.1 (latest stable as of ADR date).
+  alloy:
+    image: grafana/alloy:v1.6.1
+    container_name: orbitops-alloy
     depends_on:
       - loki
-    command: ["-config.file=/etc/promtail/promtail-config.yaml"]
+    command:
+      - "run"
+      - "/etc/alloy/config.alloy"
+      - "--server.http.listen-addr=0.0.0.0:12345"
+      - "--storage.path=/var/lib/alloy/data"
     volumes:
       # Read-only access to the docker socket (container metadata) and
       # the json-file log directory. Production deployments should
@@ -113,7 +125,7 @@ services:
       # — this socket-mount pattern is local-demo only.
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - ../observability/promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
+      - ../observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
     restart: unless-stopped
 
   # Sprint 1 UI — built from source; mock-mode when copilot-api unreachable.

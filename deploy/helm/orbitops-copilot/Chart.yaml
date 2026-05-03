@@ -3,7 +3,7 @@ name: orbitops-copilot
 description: OrbitOps Copilot — operations digital twin for B5G LEO ground stations.
 type: application
 version: 0.1.1-dev
-appVersion: "0.1.1-dev-g6g7g8"
+appVersion: "0.1.2-dev-sprint2"
 keywords:
   - ntn
   - leo
