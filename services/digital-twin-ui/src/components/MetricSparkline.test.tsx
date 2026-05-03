@@ -166,4 +166,21 @@ describe("MetricSparkline component", () => {
     );
     expect(container.querySelector("svg")).not.toBeInTheDocument();
   });
+
+  // Round-2 /review C2: a single data point in Recharts LineChart
+  // renders an invisible chart (a line segment needs 2 endpoints).
+  // User would see an empty box for the first 5 s after asking — looks
+  // like a bug. Better: render nothing until we have ≥ 2 points so the
+  // sparkline only appears once it can actually convey trend info.
+  test("renders nothing with only ONE data point (avoid invisible single-vertex chart)", () => {
+    const { container } = render(
+      <MetricSparkline
+        history={[snap(0, { "beam-1": { snr_db: 12 } })]}
+        beamId="beam-1"
+        metric="snr_db"
+      />,
+    );
+    expect(container.querySelector("svg")).not.toBeInTheDocument();
+    expect(container.textContent).toBe("");
+  });
 });
