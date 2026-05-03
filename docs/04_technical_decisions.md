@@ -9,6 +9,10 @@
 | ADR-003 | Prometheus + Grafana 為 P0 唯一 obs 管道 | Accepted | Prometheus 3.11.3 + Grafana 13.0.1；Loki/Tempo/OTel/Alloy 列 P1。 |
 | ADR-004 | LLM 必 RAG over metrics/logs；evidence 為強制契約 | Accepted | server-side RAG → JSON-mode → Pydantic 驗證 → 缺證據回 `INSUFFICIENT_EVIDENCE`。 |
 | ADR-005 | Nephio：第一版只出 kpt package stub | Accepted | 不跑 Porch / 不跑完整 O2 IMS；kpt package 對齊 R5 慣例。 |
+| ADR-006 | Early install of GitHub MCP server in Sprint 0 | Proposed (defer) | **Defer the early install** — Sprint 0 沒 PR 可給 MCP 操作，token 只會閒置；既有 `Bash(gh api)` 已涵蓋 review / claims-audit 流程。等首個 feature PR 出現再重新評估安裝（屆時用 fine-grained PAT + read-only stdio）。 |
+| ADR-007 | Scenario / metrics / copilot-response schema v1→v2 migration | Accepted | v2 統一 evidence schema；移除 `pod_health`，gateway 路徑改 `orbitops_gateway_available`；模板 `risk_if_ignored` 升為頂層欄位。 |
+| ADR-008 | Sprint-1 frontend stack pin（React 18.3 / Vite 5.4 / TS 5.6 / Tailwind 3.4 / SVG） | Accepted | CLAUDE.md §4 prescribes React 19 + Vite 8 + TS 6 + Tailwind 4，但 Sprint-1 改 pin 今日 stable；Sprint-3 / VS-13 CesiumJS 一起 forward-jump。 |
+| ADR-009 | Helm chart Service names mirror Kustomize bare names | Accepted | Service `metadata.name` 用 bare 名（`ntn-metrics-emulator` 等）以對齊 ConfigMap 寫死的 DNS；Deployment 仍 release-fullname-prefix；single-namespace-per-release 為 trade-off。 |
 
 ## 撰寫新 ADR 流程
 

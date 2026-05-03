@@ -69,12 +69,12 @@ docker-compose 是 dev 快路徑，K8s 才是「真實部署形貌」。沒有 K
 
 ## 8. Acceptance criteria
 
-- AC-S006-1：`kustomize build deploy/k8s/overlays/local | kubectl apply --dry-run=client -f -` exit 0（已綠，本 SPEC 守住不退步）。
-- AC-S006-2（Sprint 1 / VS-6）：`make kind-up && make k8s-apply`（去 `--dry-run`）後，所有 pod 90 s 內 Ready。
-- AC-S006-3（Sprint 1 / VS-6）：`tests/k8s-smoke/healthz.sh` 從 cluster 內 `kubectl exec ... curl /healthz` 全 200。
-- AC-S006-4（Sprint 2）：`helm template` + `helm install --dry-run` exit 0。
-- AC-S006-5：所有 image tag ≠ `:latest`；所有 Deployment 含 requests/limits + 2 個 probe。
-- AC-S006-6：無 NodePort 對外網；只 ClusterIP；外部走 port-forward。
+- AC-S006-1（**MET 2026-05-02**）：`kustomize build deploy/k8s/overlays/local | kubectl apply --dry-run=client -f -` exit 0（verify.sh gate 5 + CI `k8s-manifest` job 守住不退步）。
+- AC-S006-2（Sprint 1 / VS-6 — kubeadm live deploy 已實機跑過 2026-05-02；`make kind-up` + smoke 自動化仍掛 I-8）：`make kind-up && make k8s-apply`（去 `--dry-run`）後，所有 pod 90 s 內 Ready。
+- AC-S006-3（Sprint 1 / VS-6 — 同上，I-8 仍待）：`tests/k8s-smoke/healthz.sh` 從 cluster 內 `kubectl exec ... curl /healthz` 全 200。
+- AC-S006-4（**MET 2026-05-02**）：`helm template` + `helm install --dry-run` exit 0（PR #47 + #48；CI `verify` job 5b/5 守住）。
+- AC-S006-5（**MET**）：所有 image tag ≠ `:latest`；所有 Deployment 含 requests/limits + 2 個 probe。
+- AC-S006-6（**partial / MET in base**）：`deploy/k8s/base/` Services 全 ClusterIP；`deploy/k8s/overlays/local/` 暫用 NodePort 為本機 demo 加速，已標記為 local-only（kubeadm InternalIP 31.41.34.19）；非 local 部署需走 port-forward 或 ingress。
 - AC-S006-7（Sprint 3）：`packages/nephio-stubs/` 通過 `kpt fn render` dry-run（不需真 Porch）。
 
 ## 9. Test strategy

@@ -27,9 +27,9 @@ See `docs/00_research_2026_04.md` for full sources.
 | TDD | 84 pytest (83 passed + 1 xfail-strict for voice S2-07); 26 vitest |
 | Submission gates | `verify.sh` 5/5 + CI 6 jobs |
 
-**What's still pending for the RunSpace submission**: pitch-deck PDF render, demo video recording (90 s + 3 min), and a **UI completeness sweep** (Phase H — see `docs/reviews/runspace-claims-audit.md` "Deferred nits" + the Sprint-2 backlog) covering Beams elevation column / Anomalies dictionary expansion / 3-scenario UI loadability / Copilot full-evidence display.
+**What's still pending for the RunSpace submission**: pitch-deck PDF render, demo video recording (90 s + 3 min), and the Sprint-3 CesiumJS satellite-pass viz (VS-13). Phase H UI completeness sweep landed across PRs #45 (H.1 UI four sub-items + 14 contract tests) and #47 (H.2 Helm full templates) on 2026-05-02 — Beams elevation column / Anomalies dictionary covering all 5 producer event types / 3-scenario UI loadability / Copilot full-evidence display + `risk_if_ignored` + 4 metadata fields all shipped.
 
-**Sprint 2 brings**: real LLM provider (Ollama / vLLM via OpenAI-compatible adapter), Loki mock-logs integration, Recharts time-series, ArgoCD App reference. See `PROJECT_STATUS.md` for the live-state snapshot.
+**Sprint 2 — shipped 2026-05-02 / 03**: Helm chart full templates (5 services, ADR-009 service-naming) + ArgoCD `Application` reference + emulator `/anomaly/inject` API + UI inject buttons + Recharts time-series (SNR / Latency / Doppler) + Copilot evidence sparkline + structured JSON logging on emulator + copilot + Loki + promtail + `LokiLogScraper` wired into `/ask` evidence (AC-S005-5 met). **Sprint-2 deferred** (no GPU on dev box): real LLM provider — VS-8 Ollama/Qwen3.6 path remains a Sprint-3+ item with `FakeLLMProvider` continuing as the offline-deterministic default. **Sprint 3** focus: VS-13 CesiumJS satellite pass viz + RunSpace investee-deliverables. See `PROJECT_STATUS.md` for the live-state snapshot.
 
 ## Quickstart
 
