@@ -35,8 +35,9 @@ interface MetricSparklineProps {
   history: MetricsSnapshot[];
   beamId: string;
   metric: BeamMetricKey;
-  /** Stroke color; defaults to a subdued primary so the sparkline doesn't
-   * compete with the citation text it sits next to. */
+  /** Stroke color. Defaults to the orbitops theme primary so the sparkline
+   * stays visually consistent with other charts (round-2 /review A3 fixed
+   * the previous mismatched hardcoded `#0055ff`). */
   stroke?: string;
 }
 
@@ -58,11 +59,17 @@ export default function MetricSparkline({
   history,
   beamId,
   metric,
-  stroke = "#0055ff",
+  // Theme palette primary.main; matches BeamMetricChart's first line color.
+  // Round-2 /review A3: was `#0055ff` (mismatched K8s blue).
+  stroke = "#326CE5",
 }: MetricSparklineProps) {
   const data = beamSnapshotsToValues(history, beamId, metric);
 
-  if (data.length === 0) {
+  // Recharts LineChart needs ≥ 2 points to render a visible line segment;
+  // a 1-point chart shows an invisible single vertex which user reads as
+  // "chart broken". Render nothing until we can actually convey trend
+  // (round-2 /review C2).
+  if (data.length < 2) {
     return null;
   }
 
