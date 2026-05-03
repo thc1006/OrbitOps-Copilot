@@ -1,0 +1,58 @@
+// Grafana Alloy config — replaces promtail per ADR-010 (2026-05-03).
+//
+// Tails every Docker container's stdout via the json-file logging driver
+// (compose default), labels each line with `service=<container_name>`,
+// and pushes to Loki at http://loki:3100. Mirrors the behavior promtail
+// had in PR #56 but uses Alloy's River syntax (declarative pipeline).
+//
+// Mounting (see docker-compose.yml alloy service):
+//   /var/run/docker.sock       — read container metadata
+//   /var/lib/docker/containers — read container json-file logs
+//
+// LogQL contract (unchanged from promtail era):
+//   {service=~"orbitops-.*"}  — picks up emulator, copilot, UI, Loki,
+//                                Prometheus, Grafana, Alloy itself.
+//                                Alloy excludes its own logs via the
+//                                `keep` filter below.
+
+// Discover Docker containers via the socket. `host` is the unix socket
+// path inside the alloy container (mounted RO from compose).
+discovery.docker "containers" {
+	host             = "unix:///var/run/docker.sock"
+	refresh_interval = "5s"
+}
+
+// Relabel:
+//   1. service = container_name (compose's container_name directive),
+//      with the leading slash docker reports stripped.
+//   2. keep only containers matching orbitops-*  (drops random sidecars
+//      and prevents alloy from re-ingesting its own log line in a loop).
+discovery.relabel "containers" {
+	targets = discovery.docker.containers.targets
+
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "service"
+	}
+
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/orbitops-.*"
+		action        = "keep"
+	}
+}
+
+// Tail container json-file logs.
+loki.source.docker "tail" {
+	host       = "unix:///var/run/docker.sock"
+	targets    = discovery.relabel.containers.output
+	forward_to = [loki.write.local.receiver]
+}
+
+// Push to local Loki. Single endpoint; no auth (local-demo only).
+loki.write "local" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+}

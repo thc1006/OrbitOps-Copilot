@@ -13,6 +13,7 @@
 | ADR-007 | Scenario / metrics / copilot-response schema v1→v2 migration | Accepted | v2 統一 evidence schema；移除 `pod_health`，gateway 路徑改 `orbitops_gateway_available`；模板 `risk_if_ignored` 升為頂層欄位。 |
 | ADR-008 | Sprint-1 frontend stack pin（React 18.3 / Vite 5.4 / TS 5.6 / Tailwind 3.4 / SVG） | Accepted | CLAUDE.md §4 prescribes React 19 + Vite 8 + TS 6 + Tailwind 4，但 Sprint-1 改 pin 今日 stable；Sprint-3 / VS-13 CesiumJS 一起 forward-jump。 |
 | ADR-009 | Helm chart Service names mirror Kustomize bare names | Accepted | Service `metadata.name` 用 bare 名（`ntn-metrics-emulator` 等）以對齊 ConfigMap 寫死的 DNS；Deployment 仍 release-fullname-prefix；single-namespace-per-release 為 trade-off。 |
+| ADR-010 | Migrate promtail → Grafana Alloy | Accepted | promtail EOL March 2026；Alloy v1.6.1 (River syntax) 取代 promtail 在 compose + K8s 兩處。LogQL 契約 `{service=~"orbitops-.*"}` 不變；`LokiLogScraper` 零變動。VS-10b.1 K8s parity 同 PR 一起補齊 (D2 closure)。 |
 
 ## 撰寫新 ADR 流程
 

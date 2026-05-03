@@ -1,0 +1,59 @@
+{{- if .Values.loki.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "orbitops.fullname" . }}-loki
+  labels:
+    {{- include "orbitops.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: loki
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: loki
+        app.kubernetes.io/part-of: orbitops-copilot
+    spec:
+      containers:
+        - name: loki
+          image: "{{ .Values.loki.image.repository }}:{{ .Values.loki.image.tag }}"
+          imagePullPolicy: {{ .Values.loki.image.pullPolicy }}
+          args: ["-config.file=/etc/loki/local-config.yaml"]
+          ports: [{ containerPort: 3100, name: http }, { containerPort: 9096, name: grpc }]
+          volumeMounts:
+            - { name: config, mountPath: /etc/loki, readOnly: true }
+            - { name: data,   mountPath: /loki }
+          resources:
+{{ toYaml .Values.loki.resources | indent 12 }}
+          livenessProbe:
+            httpGet: { path: /ready, port: 3100 }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /ready, port: 3100 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        # ConfigMap is checked-in `deploy/k8s/base/loki-configmap.yaml`
+        # (kustomize `resources:`, NOT `configMapGenerator`).
+        - name: config
+          configMap:
+            name: {{ .Values.loki.configMapName }}
+        - name: data
+          emptyDir:
+            sizeLimit: {{ .Values.loki.dataSizeLimit }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  # ADR-009: bare Service name mirrors Kustomize / compose contract.
+  name: loki
+  labels:
+    {{- include "orbitops.labels" . | nindent 4 }}
+spec:
+  selector: { app.kubernetes.io/name: loki }
+  ports:
+    - { name: http, port: {{ .Values.loki.service.port }}, targetPort: 3100 }
+{{- end -}}

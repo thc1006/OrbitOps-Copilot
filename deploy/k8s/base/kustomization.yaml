@@ -18,6 +18,13 @@ resources:
   - prometheus-deployment.yaml
   - grafana-configmap.yaml
   - grafana-deployment.yaml
+  # ADR-010 / D2 (2026-05-03): Loki + Alloy K8s parity. Closes the
+  # VS-10b.1 PR-#56 deferred K8s-overlay item; AC-S005-5 now meetable
+  # on K8s path (copilot's ORBITOPS_LOKI_URL points at Loki Service).
+  - loki-configmap.yaml
+  - loki-deployment.yaml
+  - alloy-configmap.yaml
+  - alloy-deployment.yaml
 
 configMapGenerator:
   # Wraps observability/grafana/dashboards/*.json into a ConfigMap so the

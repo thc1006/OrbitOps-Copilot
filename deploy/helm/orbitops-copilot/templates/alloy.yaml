@@ -1,0 +1,86 @@
+{{- if .Values.alloy.enabled -}}
+# ADR-010 (2026-05-03): replaced promtail with Grafana Alloy.
+# RBAC: namespace-scoped Role for pod + pods/log read so
+# `loki.source.kubernetes` can tail container logs via the K8s API.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orbitops-alloy
+  labels:
+    {{- include "orbitops.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: orbitops-alloy
+  labels:
+    {{- include "orbitops.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: orbitops-alloy
+  labels:
+    {{- include "orbitops.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: orbitops-alloy
+subjects:
+  - kind: ServiceAccount
+    name: orbitops-alloy
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "orbitops.fullname" . }}-alloy
+  labels:
+    {{- include "orbitops.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: alloy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: alloy
+        app.kubernetes.io/part-of: orbitops-copilot
+    spec:
+      serviceAccountName: orbitops-alloy
+      containers:
+        - name: alloy
+          image: "{{ .Values.alloy.image.repository }}:{{ .Values.alloy.image.tag }}"
+          imagePullPolicy: {{ .Values.alloy.image.pullPolicy }}
+          args:
+            - "run"
+            - "/etc/alloy/config.alloy"
+            - "--server.http.listen-addr=0.0.0.0:12345"
+            - "--storage.path=/var/lib/alloy/data"
+          ports: [{ containerPort: 12345, name: http }]
+          volumeMounts:
+            - { name: config, mountPath: /etc/alloy, readOnly: true }
+            - { name: data,   mountPath: /var/lib/alloy/data }
+          resources:
+{{ toYaml .Values.alloy.resources | indent 12 }}
+          livenessProbe:
+            httpGet: { path: /-/healthy, port: 12345 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /-/ready, port: 12345 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        # ConfigMap is checked-in `deploy/k8s/base/alloy-configmap.yaml`.
+        - name: config
+          configMap:
+            name: {{ .Values.alloy.configMapName }}
+        - name: data
+          emptyDir:
+            sizeLimit: 256Mi
+{{- end -}}

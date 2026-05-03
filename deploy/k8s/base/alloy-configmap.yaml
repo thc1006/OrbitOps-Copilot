@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orbitops-alloy-config
+  labels:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/part-of: orbitops-copilot
+data:
+  # K8s-flavor of observability/alloy/config.alloy (compose path).
+  # Differences vs compose: source is the kubelet's pod-log directory
+  # rather than docker socket, since K8s-deployed clusters don't
+  # universally expose the docker socket. We use loki.source.kubernetes
+  # which discovers via the K8s API instead.
+  config.alloy: |
+    discovery.kubernetes "pods" {
+      role = "pod"
+
+      // Only target the orbitops namespace.
+      namespaces {
+        names = ["orbitops"]
+      }
+    }
+
+    discovery.relabel "pods" {
+      targets = discovery.kubernetes.pods.targets
+
+      // service label = container name (matches the LogQL contract used
+      // by copilot-api's _log_retrieval.LokiLogScraper).
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label  = "service"
+      }
+
+      // Keep only the OrbitOps app containers (excludes Alloy itself
+      // from a re-ingestion loop).
+      rule {
+        source_labels = ["service"]
+        regex         = "(ntn-metrics-emulator|copilot-api|digital-twin-ui|prometheus|grafana|loki)"
+        action        = "keep"
+      }
+    }
+
+    loki.source.kubernetes "pods" {
+      targets    = discovery.relabel.pods.output
+      forward_to = [loki.write.local.receiver]
+    }
+
+    loki.write "local" {
+      endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+      }
+    }

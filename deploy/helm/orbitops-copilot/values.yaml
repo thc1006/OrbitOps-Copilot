@@ -7,7 +7,7 @@ emulator:
     repository: orbitops/ntn-metrics-emulator
     # PR #35 bumped both emulator + copilot to this tag (G6/G7/G8 sprint-1 spec parity).
     # Helm chart was drifted at 0.0.1-dev pre-PR-G; aligned here.
-    tag: "0.1.1-dev-g6g7g8"
+    tag: "0.1.2-dev-sprint2"
     pullPolicy: IfNotPresent
   replicaCount: 1
   service:
@@ -35,7 +35,7 @@ copilot:
   enabled: true
   image:
     repository: orbitops/copilot-api
-    tag: "0.1.1-dev-g6g7g8"
+    tag: "0.1.2-dev-sprint2"
     pullPolicy: IfNotPresent
   replicaCount: 1
   service:
@@ -70,7 +70,7 @@ ui:
     # UI image was NOT bumped in PR #35 (no UI code changed in PR #34); the
     # Phase F UI button (PR #42) was rebuilt locally over 0.1.0-dev rather
     # than tag-bumped. Sprint-2 will revisit + may bump alongside Recharts.
-    tag: "0.1.0-dev"
+    tag: "0.1.2-dev-sprint2"
     pullPolicy: IfNotPresent
   replicaCount: 1
   service:
@@ -83,7 +83,7 @@ prometheus:
   enabled: true
   image:
     repository: prom/prometheus
-    tag: v3.5.0
+    tag: v3.11.3
     pullPolicy: IfNotPresent
   service:
     port: 9090
@@ -103,7 +103,7 @@ grafana:
   enabled: true
   image:
     repository: grafana/grafana
-    tag: 11.4.0
+    tag: 11.4.3
     pullPolicy: IfNotPresent
   service:
     port: 3000
@@ -132,3 +132,40 @@ grafana:
   resources:
     requests: { cpu: "50m",  memory: "128Mi" }
     limits:   { cpu: "300m", memory: "256Mi" }
+
+# D2 / ADR-010 (2026-05-03): Loki + Alloy K8s parity. Compose path
+# already had these as of VS-10b.1 PR #56; this PR brings K8s + Helm
+# in line. copilot-api's `_log_retrieval.LokiLogScraper` queries
+# Loki at http://loki:3100 (env var ORBITOPS_LOKI_URL on copilot
+# deployment); Alloy ships container logs into Loki via
+# `loki.source.kubernetes` (RBAC: namespace-scoped pod/pods/log read).
+
+loki:
+  enabled: true
+  image:
+    repository: grafana/loki
+    tag: "3.4.0"
+    pullPolicy: IfNotPresent
+  service:
+    port: 3100
+  dataSizeLimit: 2Gi
+  # Loki config is the checked-in `deploy/k8s/base/loki-configmap.yaml`
+  # (kustomize `resources:`, NOT `configMapGenerator`).
+  configMapName: orbitops-loki-config
+  resources:
+    requests: { cpu: "50m",  memory: "128Mi" }
+    limits:   { cpu: "500m", memory: "512Mi" }
+
+alloy:
+  enabled: true
+  image:
+    repository: grafana/alloy
+    tag: "v1.6.1"
+    pullPolicy: IfNotPresent
+  # Config map carries the River-syntax pipeline (loki.source.kubernetes
+  # → relabel → loki.write). Checked-in `deploy/k8s/base/alloy-
+  # configmap.yaml` (kustomize `resources:`, NOT `configMapGenerator`).
+  configMapName: orbitops-alloy-config
+  resources:
+    requests: { cpu: "20m",  memory: "64Mi" }
+    limits:   { cpu: "200m", memory: "256Mi" }

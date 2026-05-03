@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: emulator
-          image: orbitops/ntn-metrics-emulator:0.1.1-dev-g6g7g8
+          image: orbitops/ntn-metrics-emulator:0.1.2-dev-sprint2
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
