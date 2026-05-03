@@ -117,7 +117,7 @@
 | Field | Value |
 |---|---|
 | Severity | ~~**Low**~~ → **RESOLVED** |
-| Resolved by | PR #55 (`chore/sprint-2-vs-10a-structured-json-logging`) — JsonFormatter + setup_logging() in `services/copilot-api/src/copilot_api/_logging.py`; `_log_ask()` + `_log_explain_or_runbook()` wrap each handler return path; PRIVACY: question text never logged (only `question_chars` length); 3 endpoints emit distinguishable `msg` tags (`ask` / `explain` / `runbook`). |
+| Resolved by | PR #55 (`feat/sprint-2-vs-10a-structured-json-logging`) — JsonFormatter + setup_logging() in `services/copilot-api/src/copilot_api/_logging.py`; `_log_ask()` + `_log_explain_or_runbook()` wrap each handler return path; PRIVACY: question text never logged (only `question_chars` length); 3 endpoints emit distinguishable `msg` tags (`ask` / `explain` / `runbook`). |
 | File | `services/copilot-api/src/copilot_api/main.py` |
 | Original problem | ~~No `logging.getLogger(__name__)` calls. Refusal / insufficient / degrade events happen silently.~~ |
 | Suggested test | (existing) `services/copilot-api/tests/test_copilot_logging.py` — JsonFormatter unit tests + per-endpoint `caplog` assertions + privacy contract test asserting question text NEVER appears in LogRecord dict. |
