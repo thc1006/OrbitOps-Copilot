@@ -2,11 +2,18 @@
 # verify.sh — local quality gate
 #
 # Runs the same checks as CI:
-#   1. format / lint  (advisory in Sprint 0 — warns but does not block)
-#   2. unit tests     (delegates to test.sh; blocking)
-#   3. real-secrets scan (AKID / API keys / PEM headers)   (blocking)
-#   4. JSON schema validation (contracts + sample scenarios) (blocking)
-#   5. k8s manifest validation (kustomize + kubeconform)   (blocking when tools present)
+#   1.  format / lint  (advisory in Sprint 0 — warns but does not block)
+#   1b. TDD discipline audit — advisory locally; blocking variant runs in
+#       CI's `tdd-discipline` job on pull_request only (PR #49)
+#   1c. claims-audit marketing-word grep across docs/ (advisory)
+#   2.  unit tests (delegates to test.sh; blocking)
+#   3.  real-secrets scan (AKID / API keys / PEM headers)   (blocking)
+#   3b. observability stack static check (Prom + Grafana provisioning)  (blocking)
+#   3c. canonical scenario JSON ↔ UI mirror drift detector (blocking)
+#   4.  JSON schema validation (contracts + sample scenarios) (blocking)
+#   5.  k8s manifest validation (kustomize + kubeconform)   (blocking when tools present)
+#   5b. helm chart validation (lint + template + ADR-009 service-name contract)
+#       (added 2026-05-02 by PRs #47 + #48; blocking when helm present)
 #
 # Exits non-zero on any blocking failure. Lint findings in gate 1 are
 # advisory (skeleton placeholders won't all be ruff-clean yet) and tighten

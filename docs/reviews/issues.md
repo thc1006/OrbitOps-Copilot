@@ -45,17 +45,14 @@
 
 ---
 
-## I-4 (Medium) — `digital-twin-ui` package.json on baseline pins non-existent npm versions
+## I-4 (RESOLVED — verified 2026-05-03) — ~~`digital-twin-ui` package.json on baseline pins non-existent npm versions~~
 
 | Field | Value |
 |---|---|
-| Severity | **Medium** |
-| File | `services/digital-twin-ui/package.json` (on `baseline-sprint-1`) |
-| Problem | Pins `react@19.2.5`, `vite@8.0.10`, `vitest@3.0.0`, `tailwindcss@4.2.4`, `typescript@6.0.3` — none exist on npm registry today. `npm install` fails. |
-| Recommended fix | Merge PR #6 (`feat/VS-1.5-digital-twin-ui-svg-shell`) which pins React 18.3 / Vite 5.4 / Vitest 2.1 / Tailwind 3.4 / TS 5.6 — today-stable. |
-| Suggested test | `cd services/digital-twin-ui && npm install --dry-run` exits 0. |
-| Owner role | `frontend-engineer` |
-| Estimated effort | 0 (PR exists; just merge) |
+| Severity | ~~**Medium**~~ → **RESOLVED** |
+| File | `services/digital-twin-ui/package.json` |
+| Original problem | ~~Pins `react@19.2.5`, `vite@8.0.10`, `vitest@3.0.0`, `tailwindcss@4.2.4`, `typescript@6.0.3` — none exist on npm registry today.~~ |
+| Resolution | Sprint-1 SVG shell PR landed pinning today-stable versions per ADR-008: `react@^18.3.1`, `typescript@^5.6.3`, `vite@^5.4.11`, `vitest@^2.1.8`. MUI 6 + Recharts 2 added in Sprint-1 redesign; Tailwind dropped (per package.json `_note` — MUI handles styling). `npm ci` + `npm run build` + `npm run test` all green in CI on every PR since #45. ADR-008 §Decision deferred React 19 / Vite 8 / TS 6 to Sprint-3 / VS-13 alongside the CesiumJS migration. |
 
 ---
 
@@ -115,17 +112,15 @@
 
 ---
 
-## I-9 (Low) — copilot-api lacks structured logging
+## I-9 (RESOLVED 2026-05-02) — ~~copilot-api lacks structured logging~~
 
 | Field | Value |
 |---|---|
-| Severity | **Low** |
+| Severity | ~~**Low**~~ → **RESOLVED** |
+| Resolved by | PR #55 (`chore/sprint-2-vs-10a-structured-json-logging`) — JsonFormatter + setup_logging() in `services/copilot-api/src/copilot_api/_logging.py`; `_log_ask()` + `_log_explain_or_runbook()` wrap each handler return path; PRIVACY: question text never logged (only `question_chars` length); 3 endpoints emit distinguishable `msg` tags (`ask` / `explain` / `runbook`). |
 | File | `services/copilot-api/src/copilot_api/main.py` |
-| Problem | No `logging.getLogger(__name__)` calls. Refusal / insufficient / degrade events happen silently. CLAUDE.md §4 mandates `logging`, not `print`. Currently neither is used in main.py — purely returns CopilotResponse with reason in `unknowns`. |
-| Recommended fix | Add module-level logger; log at INFO on REFUSED / INSUFFICIENT / ok; log at WARNING on provider degrade. |
-| Suggested test | Capture logger via pytest's `caplog` fixture; assert one INFO line per /ask call. |
-| Owner role | `llm-copilot-engineer` |
-| Estimated effort | 30 min |
+| Original problem | ~~No `logging.getLogger(__name__)` calls. Refusal / insufficient / degrade events happen silently.~~ |
+| Suggested test | (existing) `services/copilot-api/tests/test_copilot_logging.py` — JsonFormatter unit tests + per-endpoint `caplog` assertions + privacy contract test asserting question text NEVER appears in LogRecord dict. |
 
 ---
 
