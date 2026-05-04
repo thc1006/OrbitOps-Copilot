@@ -36,17 +36,27 @@ See `docs/00_research_2026_04.md` for full sources.
 ```bash
 # 0. Verify environment + remote tool versions (re-run before each sprint)
 ./verify.sh
+# Expected output (last lines):
+#   [verify ok]   helm chart lint + template + ADR-009 contract pass
+#   [verify]      all checks passed
+# 9 sub-gates: lint(blocking) → tests → secrets → obs → mirror →
+#              schemas → k8s manifests → helm + ADR-009 contract
 
 # 1. Bootstrap tooling (Python venv + Node deps)
 make bootstrap
 
-# 2. Local dev with docker-compose (all services + Prometheus + Grafana)
+# 2. Local dev with docker-compose (7 services post-Phase-A)
 make dev-up
 # → UI:        http://localhost:5173
 # → Copilot:   http://localhost:8001/healthz
 # → Emulator:  http://localhost:8000/metrics
-# → Prom:      http://localhost:9090
-# → Grafana:   http://localhost:3000  (admin/admin, change on first run)
+# → Prom:      http://localhost:9090   (v3.11.3 — CVE-patched, PR #60)
+# → Grafana:   http://localhost:3000   (admin/admin local-only; prod overlay
+#                                       at deploy/k8s/overlays/prod/ for
+#                                       secret-backed creds)
+# → Loki:      http://localhost:3100   (added Phase A; LogQL endpoint)
+# → Alloy:     http://localhost:12345  (logs shipper; replaces EOL promtail
+#                                       per ADR-010)
 
 # 3. Run end-to-end golden demo (beam-degradation + handover + fallback)
 scripts/run-demo.sh
@@ -54,10 +64,17 @@ scripts/run-demo.sh
 # 4. Tear down
 make dev-down
 
-# 5. Kubernetes (kind) — Sprint 1 onwards
+# 5. Kubernetes (kubeadm / kind) — Sprint 1 onwards
 make kind-up
 make k8s-apply
-make k8s-smoke
+make k8s-smoke   # → ./tests/k8s-smoke/healthz.sh — closes AC-S006-2 + S006-3
+# Expected: 7/7 deployments Ready in <90s, 3/3 /healthz 200
+
+# 6. Reload observability ConfigMaps after editing observability/**
+make k8s-reload-observability
+
+# 7. Submission archive (zips tracked files only, no .git/.venv/etc.)
+make archive   # → orbitops-copilot.zip
 ```
 
 ## Layout
