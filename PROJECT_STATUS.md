@@ -8,9 +8,9 @@
 
 ## Snapshot — current `main` state (after Phase A/B/VS-10c/U7)
 
-### Services in kubeadm `cloudnative-dev-telco` (5 application + 3 observability)
+### Services in kubeadm `cloudnative-dev-telco` (5 application + 2 observability)
 
-> Phase A (PR #60, 2026-05-03) added Loki + Alloy to the deploy stack. PR #61 + PR #63 finalized the K8s parity. The kubeadm `orbitops` namespace now runs 7 deployments end-to-end Ready (verified by `tests/k8s-smoke/healthz.sh` PR #63).
+> Phase A (PR #60, 2026-05-03) added Loki + Alloy to the deploy stack. PR #61 + PR #63 finalized the K8s parity. The kubeadm `orbitops` namespace now runs 7 deployments end-to-end Ready (5 application + 2 observability = Loki + Alloy; Prometheus + Grafana count under "application" because they're the demo's first-class observability targets, not log-pipeline plumbing). Verified by `tests/k8s-smoke/healthz.sh` (PR #63).
 
 | Service | Image | Endpoint | Sprint coverage |
 |---|---|---|---|
@@ -98,7 +98,9 @@ User-skipped (out of scope): VS-8 LLM, VS-12 voice, VS-14/15/16/18 投件 delive
 
 ## Health gates
 
-- `make verify` (≡ `./verify.sh`): 9 sub-gates lint → tests → secrets → observability → scenario-mirror → schemas → k8s manifests → helm chart + ADR-009 contract.
+- `make verify` (≡ `./verify.sh`) runs 8 blocking gates + 2 advisory:
+  - **Blocking**: 1/5 lint (ruff, blocking since I-5 PR #63) → 2/5 unit tests → 3/5 real-secrets scan → 3b/5 observability stack → 3c/5 scenario JSON ↔ UI mirror → 4/5 JSON schema validation → 5/5 k8s manifest validation → 5b/5 helm chart lint + template + ADR-009 service-name contract.
+  - **Advisory** (warn only): 1b TDD-discipline audit (the blocking variant runs in CI's `tdd-discipline` job per PR #49) + 1c claims-audit marketing-word grep (the blocking variant runs in CI's `claims-audit` job per PR #63).
 - `make k8s-reload-observability` (PR #40) — re-applies kustomize overlay + restarts Grafana/Prometheus.
 - `tests/k8s-smoke/healthz.sh` (PR #63) — live-cluster smoke on all 7 deployments.
 - CI runs 9 jobs on every push (was 6 pre-Sprint-2; +tdd-discipline +claims-audit +ui-build).

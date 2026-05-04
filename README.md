@@ -39,15 +39,20 @@ See `docs/00_research_2026_04.md` for full sources.
 # Expected output (last lines):
 #   [verify ok]   helm chart lint + template + ADR-009 contract pass
 #   [verify]      all checks passed
-# 9 sub-gates: lint(blocking) → tests → secrets → obs → mirror →
-#              schemas → k8s manifests → helm + ADR-009 contract
+# 8 blocking + 2 advisory sub-gates:
+#   blocking — 1/5 lint(ruff, blocking since I-5) → 2/5 tests →
+#              3/5 secrets → 3b obs → 3c scenario-mirror →
+#              4/5 schemas → 5/5 k8s manifests → 5b helm + ADR-009
+#   advisory — 1b TDD-discipline audit (CI 'tdd-discipline' is blocking)
+#              1c claims-audit marketing words (CI 'claims-audit' is blocking)
 
 # 1. Bootstrap tooling (Python venv + Node deps)
 make bootstrap
 
-# 2. Local dev with docker-compose (7 services post-Phase-A)
-make dev-up
-# → UI:        http://localhost:5173
+# 2. Local dev with docker-compose (6 services by default; UI is
+#    profile-gated so opt-in only)
+make dev-up                            # 6 services: emulator/copilot/prom/grafana/loki/alloy
+COMPOSE_PROFILES=ui make dev-up        # 7 services (also brings up digital-twin-ui :5173)
 # → Copilot:   http://localhost:8001/healthz
 # → Emulator:  http://localhost:8000/metrics
 # → Prom:      http://localhost:9090   (v3.11.3 — CVE-patched, PR #60)
@@ -55,8 +60,9 @@ make dev-up
 #                                       at deploy/k8s/overlays/prod/ for
 #                                       secret-backed creds)
 # → Loki:      http://localhost:3100   (added Phase A; LogQL endpoint)
-# → Alloy:     http://localhost:12345  (logs shipper; replaces EOL promtail
-#                                       per ADR-010)
+# → UI:        http://localhost:5173   (only when COMPOSE_PROFILES=ui)
+# (Alloy's HTTP server :12345 is in-cluster only — no host port mapping;
+#  inspect via `docker exec orbitops-alloy curl localhost:12345/-/ready`.)
 
 # 3. Run end-to-end golden demo (beam-degradation + handover + fallback)
 scripts/run-demo.sh
@@ -65,9 +71,16 @@ scripts/run-demo.sh
 make dev-down
 
 # 5. Kubernetes (kubeadm / kind) — Sprint 1 onwards
-make kind-up
-make k8s-apply
-make k8s-smoke   # → ./tests/k8s-smoke/healthz.sh — closes AC-S006-2 + S006-3
+#    Two paths: validation-only (offline) vs live cluster.
+#
+# 5a. Validation-only (no cluster contact, no apply):
+make k8s-apply       # kustomize build | kubeconform -strict (manifest validation)
+make k8s-smoke       # static smoke (kustomize render + manifest invariants only)
+
+# 5b. Live cluster — bring it up, then run the live healthz suite:
+make k8s-up-kind     # creates kind cluster + applies overlay + ctr-imports images
+# (or `make k8s-up` for a containerd kubeadm box; uses sudo for ctr import)
+./tests/k8s-smoke/healthz.sh    # AC-S006-2 + AC-S006-3 (live deployments + /healthz)
 # Expected: 7/7 deployments Ready in <90s, 3/3 /healthz 200
 
 # 6. Reload observability ConfigMaps after editing observability/**
