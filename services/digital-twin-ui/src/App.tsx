@@ -73,7 +73,7 @@ export default function App() {
                   </Box>
                 }
               >
-                <SatelliteView />
+                <SatelliteView data={data} />
               </Suspense>
             }
           />

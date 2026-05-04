@@ -51,6 +51,10 @@ vi.mock("resium", () => ({
   // pass trace. Mock returns a discriminable element so tests can
   // assert the polyline exists in the rendered tree.
   PolylineGraphics: () => <div data-resium="polyline-graphics" />,
+  // VS-13 S4: per-beam coverage cones via CylinderGraphics
+  // (bottomRadius=0 → cone). Mock so tests can assert cones are
+  // rendered without loading the cesium runtime.
+  CylinderGraphics: () => <div data-resium="cylinder-graphics" />,
 }));
 
 // Mock cesium primitives — only the surfaces SatelliteView calls.
@@ -75,7 +79,15 @@ vi.mock("cesium", () => ({
     }),
   },
   Color: {
-    fromCssColorString: (css: string) => ({ css }),
+    // VS-13 S4: SatelliteView calls
+    // `Color.fromCssColorString(hex).withAlpha(alpha)` for translucent
+    // cone materials. The chained `.withAlpha` must exist on the mock
+    // return; otherwise the cone Entity blows up at render with
+    // "withAlpha is not a function" — caught by component-level tests.
+    fromCssColorString: (css: string) => ({
+      css,
+      withAlpha: (alpha: number) => ({ css, alpha }),
+    }),
     RED: { name: "RED" },
     YELLOW: { name: "YELLOW" },
     LIME: { name: "LIME" },
@@ -87,12 +99,12 @@ import SatelliteView from "./SatelliteView";
 
 describe("SatelliteView (VS-13 S2 — CesiumJS skeleton)", () => {
   test("renders a Cesium viewer container", () => {
-    render(<SatelliteView />);
+    render(<SatelliteView data={null} />);
     expect(screen.getByTestId("cesium-viewer")).toBeInTheDocument();
   });
 
   test("renders an NYCU ground-station entity", () => {
-    render(<SatelliteView />);
+    render(<SatelliteView data={null} />);
     // Ground station name is the contract surface S3 (pass animation)
     // will use to anchor the orbit polyline and S4 (beam cones) will
     // use to anchor coverage ellipsoids. If this entity disappears
@@ -110,5 +122,55 @@ describe("SatelliteView (VS-13 S2 — CesiumJS skeleton)", () => {
     const w = globalThis as unknown as { CESIUM_BASE_URL?: string };
     expect(typeof w.CESIUM_BASE_URL).toBe("string");
     expect(w.CESIUM_BASE_URL).toMatch(/^\/cesium/);
+  });
+});
+
+describe("SatelliteView (VS-13 S4 — beam coverage cones)", () => {
+  test("renders one cone Entity per beam when data has beams", () => {
+    const snapshot = {
+      scenario_id: "test",
+      t_seconds: 30,
+      beams: [
+        {
+          beam_id: "beam-1",
+          snr_db: 15,
+          sinr_db: 12,
+          latency_ms: 25,
+          packet_loss_ratio: 0.001,
+          doppler_residual_hz: 0,
+          handover_state: 0 as const,
+          elevation_deg: 60,
+          health: "ok" as const,
+        },
+        {
+          beam_id: "beam-2",
+          snr_db: 4,
+          sinr_db: 2,
+          latency_ms: 80,
+          packet_loss_ratio: 0.05,
+          doppler_residual_hz: 1500,
+          handover_state: 1 as const,
+          elevation_deg: 25,
+          health: "crit" as const,
+        },
+      ],
+      gateways: [],
+      active_anomaly: null,
+      active_anomalies: [],
+      scraped_at: new Date().toISOString(),
+    };
+    render(<SatelliteView data={snapshot} />);
+    // Each beam → its own Entity named "Beam <id> coverage cone"
+    expect(
+      screen.getByTestId("cesium-entity-Beam-beam-1-coverage-cone"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("cesium-entity-Beam-beam-2-coverage-cone"),
+    ).toBeInTheDocument();
+  });
+
+  test("renders no cones when data is null (no scenario loaded)", () => {
+    render(<SatelliteView data={null} />);
+    expect(screen.queryByTestId(/cesium-entity-Beam-/)).not.toBeInTheDocument();
   });
 });
