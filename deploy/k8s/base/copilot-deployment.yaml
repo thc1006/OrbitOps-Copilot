@@ -46,3 +46,12 @@ spec:
               # Vite dev server (localhost:5173) included so contributors can
               # run `npm run dev` against the in-cluster copilot directly.
               value: "http://localhost:5173,http://localhost:30073,http://31.41.34.19:30073"
+            - name: ORBITOPS_LOKI_URL
+              # PR #60 / D2 (2026-05-03) intended to add this — but the
+              # edit didn't actually land in main (caught by U7 fix on
+              # 2026-05-04). Bare hostname `loki` resolves via K8s DNS
+              # to the Loki Service in this namespace. With this env
+              # var set, copilot-api's _log_retrieval.LokiLogScraper
+              # queries Loki for /ask evidence augmentation; without
+              # it, NullLogScraper fallback yields evidence.logs_used=[].
+              value: "http://loki:3100"
