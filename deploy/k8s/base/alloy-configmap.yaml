@@ -2,15 +2,34 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: orbitops-alloy-config
+  # NB: namespace omitted intentionally for kustomize composition (the
+  # base kustomization.yaml sets `namespace: orbitops` cluster-wide).
+  # When this file is applied DIRECTLY (kubectl apply -f alloy-configmap.yaml)
+  # without going through kustomize, it lands in `default` and the Alloy
+  # pod silently mounts an orphaned older copy. Hence: always apply via
+  # `kustomize build deploy/k8s/overlays/local | kubectl apply -f -`,
+  # never via `kubectl apply -f deploy/k8s/base/alloy-configmap.yaml`.
   labels:
     app.kubernetes.io/name: alloy
     app.kubernetes.io/part-of: orbitops-copilot
 data:
   # K8s-flavor of observability/alloy/config.alloy (compose path).
   # Differences vs compose: source is the kubelet's pod-log directory
-  # rather than docker socket, since K8s-deployed clusters don't
-  # universally expose the docker socket. We use loki.source.kubernetes
-  # which discovers via the K8s API instead.
+  # rather than docker socket. We use loki.source.kubernetes which
+  # discovers via the K8s API.
+  #
+  # U7 fix (2026-05-04): switched the source_labels from
+  # `__meta_kubernetes_pod_container_name` to
+  # `__meta_kubernetes_pod_label_app_kubernetes_io_name`. The former is
+  # NOT populated by `discovery.kubernetes` with `role="pod"` — only
+  # `role="endpointslice"` produces per-container meta labels. Result:
+  # service="" for every target → keep regex matches nothing → only
+  # pods that happened to enter via Alloy's defaults (grafana / loki
+  # / prometheus, all 3 carrying their own conventional labels) made
+  # it to Loki. The K8s-standard `app.kubernetes.io/name` pod label
+  # (which every OrbitOps deployment sets per labels block) IS
+  # surfaced as `__meta_kubernetes_pod_label_app_kubernetes_io_name`
+  # when role="pod", so the relabel actually populates `service`.
   config.alloy: |
     discovery.kubernetes "pods" {
       role = "pod"
@@ -24,18 +43,28 @@ data:
     discovery.relabel "pods" {
       targets = discovery.kubernetes.pods.targets
 
-      // service label = container name (matches the LogQL contract used
-      // by copilot-api's _log_retrieval.LokiLogScraper).
+      // service label = "orbitops-" + pod's `app.kubernetes.io/name`.
+      // The prefix matches the docker-compose path (where promtail's
+      // container_name was already `orbitops-<svc>`), so the
+      // LokiLogScraper's LogQL `{service=~"orbitops-.*"}` works
+      // identically across compose and K8s deploys. Two-step relabel:
+      // step 1 picks the bare app label, step 2 prepends the prefix.
       rule {
-        source_labels = ["__meta_kubernetes_pod_container_name"]
+        source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+        target_label  = "service"
+      }
+      rule {
+        source_labels = ["service"]
+        regex         = "(.+)"
+        replacement   = "orbitops-$1"
         target_label  = "service"
       }
 
       // Keep only the OrbitOps app containers (excludes Alloy itself
-      // from a re-ingestion loop).
+      // from a re-ingestion loop). Match against the prefixed name.
       rule {
         source_labels = ["service"]
-        regex         = "(ntn-metrics-emulator|copilot-api|digital-twin-ui|prometheus|grafana|loki)"
+        regex         = "orbitops-(ntn-metrics-emulator|copilot-api|digital-twin-ui|prometheus|grafana|loki)"
         action        = "keep"
       }
     }
