@@ -38,15 +38,17 @@ fail()  { printf "${RED}[verify FAIL]${RESET} %s\n" "$*"; exit 1; }
 ok()    { printf "${GREEN}[verify ok]${RESET}   %s\n" "$*"; }
 
 # ─── 1. format / lint ───────────────────────────────────
-info "1/5 format & lint (placeholder for Sprint 0)"
-if command -v ruff >/dev/null 2>&1; then
-  if ruff check services/ scripts/ tests/ 2>/dev/null; then
-    ok "ruff clean"
-  else
-    warn "ruff reported issues (Sprint 0 placeholders may have none — run again after Sprint 1)"
-  fi
+# I-5 (resolved 2026-05-04): ruff is now BLOCKING (was advisory in
+# Sprint 0). Sprint-2 has shipped real implementations across all
+# services and they're ruff-clean. Future ruff regressions fail
+# verify.sh + CI immediately, matching CLAUDE.md §4 mandate.
+info "1/5 format & lint (blocking)"
+RUFF_BIN="$(command -v ruff 2>/dev/null || echo .venv/bin/ruff)"
+if [ -x "$RUFF_BIN" ] || command -v ruff >/dev/null 2>&1; then
+  "$RUFF_BIN" check services/ scripts/ tests/
+  ok "ruff clean"
 else
-  warn "ruff not installed; run 'make bootstrap'"
+  fail "ruff not installed; run 'make bootstrap'"
 fi
 
 # ─── 1b. TDD discipline (advisory; per docs/reviews/tdd-audit.md I-3) ──

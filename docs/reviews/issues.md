@@ -56,31 +56,27 @@
 
 ---
 
-## I-5 (Medium) — `make verify` lint gate is placeholder
+## I-5 (RESOLVED 2026-05-04) — ~~`make verify` lint gate is placeholder~~
 
 | Field | Value |
 |---|---|
-| Severity | **Medium** |
-| File | `verify.sh` lines 26-36 |
-| Problem | Gate 1 runs ruff but tolerates warnings (`\|\| true` semantic). Linter findings don't fail CI. |
-| Recommended fix | Sprint 2: harden to `ruff check services/ scripts/ tests/` exit-code-aware; require all green. |
-| Suggested test | Insert deliberate ruff E501 violation; `make verify` should fail. |
-| Owner role | `architect` |
-| Estimated effort | 30 min + cleanup of any existing violations |
+| Severity | ~~**Medium**~~ → **RESOLVED** |
+| Resolved by | Phase B housekeeping PR — `verify.sh` gate 1 + CI `lint-only` job both flipped to blocking; no `\|\| true` swallow. |
+| File | `verify.sh` + `.github/workflows/ci.yml` |
+| Original problem | ~~Gate 1 runs ruff but tolerates warnings; linter findings don't fail CI.~~ |
+| Resolution | All services have been ruff-clean since Sprint-1; Sprint-2 PRs maintained that. Flipping to blocking is now safe. Falls back to `.venv/bin/ruff` if `ruff` not on PATH (matches CI install path). |
 
 ---
 
-## I-6 (Medium) — Grafana ships `admin/admin` + anonymous Viewer
+## I-6 (RESOLVED 2026-05-04 — template) — ~~Grafana ships `admin/admin` + anonymous Viewer~~
 
 | Field | Value |
 |---|---|
-| Severity | **Medium** (Low for local dev; High if anyone deploys to a non-local network) |
-| File | `deploy/docker-compose.yml` |
-| Problem | Default credentials. Anonymous Viewer enabled. Fine for `localhost` demo; risky if pushed beyond. |
-| Recommended fix | Add `deploy/docker-compose.override.example.yml` showing how to override `GF_SECURITY_ADMIN_PASSWORD` and disable anonymous. Add a banner in `docs/demo/observability.md` warning against non-local deployment with these defaults. |
-| Suggested test | New `scripts/check-observability.sh` assertion: refuse if `0.0.0.0` Grafana bind detected. |
-| Owner role | `observability-engineer` |
-| Estimated effort | 30 min |
+| Severity | ~~**Medium**~~ → **RESOLVED (template)** |
+| Resolved by | Phase B housekeeping PR — added `deploy/k8s/overlays/prod/` with secret-backed admin password + `GF_AUTH_ANONYMOUS_ENABLED=false`. |
+| File | `deploy/k8s/overlays/prod/{kustomization.yaml,grafana-admin-secret-template.yaml,README.md}` |
+| Original problem | ~~Default credentials. Anonymous Viewer enabled. Fine for `localhost` demo; risky if pushed beyond.~~ |
+| Resolution | The local overlay still ships admin/admin (intentional for kubeadm-on-laptop demo per overlay README). The new prod overlay is a template / blueprint: `kustomize build deploy/k8s/overlays/prod` renders Grafana with `GF_SECURITY_ADMIN_PASSWORD` from `secretKeyRef: orbitops-grafana-admin/password` and `GF_AUTH_ANONYMOUS_ENABLED=false`. Operator creates the actual secret via `kubectl create secret generic orbitops-grafana-admin --from-literal=password="$(openssl rand -base64 32)"` before applying the overlay. Sprint-3+ ingress work will adopt or supersede; current Sprint-2 demo continues on local overlay. |
 
 ---
 
@@ -98,17 +94,15 @@
 
 ---
 
-## I-8 (Low) — k8s-smoke `tests/k8s-smoke/` directory is empty
+## I-8 (RESOLVED 2026-05-04) — ~~k8s-smoke `tests/k8s-smoke/` directory is empty~~
 
 | Field | Value |
 |---|---|
-| Severity | **Low** |
-| File | `tests/k8s-smoke/` |
-| Problem | `make test` reports `PENDING tests/k8s-smoke — empty`. PR #8 (VS-6) ships actual smoke script; not yet merged. |
-| Recommended fix | Merge PR #8. |
-| Suggested test | `./scripts/k8s-smoke-test.sh` exits 0. |
-| Owner role | `k8s-platform-engineer` |
-| Estimated effort | 0 (PR exists) |
+| Severity | ~~**Low**~~ → **RESOLVED** |
+| Resolved by | Phase B housekeeping PR — `tests/k8s-smoke/healthz.sh` now exists. |
+| File | `tests/k8s-smoke/healthz.sh` |
+| Original problem | ~~Directory was a `.gitkeep` placeholder. PR #8 was never merged separately.~~ |
+| Resolution | Live-cluster smoke covers all 7 OrbitOps deployments (emulator / copilot / UI / prom / grafana / loki / alloy) — waits each `kubectl rollout status deploy/X --timeout=90s`, then port-forwards each /healthz-bearing service (emulator / copilot / UI) and curls `/healthz` for HTTP 200. Verified end-to-end against the kubeadm cluster on 2026-05-04: all 7 Ready + 3 /healthz 200. Closes AC-S006-2 + AC-S006-3 acceptance criteria. |
 
 ---
 
@@ -124,31 +118,27 @@
 
 ---
 
-## I-10 (Low) — `claims-audit` skill not run in CI
+## I-10 (RESOLVED 2026-05-04) — ~~`claims-audit` skill not run in CI~~
 
 | Field | Value |
 |---|---|
-| Severity | **Low** |
-| File | `verify.sh`, `.github/workflows/ci.yml` |
-| Problem | `claims-audit` skill is documented in `.claude/skills/claims-audit/SKILL.md` but not invoked automatically. Pre-RunSpace, every doc must be re-audited. |
-| Recommended fix | Add `verify.sh` gate 6b (advisory): grep marketing-words across `docs/**/*.md` + `README.md`; print WARN per match. Auto-applied in this PR. |
-| Suggested test | Insert "production-ready" into `README.md`; `make verify` prints WARN. |
-| Owner role | `architect` |
-| Estimated effort | (this PR auto-applies) |
+| Severity | ~~**Low**~~ → **RESOLVED** |
+| Resolved by | Phase B housekeeping PR — new `claims-audit` CI job promotes the verify.sh gate 1c grep from advisory to blocking. |
+| File | `.github/workflows/ci.yml` |
+| Original problem | ~~Marketing-word grep was advisory in verify.sh, never blocked CI; pre-RunSpace docs could ship "production-ready" / "seamless" claims.~~ |
+| Resolution | New `claims-audit` job runs the same regex (`seamless\|seamlessly\|production[ -]?ready\|fully[ -]?integrated\|enterprise[ -]?grade\|state[ -]?of[ -]?the[ -]?art\|industry[ -]?leading`) across `README.md` + `docs/**/*.md` (excluding `docs/reviews/` + `docs/adr/`). Any match fails the job. Tested locally; main is currently clean. |
 
 ---
 
-## I-11 (Low) — `package-lock.json` exclusion is by name, not glob
+## I-11 (RESOLVED 2026-05-04) — ~~`package-lock.json` exclusion is by name, not glob~~
 
 | Field | Value |
 |---|---|
-| Severity | **Low** |
-| File | `verify.sh` line 78 |
-| Problem | `--exclude=package-lock.json --exclude=pnpm-lock.yaml --exclude=yarn.lock` is explicit. Future tools (`bun.lockb`, `deno.lock`) re-trigger false positives. |
-| Recommended fix | Add `--exclude='*lock*.{json,yaml,yml,lockb}'` glob. Defer to Sprint 2. |
-| Suggested test | Drop a fake `bun.lockb` containing `nctu` substring; verify gate 6 still passes. |
-| Owner role | `security-reviewer` |
-| Estimated effort | 5 min |
+| Severity | ~~**Low**~~ → **RESOLVED** |
+| Resolved by | Phase B housekeeping PR — `scripts/check-no-secrets.sh` now excludes `*.lock` + `*.lockb` glob in addition to the explicit names. |
+| File | `scripts/check-no-secrets.sh` |
+| Original problem | ~~Future package managers (bun.lockb, deno.lock) would re-trigger false positives.~~ |
+| Resolution | Added `--exclude='*.lock' --exclude='*.lockb'` plus explicit `bun.lockb` + `deno.lock` (for grep-ability of well-known names). Existing 3 explicit excludes (package-lock / pnpm-lock / yarn.lock) retained. Verified the existing test suite stays green. |
 
 ---
 
