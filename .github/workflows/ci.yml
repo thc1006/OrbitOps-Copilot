@@ -73,7 +73,36 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.13" }
       - run: pip install "ruff==${RUFF_VERSION}"
-      - run: ruff check services/ scripts/ tests/ || true
+      # I-5 (resolved 2026-05-04): ruff is now blocking. Sprint-2 has
+      # shipped real implementations across all services and they're
+      # ruff-clean. Future regressions fail this job instead of being
+      # silently swallowed by `|| true`.
+      - run: ruff check services/ scripts/ tests/
+
+  claims-audit:
+    # I-10 (resolved 2026-05-04): promote the claims-audit grep from
+    # verify.sh's advisory gate 1c to a blocking CI job. Catches
+    # "production-ready" / "seamless" / etc. marketing language in
+    # README.md + docs/ that would inflate RunSpace claims (per the
+    # docs/reviews/runspace-claims-audit.md narrative).
+    name: claims-audit (no marketing language)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          marketing=$(grep -rIlE '\b(seamless|seamlessly|production[ -]?ready|fully[ -]?integrated|enterprise[ -]?grade|state[ -]?of[ -]?the[ -]?art|industry[ -]?leading)\b' \
+            --include='*.md' README.md docs/ 2>/dev/null | grep -v 'docs/reviews/' | grep -v 'docs/adr/' || true)
+          if [ -n "$marketing" ]; then
+            echo "claims-audit FAIL: marketing language found in:"
+            echo "$marketing"
+            echo
+            echo "Review per docs/reviews/runspace-claims-audit.md."
+            echo "If a use is intentional, exempt by moving the file under"
+            echo "docs/reviews/ or docs/adr/ (those paths are excluded)."
+            exit 1
+          fi
+          echo "claims-audit OK: no marketing language in README + docs/"
 
   no-secrets:
     name: anonymity / secrets

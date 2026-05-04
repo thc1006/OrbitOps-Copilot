@@ -1,0 +1,32 @@
+# prod overlay — non-local Grafana hardening template (I-6 partial fix).
+# See README.md in this directory. NOT for current deploy; Sprint-3+
+# ingress work will adopt or supersede.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: orbitops
+
+resources:
+  - ../../base
+  - grafana-admin-secret-template.yaml
+
+patches:
+  # 1. Grafana env — replace literal admin password with secretKeyRef +
+  #    disable anonymous auth.
+  - target:
+      kind: Deployment
+      name: grafana
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/env
+        value:
+          - name: GF_SECURITY_ADMIN_USER
+            value: admin
+          - name: GF_SECURITY_ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: orbitops-grafana-admin
+                key: password
+          - name: GF_USERS_ALLOW_SIGN_UP
+            value: "false"
+          - name: GF_AUTH_ANONYMOUS_ENABLED
+            value: "false"

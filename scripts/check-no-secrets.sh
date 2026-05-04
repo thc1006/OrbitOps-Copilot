@@ -113,7 +113,12 @@ COMMON_GREP_FLAGS=(
   --include='*.js'    --include='*.jsx'   --include='*.sh'
   --include='*.dockerfile' --include='Dockerfile'
   --include='*.cfg'   --include='*.ini'
+  # I-11 (resolved 2026-05-04): glob-shaped lock-file exclusion catches
+  # future package managers (bun.lockb, deno.lock, etc.) without
+  # touching this list each time. Explicit names retained for grep-ability.
   --exclude='package-lock.json' --exclude='pnpm-lock.yaml' --exclude='yarn.lock'
+  --exclude='bun.lockb' --exclude='deno.lock'
+  --exclude='*.lock' --exclude='*.lockb'
   --exclude-dir='.git' --exclude-dir='node_modules'
   --exclude-dir='.venv' --exclude-dir='venv'
   --exclude-dir='dist' --exclude-dir='build' --exclude-dir='tmp'
