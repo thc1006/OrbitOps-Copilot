@@ -25,8 +25,43 @@ import zhTW from "./locales/zh-TW.json";
 
 let _initialized = false;
 
-export async function initI18n(): Promise<I18n> {
+/**
+ * Pick the runtime locale from `navigator.language`. zh* → "zh-TW",
+ * everything else → "en" (the only two bundles we ship).
+ *
+ * Exported so test-setup + future locale-override paths can call the
+ * same detection logic explicitly without mutating module state.
+ */
+export function detectLocale(): "en" | "zh-TW" {
+  if (typeof navigator !== "undefined" && navigator.language?.startsWith("zh")) {
+    return "zh-TW";
+  }
+  return "en";
+}
+
+/**
+ * Bootstrap i18next + react-i18next.
+ *
+ * I-14 (PR for issue #69, 2026-05-04): `lng` parameter accepts an
+ * explicit locale override. Tests pass `initI18n("en")` to get
+ * deterministic strings regardless of jsdom's `navigator.language`;
+ * production calls `initI18n()` (no arg → falls through to
+ * `detectLocale()`). Single source of truth for the i18next config —
+ * no more split-brain between production and test-setup.ts.
+ */
+export async function initI18n(lng?: string): Promise<I18n> {
   if (_initialized) {
+    // PR #80 review (issue #80 review #1, 2026-05-04): on a subsequent
+    // call, honor the caller's explicit `lng` by switching languages
+    // instead of silently returning the existing instance. Without
+    // this branch, `initI18n("zh-TW")` after a prior `initI18n("en")`
+    // would no-op — the override was effectively first-call-only.
+    // We only call changeLanguage when (a) caller passed lng AND
+    // (b) it differs from the current language; bare initI18n() with
+    // no arg still no-ops idempotently.
+    if (lng && lng !== i18next.language) {
+      await i18next.changeLanguage(lng);
+    }
     return i18next;
   }
 
@@ -35,12 +70,7 @@ export async function initI18n(): Promise<I18n> {
       en: { translation: en },
       "zh-TW": { translation: zhTW },
     },
-    // Default: pick the locale that matches navigator.language; fall back
-    // to en if none of our bundles match. The detection-via-localStorage
-    // path is a Sprint-3+ enhancement.
-    lng: typeof navigator !== "undefined" && navigator.language?.startsWith("zh")
-      ? "zh-TW"
-      : "en",
+    lng: lng ?? detectLocale(),
     fallbackLng: "en",
     interpolation: {
       escapeValue: false, // React already escapes; double-escape would mangle output

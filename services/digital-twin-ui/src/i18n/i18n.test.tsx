@@ -95,4 +95,45 @@ describe("i18n init", () => {
       expect.arrayContaining(["en", "zh-TW"]),
     );
   });
+
+  test("I-14 (issue #69): initI18n(lng) override is honored when provided", async () => {
+    // Tests that the production helper, given an explicit `lng`, uses
+    // it instead of falling through to navigator.language detection.
+    // test-setup.ts relies on this to lock the test locale to "en"
+    // regardless of jsdom's navigator state — without the override,
+    // production + test config could drift.
+    //
+    // PR #80 review (issue #80 review #2, 2026-05-04): the restore
+    // path is in `finally` so a thrown / failed assertion can't leave
+    // the global i18next singleton stuck in zh-TW (which would make
+    // subsequent tests fail for the wrong reason).
+    const { initI18n, _resetI18nForTests } = await import("./index");
+    _resetI18nForTests();
+    try {
+      const i18n = await initI18n("zh-TW");
+      expect(i18n.language).toBe("zh-TW");
+    } finally {
+      _resetI18nForTests();
+      await initI18n("en");
+    }
+  });
+
+  test("PR #80 review #1: lng override on a subsequent call switches language (was silent no-op)", async () => {
+    // Before the fix, initI18n("zh-TW") after initI18n("en") returned
+    // the existing 'en' instance unchanged. After the fix, the second
+    // call calls i18next.changeLanguage(lng).
+    const indexMod = await import("./index");
+    const i18next = indexMod.default;
+    const { initI18n, _resetI18nForTests } = indexMod;
+    _resetI18nForTests();
+    try {
+      await initI18n("en");
+      expect(i18next.language).toBe("en");
+      await initI18n("zh-TW"); // would have no-op'd before fix
+      expect(i18next.language).toBe("zh-TW");
+    } finally {
+      _resetI18nForTests();
+      await initI18n("en");
+    }
+  });
 });
