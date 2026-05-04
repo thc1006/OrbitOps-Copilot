@@ -1,11 +1,11 @@
 {
   "name": "digital-twin-ui",
   "private": true,
-  "version": "0.2.0-dev",
+  "version": "0.3.0-dev",
   "type": "module",
   "description": "OrbitOps digital-twin web UI — k8s Dashboard-style Material UI shell.",
   "engines": {
-    "_comment": "VS-13 S1.1 (2026-05-04, PR #74 review): floor lifted >=22.0.0 → >=22.13.0 because the post-bump dep tree's strictest Node requirement is jsdom 29's `^22.13.0`. Vite 8 / Rolldown declare `>=22.12.0`, jsdom dictates the harder floor. With `engine-strict=true` in .npmrc, npm install fails outright on Node < 22.13.",
+    "_comment": "VS-13 S1.1 (2026-05-04, PR #74+#75 review): when running on Node 22, the floor is 22.13 because jsdom 29's engines field is `^20.19.0 || ^22.13.0 || >=24.0.0` — i.e. inside the Node 22 branch it requires ≥22.13. (jsdom DOES still support Node 20.19+ and 24+; we target 22 here, not 20, so 22.13 is the relevant floor for our target.) Vite 8 / Rolldown declare `>=22.12.0`. With `engine-strict=true` in .npmrc, npm install fails outright if local Node is below the declared floor.",
     "node": ">=22.13.0"
   },
   "scripts": {

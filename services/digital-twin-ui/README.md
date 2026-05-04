@@ -40,22 +40,40 @@ cd services/digital-twin-ui
 npm install                           # one-time; will FAIL on Node < 22.13 (engine-strict=true)
 npm run dev                           # http://127.0.0.1:5173
 
-# Talk to a running copilot-api + emulator pair:
-VITE_API_BASE_URL=http://127.0.0.1:8001 npm run dev
+# Override the default API endpoints (see src/api.ts for the full list):
+VITE_COPILOT_BASE_URL=http://127.0.0.1:8001 \
+VITE_EMULATOR_BASE_URL=http://127.0.0.1:8000 \
+  npm run dev
 
-# (Default unset → Copilot Panel uses hardcoded mock evidence; offline-friendly for demo.)
+# Defaults (when unset): http://${hostname}:30081 (copilot) / :30080 (emulator)
+# / :30090 (prometheus) / :30030 (grafana). These match `make k8s-up`'s
+# NodePort layout. There is NO offline mock fallback — if the copilot
+# endpoint is unreachable, askCopilot() returns an ERROR-shaped response
+# and the UI surfaces it as "ERROR" state. Run the emulator + copilot
+# locally (or in K8s) before opening /copilot.
 ```
 
 ## Test
 
 ```bash
-npm test         # vitest run — 88 tests (15 i18n + ~73 page/component contracts)
+npm test         # vitest run — currently 88 passing across 12 files
+                 # (run `npm test -- --reporter=verbose` for per-file counts)
 npx tsc --noEmit # strict TS6 typecheck
 npm run build    # tsc --noEmit && vite build (rolldown; ~1.5 s)
 ```
 
+Test count is intentionally not broken down here — it changes per PR; the
+above command surfaces the live numbers.
+
 ## Screenshot / record
 
-- **Screenshot**: browser dev-tools "capture full size" or `tools/screenshot.sh`. Recommend 1440×900 viewport for review screenshots.
-- **Record**: macOS ⌘⇧5 / Linux `kazam` / Windows OBS. Demo flow: scenario load → anomaly banner → beam-1 critical (red) → click "Ask" → grounded answer with metric sparkline.
-- **RunSpace submission**: per CLAUDE.md §7, scrub OS chrome + tab bar + IDE personal info; `exiftool -all= screenshot.png` strips metadata. Repo itself stays non-anonymous (CLAUDE.md §2.1, 2026-05-01 policy reversal); only the submission archive needs scrubbing.
+- **Screenshot**: browser dev-tools "capture full size" (Chrome / Firefox).
+  Recommend 1440×900 viewport for review screenshots. No bundled wrapper
+  script — use the dev-tools UI directly.
+- **Record**: macOS ⌘⇧5 / Linux `kazam` / Windows OBS. Demo flow: scenario
+  load → anomaly banner → beam-1 critical (red) → click "Ask" → grounded
+  answer with metric sparkline.
+- **RunSpace submission**: per CLAUDE.md §7, scrub OS chrome + tab bar +
+  IDE personal info; `exiftool -all= screenshot.png` strips metadata. Repo
+  itself stays non-anonymous (CLAUDE.md §2.1, 2026-05-01 policy reversal);
+  only the submission archive needs scrubbing.
