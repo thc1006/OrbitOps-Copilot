@@ -1,32 +1,44 @@
 # prod overlay — non-local Grafana hardening template (I-6 partial fix).
 # See README.md in this directory. NOT for current deploy; Sprint-3+
 # ingress work will adopt or supersede.
+#
+# Footgun fixes (PR #63 review feedback, 2026-05-04):
+#  • The placeholder Secret manifest is NOT in `resources:` — applying
+#    this overlay must NEVER overwrite the operator-managed real Secret
+#    (`orbitops-grafana-admin`). The template file is kept in-tree as
+#    a copy-paste reference only; operator creates the real Secret
+#    out-of-band per README.md §1.
+#  • The Grafana env patch is per-entry (not whole-array replace) so
+#    base additions (e.g. future `GF_FEATURE_TOGGLES`) aren't silently
+#    dropped, and `GF_AUTH_ANONYMOUS_ORG_ROLE` survives the patch.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: orbitops
 
 resources:
   - ../../base
-  - grafana-admin-secret-template.yaml
 
 patches:
-  # 1. Grafana env — replace literal admin password with secretKeyRef +
-  #    disable anonymous auth.
+  # 1. Grafana env — per-entry JSON6902 ops. Path indices below are
+  #    coupled to deploy/k8s/base/grafana-deployment.yaml env order
+  #    (env/0..4: ADMIN_USER, ADMIN_PASSWORD, ALLOW_SIGN_UP,
+  #    ANONYMOUS_ENABLED, ANONYMOUS_ORG_ROLE). If the base reorders
+  #    env entries, update these paths. Per-entry (vs whole-array
+  #    replace) so future env additions in base aren't silently dropped.
   - target:
       kind: Deployment
       name: grafana
     patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/env
+      # env[1] GF_SECURITY_ADMIN_PASSWORD: literal "admin" → secretKeyRef
+      - op: remove
+        path: /spec/template/spec/containers/0/env/1/value
+      - op: add
+        path: /spec/template/spec/containers/0/env/1/valueFrom
         value:
-          - name: GF_SECURITY_ADMIN_USER
-            value: admin
-          - name: GF_SECURITY_ADMIN_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: orbitops-grafana-admin
-                key: password
-          - name: GF_USERS_ALLOW_SIGN_UP
-            value: "false"
-          - name: GF_AUTH_ANONYMOUS_ENABLED
-            value: "false"
+          secretKeyRef:
+            name: orbitops-grafana-admin
+            key: password
+      # env[3] GF_AUTH_ANONYMOUS_ENABLED: "true" → "false"
+      - op: replace
+        path: /spec/template/spec/containers/0/env/3/value
+        value: "false"

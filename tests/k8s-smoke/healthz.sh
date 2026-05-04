@@ -13,20 +13,27 @@
 #   0 → all deployments Ready + /healthz OK
 #   1 → any deployment failed to reach Ready, or any /healthz != 200
 #
-# Required: kubectl on PATH, kubeconfig pointing at the live cluster
-# (kind / k3d / kubeadm). The script does NOT bootstrap the cluster
-# itself; pair with `make kind-up && make k8s-apply` before invoking,
-# or run after `kustomize build ... | kubectl apply -f -`.
+# Required tools on PATH: kubectl, curl. Kubeconfig must point at the
+# live cluster (kind / k3d / kubeadm). The script does NOT bootstrap
+# the cluster itself; pair with `make kind-up && make k8s-apply` before
+# invoking, or run after `kustomize build ... | kubectl apply -f -`.
 #
 # What's smoked:
 #   - 5 application Deployments: ntn-metrics-emulator, copilot-api,
 #     digital-twin-ui, prometheus, grafana
 #   - 2 observability Deployments: loki, alloy (added Phase A 2026-05-03)
-#   - In-cluster /healthz on emulator (port 8000) + copilot (8001)
-#     via `kubectl exec` from a transient curl-bearing pod (alloy
-#     image carries no curl, but emulator + copilot images ship busybox
-#     wget). For pods without wget we fall back to `kubectl port-forward`
-#     which doesn't require an in-pod HTTP client.
+#   - /healthz on emulator (8000) + copilot (8001) + UI (80) via
+#     `kubectl port-forward` to localhost. We deliberately don't `kubectl
+#     exec` curl into pods because the distroless service images don't
+#     ship a shell; port-forward is the lowest-common-denominator path.
+#
+# PR #63 review hardening (2026-05-04):
+#   - explicit `command -v curl` preflight (was implicit)
+#   - EXIT trap kills any background port-forward PID, so a failed
+#     /healthz doesn't leak a port-forward when `set -e` aborts
+#   - port-forward stderr captured to a temp log; on /healthz failure
+#     the log is included in the error message (was discarded with
+#     `2>&1 >/dev/null`, masking "address already in use" etc.)
 
 set -euo pipefail
 
@@ -37,6 +44,25 @@ GREEN=$'\e[32m'; YELLOW=$'\e[33m'; RED=$'\e[31m'; RESET=$'\e[0m'
 ok()    { printf "${GREEN}  ✓${RESET} %s\n" "$*"; }
 warn()  { printf "${YELLOW}  ●${RESET} %s\n" "$*"; }
 fail()  { printf "${RED}  ✗${RESET} %s\n" "$*" >&2; exit 1; }
+
+# Track every backgrounded port-forward PID + its stderr log path so
+# the EXIT trap can clean both up regardless of how the script exits
+# (success, /healthz fail, kubectl error, ctrl-c).
+PF_PIDS=()
+PF_LOGS=()
+
+cleanup_port_forwards() {
+  for pid in "${PF_PIDS[@]:-}"; do
+    [[ -z "$pid" ]] && continue
+    kill "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+  done
+  for log in "${PF_LOGS[@]:-}"; do
+    [[ -z "$log" ]] && continue
+    rm -f "$log"
+  done
+}
+trap cleanup_port_forwards EXIT
 
 # All Deployments expected up. Includes the Phase A obs additions.
 DEPLOYMENTS=(
@@ -58,9 +84,12 @@ declare -A HEALTHZ_PORTS=(
   [digital-twin-ui]=80
 )
 
-if ! command -v kubectl >/dev/null 2>&1; then
-  fail "kubectl not on PATH"
-fi
+# Required tools preflight.
+for tool in kubectl curl; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    fail "$tool not on PATH"
+  fi
+done
 
 if ! kubectl get ns "$NS" >/dev/null 2>&1; then
   fail "namespace '$NS' missing — run 'kustomize build ... | kubectl apply -f -' first"
@@ -75,21 +104,25 @@ for d in "${DEPLOYMENTS[@]}"; do
 done
 
 # 2. /healthz smoke via port-forward (works regardless of in-pod tools).
-# Runs each forward in the background, curls localhost, kills it.
+# Each forward runs in the background; cleanup_port_forwards (trap) kills
+# any leftover PID even if we abort mid-iteration.
 for d in "${!HEALTHZ_PORTS[@]}"; do
   port="${HEALTHZ_PORTS[$d]}"
   local_port="$((20000 + RANDOM % 1000))"
-  kubectl -n "$NS" port-forward "deployment/$d" "${local_port}:${port}" >/dev/null 2>&1 &
+  pf_log="$(mktemp -t "orbitops-pf-${d}.XXXXXX")"
+  PF_LOGS+=("$pf_log")
+  kubectl -n "$NS" port-forward "deployment/$d" "${local_port}:${port}" >"$pf_log" 2>&1 &
   pf_pid=$!
+  PF_PIDS+=("$pf_pid")
   # Give port-forward a moment to bind.
   sleep 2
   if ! curl -sf --max-time 5 "http://127.0.0.1:${local_port}/healthz" >/dev/null 2>&1; then
-    kill "$pf_pid" 2>/dev/null || true
-    wait "$pf_pid" 2>/dev/null || true
-    fail "deployment/$d /healthz did not respond 200"
+    pf_diag="(no port-forward output captured)"
+    if [[ -s "$pf_log" ]]; then
+      pf_diag="$(head -c 800 "$pf_log")"
+    fi
+    fail "deployment/$d /healthz did not respond 200 — port-forward log: $pf_diag"
   fi
-  kill "$pf_pid" 2>/dev/null || true
-  wait "$pf_pid" 2>/dev/null || true
   ok "deployment/$d /healthz 200"
 done
 
