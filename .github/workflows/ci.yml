@@ -209,7 +209,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # VS-13 S1.0 (2026-05-04): bumped 20 → 22 ahead of the React 19
+          # / Vite 8 / Vitest 4 stack jump (S1.1+). CesiumJS 1.141 raises
+          # Node min to 22, and Vite 8 deprecates Node 18 / 20-pre-LTS.
+          # Local dev box is already on v22.20.0; this aligns CI.
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: services/digital-twin-ui/package-lock.json
       - name: install
