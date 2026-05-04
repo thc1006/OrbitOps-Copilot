@@ -1,50 +1,61 @@
 # digital-twin-ui
 
-Sprint 1 minimum-viable web UI for the OrbitOps Copilot demo. Three panels:
+OrbitOps Copilot's web UI — Material Design / k8s-Dashboard aesthetic, talking to `copilot-api` and `ntn-metrics-emulator` via REST.
 
-1. **Digital Twin View** — pure SVG: ground station, satellite arc, 3 colour-coded beams.
-2. **Metrics Panel** — per-beam SNR / SINR / latency / packet loss / Doppler residual / handover state, with health colour rings.
-3. **Copilot Panel** — question input → grounded answer (summary, likely cause, recommended actions, evidence, unknowns, confidence). Renders REFUSED / INSUFFICIENT_EVIDENCE / ERROR / ok states distinctly.
+## What ships
 
-## Why SVG, not CesiumJS
+Multi-route SPA with these surfaces (all wired against the live emulator's `/metrics` 5 s scrape):
 
-SPEC-004 §3 reserves CesiumJS satellite-pass animation for VS-13 (Sprint 3). For Sprint 1 demo stability, the UI uses pure SVG: zero GPU dependency, jsdom-friendly tests, < 1 KB runtime cost. The visual is a schematic, **not** a true orbit.
+| Route | What |
+|---|---|
+| `/` (Overview) | Scenario clock + active anomaly banner + headline cards |
+| `/scenarios` | Load one of the 3 packaged scenarios + "Ready for Copilot" affordance |
+| `/beams` | Per-beam SNR / SINR / latency / packet loss / Doppler residual / elevation / handover-state table + 3 stacked Recharts time-series panels (SNR / Latency / Doppler) |
+| `/gateways` | Gateway availability gauges |
+| `/anomalies` | Active anomalies + 5 inject buttons (`/anomaly/inject` API; runtime override) |
+| `/copilot` | Question input → grounded `/ask` answer; renders summary / likely cause / recommended actions / evidence (citations + inline sparklines) / unknowns / confidence; REFUSED / INSUFFICIENT_EVIDENCE / ERROR / ok states distinct |
 
-## Stack (Sprint 1 — today's stable npm versions)
+i18n: EN + Traditional Chinese (zh-TW); locale auto-detected from `navigator.language` (per AC-S004-5; PR #68). 15 keys cover Anomalies + Beams interactive surfaces; other pages still hardcoded English (tracked in issue #72 / I-17).
 
-- React 18.3, Vite 5.4, TypeScript 5.6, Tailwind 3.4
-- Vitest 2.1 + @testing-library/react 16 + jsdom 25
+## Stack (VS-13 baseline — bumped 2026-05-04 in PR #74)
 
-`docs/09_installation_research.md` targets future versions (React 19 / Vite 8 / TS 6 / Tailwind 4 / CesiumJS 1.140); **those upgrades land in VS-13** alongside the satellite-pass animation. Pinning future versions today would break `npm install`.
+| Layer | Version |
+|---|---|
+| React | 19.2 |
+| Vite | 8.0 (rolldown bundler — full build ~1.5 s) |
+| TypeScript | 6.0 (strict module resolution) |
+| Vitest | 4.1 + @testing-library/react 16.3 + jsdom 29 |
+| react-router-dom | 7.14 (data router default) |
+| Recharts | 3.8 |
+| MUI | 6.x |
+| i18next + react-i18next | 25 / 16 |
+| **Node runtime floor** | **22.13.0** (enforced via `.npmrc engine-strict=true` + CI `actions/setup-node@v4`) |
+
+CesiumJS 1.141 satellite-pass viz lands in VS-13 S2 (separate PR after S1.1).
 
 ## Run
 
 ```bash
 cd services/digital-twin-ui
-npm install                           # one-time
+npm install                           # one-time; will FAIL on Node < 22.13 (engine-strict=true)
 npm run dev                           # http://127.0.0.1:5173
-```
 
-UI route: `/` (single-page; no router for Sprint 1).
-
-To talk to a running copilot-api, set `VITE_API_BASE_URL`:
-
-```bash
+# Talk to a running copilot-api + emulator pair:
 VITE_API_BASE_URL=http://127.0.0.1:8001 npm run dev
-```
 
-If `VITE_API_BASE_URL` is unset (default), the Copilot Panel returns a hard-coded mock response — useful for offline demo.
+# (Default unset → Copilot Panel uses hardcoded mock evidence; offline-friendly for demo.)
+```
 
 ## Test
 
 ```bash
-npm test         # vitest run, 11 tests
-npx tsc --noEmit
-npx vite build
+npm test         # vitest run — 88 tests (15 i18n + ~73 page/component contracts)
+npx tsc --noEmit # strict TS6 typecheck
+npm run build    # tsc --noEmit && vite build (rolldown; ~1.5 s)
 ```
 
 ## Screenshot / record
 
-- **Screenshot**: any browser dev-tools "capture full size" works. Recommend setting viewport to 1440×900 for sprint-review screenshots.
-- **Record**: macOS ⌘⇧5 / Linux `kazam` / Windows OBS. The demo flow is: load page → see anomaly banner → see beam-1 critical (red) → click "Ask" → grounded answer fills Copilot Panel.
-- **Anonymity** before submission: `exiftool -all= screenshot.png` and crop OS chrome.
+- **Screenshot**: browser dev-tools "capture full size" or `tools/screenshot.sh`. Recommend 1440×900 viewport for review screenshots.
+- **Record**: macOS ⌘⇧5 / Linux `kazam` / Windows OBS. Demo flow: scenario load → anomaly banner → beam-1 critical (red) → click "Ask" → grounded answer with metric sparkline.
+- **RunSpace submission**: per CLAUDE.md §7, scrub OS chrome + tab bar + IDE personal info; `exiftool -all= screenshot.png` strips metadata. Repo itself stays non-anonymous (CLAUDE.md §2.1, 2026-05-01 policy reversal); only the submission archive needs scrubbing.
