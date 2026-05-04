@@ -100,17 +100,13 @@ def test_ask_emits_structured_log_with_status_and_question_chars(
         for rec in caplog.records
         if rec.name == "copilot_api.main" and getattr(rec, "msg", None) == "ask"
     ]
-    assert len(matching) == 1, (
-        f"expected exactly 1 ask log line; got {len(matching)}"
-    )
+    assert len(matching) == 1, f"expected exactly 1 ask log line; got {len(matching)}"
     rec = matching[0]
     # status from response body must equal status on log record
     body = r.json()
     assert getattr(rec, "status", None) == body["status"]
     # PII-safe: log captures char count, NOT the question text
-    assert getattr(rec, "question_chars", None) == len(
-        "Is beam-1 healthy right now?"
-    )
+    assert getattr(rec, "question_chars", None) == len("Is beam-1 healthy right now?")
     # Question text itself MUST NOT be logged (prompt-injection / privacy)
     rendered = json.dumps(rec.__dict__, default=str)
     assert "beam-1 healthy right now" not in rendered, (
@@ -151,9 +147,7 @@ def test_explain_emits_structured_log(
         for rec in caplog.records
         if rec.name == "copilot_api.main" and getattr(rec, "msg", None) == "explain"
     ]
-    assert len(matching) == 1, (
-        f"expected 1 explain log line; got {len(matching)}"
-    )
+    assert len(matching) == 1, f"expected 1 explain log line; got {len(matching)}"
     rec = matching[0]
     body = r.json()
     assert getattr(rec, "status", None) == body["status"]
@@ -176,9 +170,7 @@ def test_runbook_emits_structured_log(
         for rec in caplog.records
         if rec.name == "copilot_api.main" and getattr(rec, "msg", None) == "runbook"
     ]
-    assert len(matching) == 1, (
-        f"expected 1 runbook log line; got {len(matching)}"
-    )
+    assert len(matching) == 1, f"expected 1 runbook log line; got {len(matching)}"
     rec = matching[0]
     body = r.json()
     assert getattr(rec, "status", None) == body["status"]
@@ -238,6 +230,7 @@ def test_setup_logging_configures_uvicorn_loggers_to_json_format() -> None:
     Either works; this test asserts the OBSERVABLE outcome (output
     parses as JSON), not the mechanism. Passes for either fix."""
     import io
+    import sys
 
     from copilot_api._logging import _reset_for_tests, setup_logging
 
@@ -277,9 +270,7 @@ def test_setup_logging_configures_uvicorn_loggers_to_json_format() -> None:
         # Plain-text "INFO: hello from uvicorn" would fail this
         try:
             parsed = json.loads(line)
-            assert "ts" in parsed and "msg" in parsed, (
-                f"line missing ts/msg: {line!r}"
-            )
+            assert "ts" in parsed and "msg" in parsed, f"line missing ts/msg: {line!r}"
         except json.JSONDecodeError as exc:
             pytest.fail(
                 f"uvicorn-namespace log line is not JSON after setup_logging: "
@@ -305,12 +296,8 @@ def test_setup_logging_does_not_double_emit_via_propagation() -> None:
             h.stream = json_buf
 
     logging.getLogger("uvicorn.access").info("single message")
-    output_lines = [
-        line for line in json_buf.getvalue().strip().split("\n") if line
-    ]
-    matching = [
-        l for l in output_lines if "single message" in l
-    ]
+    output_lines = [line for line in json_buf.getvalue().strip().split("\n") if line]
+    matching = [line for line in output_lines if "single message" in line]
     assert len(matching) == 1, (
         f"expected exactly 1 emission of 'single message'; got "
         f"{len(matching)}: {output_lines}"

@@ -138,9 +138,7 @@ def test_scenario_tick_emits_structured_log(
     assert r.status_code == 200
 
     matching = [
-        rec
-        for rec in caplog.records
-        if getattr(rec, "msg", None) == "scenario.tick"
+        rec for rec in caplog.records if getattr(rec, "msg", None) == "scenario.tick"
     ]
     assert len(matching) >= 1
     rec = matching[0]
@@ -160,9 +158,7 @@ def test_anomaly_inject_emits_structured_log(
     assert r.status_code == 200
 
     matching = [
-        rec
-        for rec in caplog.records
-        if getattr(rec, "msg", None) == "anomaly.inject"
+        rec for rec in caplog.records if getattr(rec, "msg", None) == "anomaly.inject"
     ]
     assert len(matching) == 1
     rec = matching[0]
@@ -215,6 +211,7 @@ def test_setup_logging_configures_uvicorn_loggers_to_json_format() -> None:
             assert "ts" in parsed and "msg" in parsed
         except jsonlib.JSONDecodeError as exc:
             import pytest
+
             pytest.fail(f"non-JSON line: {line!r} ({exc})")
 
 
@@ -235,6 +232,8 @@ def test_setup_logging_does_not_double_emit_via_propagation() -> None:
 
     logging.getLogger("uvicorn.access").info("single message")
     matching = [
-        l for l in json_buf.getvalue().strip().split("\n") if "single message" in l
+        line
+        for line in json_buf.getvalue().strip().split("\n")
+        if "single message" in line
     ]
     assert len(matching) == 1, f"got {len(matching)}: {matching}"
