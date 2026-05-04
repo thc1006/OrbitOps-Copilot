@@ -9,11 +9,14 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "predev": "node scripts/copy-cesium-assets.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/copy-cesium-assets.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --port 5173",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
+    "pretest": "node scripts/copy-cesium-assets.mjs",
     "test": "vitest run"
   },
   "dependencies": {

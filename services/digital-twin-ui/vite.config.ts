@@ -29,13 +29,26 @@ export default defineConfig({
   // from a stranger's browser. Flip to `true` only for live debugging.
   build: {
     sourcemap: "hidden",
-    // CesiumJS bundle (cesium + resium + the rest of the app) lands
-    // around 5.4 MB un-minified / 1.5 MB gzip. The default 500 KB
-    // chunk-size warning fires noisily; bump to 6000 (6 MB) so cesium
-    // doesn't trip it but legitimate per-route bloat above 500 KB
-    // still surfaces. Code-splitting cesium into a lazy chunk is a
-    // future optimization (issue #TBD); doesn't gate this PR.
-    chunkSizeWarningLimit: 6000,
+    // VS-13 S3 (2026-05-04, addresses PR #77 review #2): keep the
+    // default 500 KB chunk-size warning so 500 KB–5 MB regressions
+    // surface during build. The cesium chunk legitimately exceeds
+    // 500 KB — that warning is expected and fires once per build for
+    // the cesium chunk only (App.tsx now lazy-loads SatelliteView, so
+    // the initial chunk no longer includes cesium). Don't blanket-
+    // suppress with a high chunkSizeWarningLimit — that hides real
+    // future regressions.
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          // Bucket cesium + resium into a named chunk so the warning
+          // (when it fires for a 5 MB chunk) is clearly attributed.
+          if (id.includes("/node_modules/cesium/") || id.includes("/node_modules/resium/")) {
+            return "cesium";
+          }
+          return undefined;
+        },
+      },
+    },
   },
   define: {
     // Cesium reads this at runtime to resolve Workers / Assets URLs.

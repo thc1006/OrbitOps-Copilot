@@ -47,10 +47,26 @@ vi.mock("resium", () => ({
   ),
   PointGraphics: () => <div data-resium="point-graphics" />,
   LabelGraphics: () => <div data-resium="label-graphics" />,
+  // VS-13 S3: SatelliteView now renders a PolylineGraphics for the
+  // pass trace. Mock returns a discriminable element so tests can
+  // assert the polyline exists in the rendered tree.
+  PolylineGraphics: () => <div data-resium="polyline-graphics" />,
 }));
 
 // Mock cesium primitives — only the surfaces SatelliteView calls.
 vi.mock("cesium", () => ({
+  // VS-13 S3 (PR #77 review #4 fix): pixelOffset is screen-space —
+  // Cartesian2(x, y) in pixels, NOT Cartesian3.fromDegrees(lon, lat).
+  // Test mock returns a discriminable struct so the component's Label
+  // pixelOffset can be verified by shape if a future test asserts it.
+  Cartesian2: class {
+    x: number;
+    y: number;
+    constructor(x: number, y: number) {
+      this.x = x;
+      this.y = y;
+    }
+  },
   Cartesian3: {
     fromDegrees: (lon: number, lat: number, height = 0) => ({
       lon,

@@ -1,4 +1,5 @@
-import { Box, Toolbar } from "@mui/material";
+import { lazy, Suspense } from "react";
+import { Box, CircularProgress, Toolbar } from "@mui/material";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import TopBar from "./layout/TopBar";
@@ -11,7 +12,14 @@ import Beams from "./pages/Beams";
 import Gateways from "./pages/Gateways";
 import Anomalies from "./pages/Anomalies";
 import Copilot from "./pages/Copilot";
-import SatelliteView from "./pages/SatelliteView";
+
+// VS-13 S3 (2026-05-04, addresses PR #77 review #1): SatelliteView is
+// lazy-loaded so cesium (~5 MB) only ships when the user navigates to
+// /satellite-view. Eager import would push the initial chunk to 5.4 MB
+// for every page (Overview / Beams / Copilot — none of which need it).
+// The Suspense fallback covers the network round-trip for the cesium
+// chunk + the brief mount delay before the WebGL viewer initializes.
+const SatelliteView = lazy(() => import("./pages/SatelliteView"));
 
 const DRAWER_WIDTH = 248;
 
@@ -48,7 +56,27 @@ export default function App() {
           <Route path="/gateways" element={<Gateways data={data} />} />
           <Route path="/anomalies" element={<Anomalies data={data} />} />
           <Route path="/copilot" element={<Copilot data={data} />} />
-          <Route path="/satellite-view" element={<SatelliteView />} />
+          <Route
+            path="/satellite-view"
+            element={
+              <Suspense
+                fallback={
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      minHeight: "60vh",
+                    }}
+                  >
+                    <CircularProgress />
+                  </Box>
+                }
+              >
+                <SatelliteView />
+              </Suspense>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Box>
