@@ -24,24 +24,24 @@
     "@mui/icons-material": "^6.1.10",
     "@mui/material": "^6.1.10",
     "i18next": "25.10.10",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
     "react-i18next": "16.6.6",
-    "react-router-dom": "^6.28.0",
-    "recharts": "^2.13.3"
+    "react-router-dom": "^7.14.2",
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.5.0",
-    "@testing-library/react": "^16.0.1",
+    "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.5.2",
     "@types/node": "^22.10.5",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
-    "jsdom": "^25.0.1",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.11",
-    "vitest": "^2.1.8"
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "jsdom": "^29.1.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.10",
+    "vitest": "^4.1.5"
   },
-  "_note": "v0.2: full redesign to Material Design / k8s-Dashboard aesthetic. MUI 6 + react-router 6 + Recharts + Roboto + JetBrains Mono. Tailwind/PostCSS dropped (MUI handles styling). Underlying React/Vite still pinned to stable; React 19 lands in VS-13 with CesiumJS migration."
+  "_note": "v0.3 (VS-13 S1.1, 2026-05-04): frontend stack jumped 5 majors — react 18→19 / vite 5→8 / typescript 5.6→6 / vitest 2→4 / @testing-library 16.0→16.3.2 / recharts 2→3 / react-router 6→7. CesiumJS lands in VS-13 S2 (separate PR). Material Design / k8s-Dashboard aesthetic preserved (MUI 6 unchanged)."
 }
