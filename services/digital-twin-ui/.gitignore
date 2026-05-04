@@ -5,9 +5,15 @@ dist
 
 # T1 (PR for SPEC-004 §AC-S004-5): `tsc -b` emits .js files next to
 # source if no `noEmit` / `outDir` is set in tsconfig. Vite handles
-# bundling, so these are pure detritus. Fixing tsconfig is a future
-# Sprint-3 cleanup; for now, gitignore prevents accidental commits.
+# bundling, so these are pure detritus. Fixing tsconfig is tracked
+# as I-15 (issue #70); for now, gitignore prevents accidental commits.
+#
+# VS-13 S1.1 follow-up: src/types/ holds INTENTIONAL ambient
+# declarations (CSS modules, @fontsource side-effect imports). Carve
+# it out as an exception so legitimate `.d.ts` files don't get caught
+# by the auto-emit sweep.
 src/**/*.js
 src/**/*.js.map
 src/**/*.d.ts
+!src/types/**
 vite.config.js

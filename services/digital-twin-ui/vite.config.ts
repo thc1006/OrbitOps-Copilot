@@ -1,5 +1,9 @@
-/// <reference types="vitest" />
-import { defineConfig } from "vite";
+/// <reference types="vitest/config" />
+// VS-13 S1.1 (2026-05-04): Vitest 4 + Vite 8 — `defineConfig` must come
+// from `vitest/config` (not bare `vite`) so the `test:` block's typing
+// is included; otherwise TS6 reports "Object literal may only specify
+// known properties, and 'test' does not exist in type 'UserConfigExport'".
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
