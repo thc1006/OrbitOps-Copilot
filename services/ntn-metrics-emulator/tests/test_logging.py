@@ -203,6 +203,17 @@ def test_setup_logging_configures_uvicorn_loggers_to_json_format() -> None:
     for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
         logging.getLogger(name).info("hello from %s", name)
 
+    # PR #62 review (Copilot bot, 2026-05-04) — strengthen the contract:
+    # a broken impl that only flips `propagate=True` without clearing
+    # the pre-existing uvicorn handlers would still let the JSON-parse
+    # assertion below pass while the OLD plain-text handler continued
+    # to spam pod stdout in parallel. plain_buf must stay empty.
+    assert plain_buf.getvalue() == "", (
+        "setup_logging() must silence pre-existing uvicorn handlers; "
+        f"plain-text handler still wrote {len(plain_buf.getvalue())} bytes: "
+        f"{plain_buf.getvalue()!r}"
+    )
+
     for line in json_buf.getvalue().strip().split("\n"):
         if not line:
             continue
@@ -216,12 +227,27 @@ def test_setup_logging_configures_uvicorn_loggers_to_json_format() -> None:
 
 
 def test_setup_logging_does_not_double_emit_via_propagation() -> None:
+    """PR #62 review (Copilot bot) extension — pre-attach a plain-text
+    handler simulating uvicorn's default before calling setup_logging(),
+    then assert it stays silent. A broken impl that only sets
+    `propagate=True` without clearing the old handler would fail this
+    `plain_buf == ""` assertion."""
     import io
     import logging
 
     from ntn_metrics_emulator._logging import _reset_for_tests, setup_logging
 
     _reset_for_tests()
+
+    # Pre-attach a plain-text handler simulating uvicorn's startup behavior.
+    plain_buf = io.StringIO()
+    uv_access = logging.getLogger("uvicorn.access")
+    uv_access.handlers.clear()
+    plain_handler = logging.StreamHandler(plain_buf)
+    plain_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+    uv_access.addHandler(plain_handler)
+    uv_access.propagate = False  # uvicorn's default
+
     setup_logging()
 
     json_buf = io.StringIO()
@@ -231,6 +257,12 @@ def test_setup_logging_does_not_double_emit_via_propagation() -> None:
             h.stream = json_buf
 
     logging.getLogger("uvicorn.access").info("single message")
+
+    # Old plain-text handler must not have fired (broken-impl guard).
+    assert plain_buf.getvalue() == "", (
+        f"old plain-text handler still emitted: {plain_buf.getvalue()!r}"
+    )
+
     matching = [
         line
         for line in json_buf.getvalue().strip().split("\n")
