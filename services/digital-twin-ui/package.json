@@ -4,6 +4,10 @@
   "version": "0.2.0-dev",
   "type": "module",
   "description": "OrbitOps digital-twin web UI — k8s Dashboard-style Material UI shell.",
+  "engines": {
+    "_comment": "VS-13 S1.0 (2026-05-04): Node 22 minimum, ahead of the React 19 / Vite 8 / Vitest 4 stack jump (S1.1+). CesiumJS 1.141 raises the floor; Vite 8 deprecates Node 20-pre-LTS.",
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -30,7 +34,7 @@
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.0.1",
     "@testing-library/user-event": "^14.5.2",
-    "@types/node": "^20.19.39",
+    "@types/node": "^22.10.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
