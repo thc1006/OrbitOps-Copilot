@@ -95,4 +95,20 @@ describe("i18n init", () => {
       expect.arrayContaining(["en", "zh-TW"]),
     );
   });
+
+  test("I-14 (issue #69): initI18n(lng) override is honored when provided", async () => {
+    // Tests that the production helper, given an explicit `lng`, uses
+    // it instead of falling through to navigator.language detection.
+    // test-setup.ts relies on this to lock the test locale to "en"
+    // regardless of jsdom's navigator state — without the override,
+    // production + test config could drift.
+    const { initI18n, _resetI18nForTests } = await import("./index");
+    _resetI18nForTests();
+    const i18n = await initI18n("zh-TW");
+    expect(i18n.language).toBe("zh-TW");
+    // Restore the test's "en" baseline so subsequent tests aren't
+    // surprised by a Traditional-Chinese t() output.
+    _resetI18nForTests();
+    await initI18n("en");
+  });
 });

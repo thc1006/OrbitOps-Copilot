@@ -1,9 +1,7 @@
 import "@testing-library/jest-dom";
 import i18next from "i18next";
-import { initReactI18next } from "react-i18next";
 
-import en from "./i18n/locales/en.json";
-import zhTW from "./i18n/locales/zh-TW.json";
+import { initI18n } from "./i18n";
 
 // VS-9b.2: jsdom doesn't provide ResizeObserver; recharts (introduced
 // by BeamSnrChart) calls it from ResponsiveContainer's useEffect.
@@ -26,26 +24,16 @@ if (typeof globalThis.ResizeObserver === "undefined") {
   globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
 }
 
-// T1 (i18n): bootstrap i18next synchronously at test setup so
-// `useTranslation()` inside components renders English strings instead
-// of bare keys. Locked to "en" deterministically — UI-locale tests
-// that need a different language can override per-test by calling
-// `i18next.changeLanguage(...)`.
+// T1 + I-14 (PR for issue #69, 2026-05-04): bootstrap i18next via the
+// production `initI18n()` helper with explicit `lng: "en"` so tests
+// get deterministic strings regardless of jsdom's `navigator.language`.
 //
-// We intentionally do NOT call the production `initI18n()` helper
-// here because it picks the locale from `navigator.language`, which
-// jsdom resolves to "en-US" today but could surprise future test
-// environments. Inline init keeps tests deterministic.
+// Before this fix, test-setup reimplemented the i18next init inline
+// to bypass the production helper's navigator-based detection. That
+// caused a config split-brain: adding a new resource bundle, plugin,
+// or interpolation option to the production helper required mirroring
+// the change here too. With initI18n(lng?) accepting an override, the
+// test path now reuses the production config wholesale.
 if (!i18next.isInitialized) {
-  void i18next.use(initReactI18next).init({
-    resources: {
-      en: { translation: en },
-      "zh-TW": { translation: zhTW },
-    },
-    lng: "en",
-    fallbackLng: "en",
-    interpolation: { escapeValue: false },
-    // Synchronous resource bundles → init resolves immediately;
-    // `t()` is callable from this point forward.
-  });
+  void initI18n("en");
 }
