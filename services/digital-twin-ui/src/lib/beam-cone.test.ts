@@ -8,7 +8,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   calculateBeamCones,
-  colorFromSnr,
+  colorFromHealth,
   type ConeColor,
 } from "./beam-cone";
 import type { BeamView } from "../types";
@@ -26,25 +26,21 @@ const beam = (overrides: Partial<BeamView>): BeamView => ({
   ...overrides,
 });
 
-describe("colorFromSnr — health-color contract", () => {
-  test("snr <= 6 dB → red (crit threshold; matches StatusChip convention)", () => {
-    expect(colorFromSnr(6).hex).toBe("#ff7675");
-    expect(colorFromSnr(0).hex).toBe("#ff7675");
-    expect(colorFromSnr(-3).hex).toBe("#ff7675");
+describe("colorFromHealth — matches Beams-page StatusChip exactly (PR #79 review fix)", () => {
+  test("'crit' → red", () => {
+    expect(colorFromHealth("crit").hex).toBe("#ff7675");
   });
 
-  test("6 < snr <= 12 dB → yellow (warn band)", () => {
-    expect(colorFromSnr(7).hex).toBe("#fdcb6e");
-    expect(colorFromSnr(12).hex).toBe("#fdcb6e");
+  test("'warn' → yellow", () => {
+    expect(colorFromHealth("warn").hex).toBe("#fdcb6e");
   });
 
-  test("snr > 12 dB → green (healthy)", () => {
-    expect(colorFromSnr(13).hex).toBe("#00b894");
-    expect(colorFromSnr(20).hex).toBe("#00b894");
+  test("'ok' → green", () => {
+    expect(colorFromHealth("ok").hex).toBe("#00b894");
   });
 
   test("returns alpha for translucent overlap rendering", () => {
-    const c: ConeColor = colorFromSnr(15);
+    const c: ConeColor = colorFromHealth("ok");
     expect(c.alpha).toBeGreaterThan(0);
     expect(c.alpha).toBeLessThanOrEqual(1);
   });
@@ -74,11 +70,11 @@ describe("calculateBeamCones — cone geometry", () => {
     ]);
   });
 
-  test("cone color tracks snr (15 → green, 8 → yellow, 4 → red)", () => {
+  test("cone color tracks BeamView.health (ok → green, warn → yellow, crit → red)", () => {
     const beams = [
-      beam({ beam_id: "beam-1", snr_db: 15 }),
-      beam({ beam_id: "beam-2", snr_db: 8 }),
-      beam({ beam_id: "beam-3", snr_db: 4 }),
+      beam({ beam_id: "beam-1", health: "ok" }),
+      beam({ beam_id: "beam-2", health: "warn" }),
+      beam({ beam_id: "beam-3", health: "crit" }),
     ];
     const cones = calculateBeamCones(beams, NYCU_LAT, NYCU_LON);
     expect(cones[0].color.hex).toBe("#00b894"); // green
@@ -86,13 +82,41 @@ describe("calculateBeamCones — cone geometry", () => {
     expect(cones[2].color.hex).toBe("#ff7675"); // red
   });
 
-  test("cone position is on the ground-station vertical (lat/lon = NYCU, alt = length/2)", () => {
+  test("cone position is on the ground-station vertical (lat/lon = NYCU, alt = length/2 + groundAlt)", () => {
     const cones = calculateBeamCones([beam({})], NYCU_LAT, NYCU_LON);
     expect(cones[0].position.lat_deg).toBeCloseTo(NYCU_LAT, 9);
     expect(cones[0].position.lon_deg).toBeCloseTo(NYCU_LON, 9);
-    // CylinderGraphics's position is centered on the cylinder, so the
-    // altitude must be half the length so the apex is at ground level.
+    // CylinderGraphics's position is centered on the cylinder; default
+    // groundAltitudeMeters=0 → apex at sea level.
     expect(cones[0].position.alt_m).toBeCloseTo(cones[0].lengthMeters / 2, 5);
+  });
+
+  test("groundAltitudeMeters override shifts the apex (PR #79 review fix)", () => {
+    // SatelliteView passes NYCU_ALT_M=30; without this option the cone
+    // apex would sit ~30 m below the ground-station pin.
+    const cones = calculateBeamCones([beam({})], NYCU_LAT, NYCU_LON, {
+      groundAltitudeMeters: 30,
+    });
+    expect(cones[0].position.alt_m).toBeCloseTo(
+      30 + cones[0].lengthMeters / 2,
+      5,
+    );
+  });
+
+  test("non-finite elevation_deg is treated as the 5° floor (PR #79 review fix)", () => {
+    // BeamView.elevation_deg defaults to NaN when
+    // orbitops_beam_elevation_deg is missing from the scrape (api.ts).
+    // Math.max(NaN, 5) === NaN and propagates through 1/Math.sin → NaN
+    // topRadius. Number.isFinite check ensures we degrade to the 5°
+    // floor instead of returning NaN.
+    const cones = calculateBeamCones(
+      [beam({ elevation_deg: NaN }), beam({ beam_id: "b2", elevation_deg: 5 })],
+      NYCU_LAT,
+      NYCU_LON,
+    );
+    expect(Number.isFinite(cones[0].topRadiusMeters)).toBe(true);
+    // NaN-as-5 should produce the same topRadius as a real 5° beam.
+    expect(cones[0].topRadiusMeters).toBeCloseTo(cones[1].topRadiusMeters, 5);
   });
 
   test("default cone length = 550 km (typical LEO altitude)", () => {

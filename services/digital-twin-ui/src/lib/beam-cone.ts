@@ -18,7 +18,7 @@
  * lands when the emulator surfaces per-beam pointing.
  */
 
-import type { BeamView } from "../types";
+import type { BeamHealth, BeamView } from "../types";
 
 export interface ConeColor {
   /** CSS hex color string (matches StatusChip / theme colors). */
@@ -38,13 +38,13 @@ export interface BeamCone {
   beam_id: string;
   /** Position the resium Entity uses (Cesium cylinders are centered on this). */
   position: ConePosition;
-  /** Cylinder length in meters. Apex sits at position.alt - length/2 (ground). */
+  /** Cylinder length in meters. Apex sits at position.alt - length/2. */
   lengthMeters: number;
-  /** Cone apex (= 0 — apex is at ground level, beam opens upward). */
+  /** Cone apex (= 0 — apex is at the ground-station altitude, beam opens upward). */
   bottomRadiusMeters: number;
   /** Cone opening radius at the top (satellite altitude footprint proxy). */
   topRadiusMeters: number;
-  /** Color derived from BeamView.snr_db (matches Beams page convention). */
+  /** Color derived from BeamView.health (matches Beams page StatusChip exactly). */
   color: ConeColor;
 }
 
@@ -53,21 +53,32 @@ export interface CalculateBeamConesOptions {
   maxAltitudeMeters?: number;
   /** Reference top-radius at high elevation (90°). Default 30_000 m. */
   baseTopRadiusMeters?: number;
+  /** Ground-station altitude in meters AMSL. Default 0. */
+  groundAltitudeMeters?: number;
 }
 
-const COLOR_CRIT = "#ff7675"; // red — matches theme.error.main
-const COLOR_WARN = "#fdcb6e"; // yellow — matches theme.warning.main
-const COLOR_OK = "#00b894"; // green — matches theme.success.main
+const COLOR_CRIT = "#ff7675"; // red — matches theme.error.main + StatusChip crit
+const COLOR_WARN = "#fdcb6e"; // yellow — matches theme.warning.main + StatusChip warn
+const COLOR_OK = "#00b894"; // green — matches theme.success.main + StatusChip ok
 const CONE_ALPHA = 0.25; // translucent so overlapping cones blend
 
 /**
- * Map snr_db to a render color. Thresholds match the Beams page
- * StatusChip: ≤6 dB crit, 6-12 dB warn, >12 dB ok.
+ * Map BeamHealth → ConeColor. PR #79 review: pulling color from
+ * the precomputed `health` field (instead of recomputing from snr_db
+ * with a different threshold) guarantees the satellite-view cones
+ * match the Beams-page StatusChip exactly. The actual health
+ * computation lives in src/api.ts (SNR_DEGRADED_THRESHOLD=8;
+ * crit if ho>=2 OR snr<6; warn if snr<8).
  */
-export function colorFromSnr(snrDb: number): ConeColor {
-  if (snrDb <= 6) return { hex: COLOR_CRIT, alpha: CONE_ALPHA };
-  if (snrDb <= 12) return { hex: COLOR_WARN, alpha: CONE_ALPHA };
-  return { hex: COLOR_OK, alpha: CONE_ALPHA };
+export function colorFromHealth(health: BeamHealth): ConeColor {
+  switch (health) {
+    case "crit":
+      return { hex: COLOR_CRIT, alpha: CONE_ALPHA };
+    case "warn":
+      return { hex: COLOR_WARN, alpha: CONE_ALPHA };
+    case "ok":
+      return { hex: COLOR_OK, alpha: CONE_ALPHA };
+  }
 }
 
 /**
@@ -83,18 +94,25 @@ export function calculateBeamCones(
 ): BeamCone[] {
   const length = options.maxAltitudeMeters ?? 550_000;
   const baseTop = options.baseTopRadiusMeters ?? 30_000;
+  const groundAlt = options.groundAltitudeMeters ?? 0;
 
   // Cesium cylinders are centered on `position`. To put the apex at
-  // ground level, position the cylinder centerline at altitude length/2.
-  const centerAlt = length / 2;
+  // the ground station's altitude, position the cylinder centerline
+  // at groundAlt + length/2.
+  const centerAlt = groundAlt + length / 2;
 
   return beams.map((b) => {
     // Slant-range proxy: at zenith (elevation=90°) the cone footprint
     // at length is just baseTop. At low elevation the slant range is
     // length/sin(elev), so the cross-sectional footprint widens.
-    // Clamp elevation to a small floor so a 0° beam doesn't produce
-    // an infinite radius.
-    const elevRad = (Math.max(b.elevation_deg, 5) * Math.PI) / 180;
+    //
+    // PR #79 review: BeamView.elevation_deg defaults to NaN when
+    // orbitops_beam_elevation_deg isn't in the scrape. Math.max(NaN,5)
+    // is NaN and propagates through 1/Math.sin(NaN)=NaN, producing
+    // NaN topRadius — Cesium would either reject or render garbage.
+    // Number.isFinite() check first; treat non-finite as the 5° floor.
+    const rawElev = Number.isFinite(b.elevation_deg) ? b.elevation_deg : 5;
+    const elevRad = (Math.max(rawElev, 5) * Math.PI) / 180;
     const slantFactor = 1 / Math.sin(elevRad);
     const topRadius = baseTop * slantFactor;
 
@@ -108,7 +126,7 @@ export function calculateBeamCones(
       lengthMeters: length,
       bottomRadiusMeters: 0,
       topRadiusMeters: topRadius,
-      color: colorFromSnr(b.snr_db),
+      color: colorFromHealth(b.health),
     };
   });
 }

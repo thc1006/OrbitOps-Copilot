@@ -71,8 +71,13 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
   // VS-13 S4: derive beam cones from the live metrics snapshot. When
   // no scenario is loaded (data === null) the array is empty and the
   // viewer renders just the ground station + pass trace.
+  // PR #79 review fix: pass NYCU_ALT_M as groundAltitudeMeters so
+  // each cone's apex coincides exactly with the ground-station pin
+  // (was 30 m below before — apex implicitly at sea level).
   const beams = data?.beams ?? [];
-  const beamCones = calculateBeamCones(beams, NYCU_LAT, NYCU_LON);
+  const beamCones = calculateBeamCones(beams, NYCU_LAT, NYCU_LON, {
+    groundAltitudeMeters: NYCU_ALT_M,
+  });
 
   return (
     <Box>
