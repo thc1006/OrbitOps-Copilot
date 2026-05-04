@@ -45,8 +45,11 @@ VITE_COPILOT_BASE_URL=http://127.0.0.1:8001 \
 VITE_EMULATOR_BASE_URL=http://127.0.0.1:8000 \
   npm run dev
 
-# Defaults (when unset): http://${hostname}:30081 (copilot) / :30080 (emulator)
-# / :30090 (prometheus) / :30030 (grafana). These match `make k8s-up`'s
+# Defaults (when unset, per src/api.ts): the UI builds endpoint URLs as
+# `${window.location.protocol}//${window.location.hostname}:<NodePort>`
+# — so an HTTPS-served UI gets `https://<host>:30081` and HTTP gets
+# `http://`. The default ports are 30081 (copilot) / 30080 (emulator) /
+# 30090 (prometheus) / 30030 (grafana). These match `make k8s-up`'s
 # NodePort layout. There is NO offline mock fallback — if the copilot
 # endpoint is unreachable, askCopilot() returns an ERROR-shaped response
 # and the UI surfaces it as "ERROR" state. Run the emulator + copilot

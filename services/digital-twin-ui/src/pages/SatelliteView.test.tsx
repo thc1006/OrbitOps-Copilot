@@ -24,13 +24,7 @@ import { render, screen } from "@testing-library/react";
 // imports inside the page resolve to our stubs. resium re-exports
 // React-friendly wrappers around cesium primitives.
 vi.mock("resium", () => ({
-  Viewer: ({
-    children,
-    ...rest
-  }: {
-    children?: React.ReactNode;
-    [k: string]: unknown;
-  }) => (
+  Viewer: ({ children }: { children?: React.ReactNode }) => (
     <div data-testid="cesium-viewer" data-resium="viewer">
       {children}
     </div>
@@ -38,13 +32,10 @@ vi.mock("resium", () => ({
   Entity: ({
     children,
     name,
-    position,
-    ...rest
   }: {
     children?: React.ReactNode;
     name?: string;
     position?: unknown;
-    [k: string]: unknown;
   }) => (
     <div
       data-testid={`cesium-entity-${name?.replace(/\s+/g, "-") ?? "anon"}`}

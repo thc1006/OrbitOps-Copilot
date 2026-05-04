@@ -5,7 +5,7 @@
   "type": "module",
   "description": "OrbitOps digital-twin web UI — k8s Dashboard-style Material UI shell.",
   "engines": {
-    "_comment": "VS-13 S1.1 (2026-05-04, PR #74+#75 review): when running on Node 22, the floor is 22.13 because jsdom 29's engines field is `^20.19.0 || ^22.13.0 || >=24.0.0` — i.e. inside the Node 22 branch it requires ≥22.13. (jsdom DOES still support Node 20.19+ and 24+; we target 22 here, not 20, so 22.13 is the relevant floor for our target.) Vite 8 / Rolldown declare `>=22.12.0`. With `engine-strict=true` in .npmrc, npm install fails outright if local Node is below the declared floor.",
+    "_comment": "VS-13 S1.1 (2026-05-04, PR #74+#75+#76 review): we target Node 22 for the VS-13 stack jump. Inside the Node 22 branch, jsdom 29 (full range `^20.19.0 || ^22.13.0 || >=24.0.0`) requires ≥22.13, and Vite 8 / Rolldown (full range `^20.19.0 || >=22.12.0`) require ≥22.12. The binding constraint for our Node-22 target is therefore 22.13. (Node 20.19+ and 24+ are still supported by these deps; we just chose 22 as our target — see VS-13 S1.0 PR #73.) With `engine-strict=true` in .npmrc, npm install fails outright if local Node is below the declared floor.",
     "node": ">=22.13.0"
   },
   "scripts": {
@@ -23,12 +23,14 @@
     "@fontsource/roboto": "^5.1.0",
     "@mui/icons-material": "^6.1.10",
     "@mui/material": "^6.1.10",
+    "cesium": "^1.141.0",
     "i18next": "25.10.10",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-i18next": "16.6.6",
     "react-router-dom": "^7.14.2",
-    "recharts": "^3.8.1"
+    "recharts": "^3.8.1",
+    "resium": "^1.21.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.5.0",
