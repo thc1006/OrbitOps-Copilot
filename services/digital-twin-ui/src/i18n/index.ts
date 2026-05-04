@@ -51,6 +51,17 @@ export function detectLocale(): "en" | "zh-TW" {
  */
 export async function initI18n(lng?: string): Promise<I18n> {
   if (_initialized) {
+    // PR #80 review (issue #80 review #1, 2026-05-04): on a subsequent
+    // call, honor the caller's explicit `lng` by switching languages
+    // instead of silently returning the existing instance. Without
+    // this branch, `initI18n("zh-TW")` after a prior `initI18n("en")`
+    // would no-op — the override was effectively first-call-only.
+    // We only call changeLanguage when (a) caller passed lng AND
+    // (b) it differs from the current language; bare initI18n() with
+    // no arg still no-ops idempotently.
+    if (lng && lng !== i18next.language) {
+      await i18next.changeLanguage(lng);
+    }
     return i18next;
   }
 
