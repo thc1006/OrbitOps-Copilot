@@ -14,21 +14,33 @@ ad-hoc edits to `deploy/k8s/base/`.
 
 ## What this overlay would do (when used)
 
-1. Replace `GF_SECURITY_ADMIN_PASSWORD` env literal with a
-   `secretKeyRef` pointing at a Kubernetes Secret named
-   `orbitops-grafana-admin`. Operator creates the secret manually:
+**Step 1 — operator creates the Secret out-of-band, BEFORE running
+`kubectl apply -k`.** This overlay does NOT include the Secret in its
+`resources:` list, by design (PR #63 review feedback, 2026-05-04):
+including it would let `kubectl apply -k` overwrite the real Secret
+with the placeholder template every time the overlay is applied.
 
-   ```bash
-   kubectl create secret generic orbitops-grafana-admin \
-     -n orbitops \
-     --from-literal=password="$(openssl rand -base64 32)"
-   ```
+```bash
+kubectl create secret generic orbitops-grafana-admin \
+  -n orbitops \
+  --from-literal=password="$(openssl rand -base64 32)"
+```
 
-2. Set `GF_AUTH_ANONYMOUS_ENABLED=false` so unauthenticated users
-   see a login screen instead of the dashboard.
+The reference file `grafana-admin-secret-template.yaml` is kept in-tree
+as a copy-paste reminder of the schema; it is NOT applied.
 
-3. Drop the `nodeport-services.yaml` patch — production goes
-   through Ingress / LoadBalancer, not NodePort.
+**Step 2 — apply the overlay.** Two patches land:
+
+1. Per-entry JSON6902 patches on the Grafana Deployment env array:
+   - `env[1].value: "admin"` → `env[1].valueFrom.secretKeyRef` pointing
+     at the `orbitops-grafana-admin` Secret created in Step 1.
+   - `env[3].value: "true"` → `"false"` (disable anonymous auth).
+   The patch is per-entry (not whole-array replace) so future base env
+   additions aren't silently dropped, and `GF_AUTH_ANONYMOUS_ORG_ROLE`
+   survives untouched.
+
+2. (Future Sprint-3+) Drop the `nodeport-services.yaml` overlay —
+   production goes through Ingress / LoadBalancer, not NodePort.
 
 ## Why this isn't applied today
 

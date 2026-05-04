@@ -2,7 +2,7 @@
 
 > **2026-05-04** post-Phase-A/B/VS-10c sweep. main @ `4dff1a0`; **20 PR shipped** (#44–#63).
 > User-skipped items NOT listed: VS-8 (real LLM, no GPU) / VS-12 (voice stub) / VS-14/15/16/18 (RunSpace 投件).
-> See `~/.claude/.../memory/{sprint2_state_2026-05-03,user_skip_rules}.md`.
+> Per-session memory of sprint state lives in Claude Code's auto-memory (path is per-machine; not a tracked repo path); the cross-session source-of-truth for skip rules is CLAUDE.md §10 "Forbidden scope".
 
 ---
 
@@ -35,7 +35,7 @@
 ### Live-cluster verification
 - 7 OrbitOps deployments running new image tags + new versions (Prom 3.11.3, Grafana 11.4.3, Alloy 1.6.1)
 - `/anomaly/inject` endpoint live (PR #51's first true cluster smoke)
-- `/ask` end-to-end: status=ok, metrics_used=1, **logs_used=100** (AC-S005-5 met on K8s path)
+- `/ask` end-to-end: status=ok, evidence.metrics_used = **1 citation** (orbitops_beam_snr_db on beam-1), evidence.logs_used = **100 log lines** from Loki (AC-S005-5 met on K8s path)
 - Loki sees all 6 services labeled `orbitops-*`
 
 ---
@@ -61,9 +61,9 @@
 | ID | What | TDD scope | Est |
 |---|---|---|---|
 | **T1** | D7 i18n migration — bootstrap `services/digital-twin-ui/src/i18n/`; back-fill ~12 hardcoded English strings; key-sync test; AC-S004-5 met | **in-scope** → red→green | 2-3 h |
-| **T2** | PROJECT_STATUS.md refresh — date stuck at 2026-05-02; should reflect Phase A/B/U7/VS-10c outcomes; add Loki+Alloy + new image tags | out-of-scope | 15 min |
-| **T3** | docs/exec-plans/tech-debt-tracker.md missing — CLAUDE.md §13.3 references it; create or remove reference | out-of-scope | 10 min |
-| **T4** | README CLI examples — `make verify` / `make k8s-reload-observability` / `make archive` actual output samples | out-of-scope | 30 min |
+| ~~T2~~ | ~~PROJECT_STATUS.md refresh — done in PR #65~~ | ~~out-of-scope~~ | ~~done~~ |
+| ~~T3~~ | ~~docs/exec-plans/tech-debt-tracker.md~~ — false alarm: that reference lives in the parent nycu-bus workspace's CLAUDE.md, not this repo's. Confirmed in PR #65 body. No work needed. | — | done (no-op) |
+| ~~T4~~ | ~~README CLI examples — done in PR #65~~ | ~~out-of-scope~~ | ~~done~~ |
 
 ---
 
