@@ -1,4 +1,5 @@
 import { Box, Paper, Stack, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 import SectionHeader from "../components/SectionHeader";
 import StatusChip from "../components/StatusChip";
@@ -13,16 +14,27 @@ import type { MetricsSnapshot } from "../types";
 // VS-9b.3: render 3 time-series charts (SNR / Latency / Doppler) above
 // the per-beam table. PacketLoss intentionally NOT rendered — it
 // rarely changes outside an injected anomaly window, and 4 stacked
-// charts crowd the viewport. Add a 4th panel later if pitch demand
-// surfaces it.
+// charts crowd the viewport.
+//
+// T1 (i18n): titles + units now come from the i18n bundle so locale
+// switching (en / zh-TW) reflects in chart captions. The `metric`
+// field stays English (it's the JS object key, not a display label).
 const BEAMS_PAGE_CHARTS: ReadonlyArray<{
   metric: BeamMetricKey;
-  title: string;
-  unit: string;
+  titleKey: string;
+  unitKey: string;
 }> = [
-  { metric: "snr_db", title: "SNR", unit: "dB" },
-  { metric: "latency_ms", title: "Latency", unit: "ms" },
-  { metric: "doppler_residual_hz", title: "Doppler residual", unit: "Hz" },
+  { metric: "snr_db", titleKey: "beams.snrTitle", unitKey: "beams.snrUnit" },
+  {
+    metric: "latency_ms",
+    titleKey: "beams.latencyTitle",
+    unitKey: "beams.latencyUnit",
+  },
+  {
+    metric: "doppler_residual_hz",
+    titleKey: "beams.dopplerTitle",
+    unitKey: "beams.dopplerUnit",
+  },
 ] as const;
 
 interface BeamsProps {
@@ -30,6 +42,7 @@ interface BeamsProps {
 }
 
 export default function Beams({ data }: BeamsProps) {
+  const { t } = useTranslation();
   const beams = data?.beams ?? [];
   // VS-9b.2: accumulate snapshots into a 60-entry sliding window
   // (5-minute trail at 5 s scrape cadence) so the LineChart has data to
@@ -45,22 +58,30 @@ export default function Beams({ data }: BeamsProps) {
       />
 
       <Stack spacing={2} sx={{ mb: 3 }}>
-        {BEAMS_PAGE_CHARTS.map(({ metric, title, unit }) => (
-          <Paper key={metric} sx={{ p: 3 }}>
-            <Typography
-              variant="overline"
-              sx={{ color: "text.secondary", display: "block", mb: 1 }}
-            >
-              {title} ({unit}) — last {history.length} sample(s)
-            </Typography>
-            <BeamMetricChart
-              history={history}
-              metric={metric}
-              title={title}
-              unit={unit}
-            />
-          </Paper>
-        ))}
+        {BEAMS_PAGE_CHARTS.map(({ metric, titleKey, unitKey }) => {
+          const title = t(titleKey);
+          const unit = t(unitKey);
+          return (
+            <Paper key={metric} sx={{ p: 3 }}>
+              <Typography
+                variant="overline"
+                sx={{ color: "text.secondary", display: "block", mb: 1 }}
+              >
+                {t("beams.chartCaption", {
+                  title,
+                  unit,
+                  count: history.length,
+                })}
+              </Typography>
+              <BeamMetricChart
+                history={history}
+                metric={metric}
+                title={title}
+                unit={unit}
+              />
+            </Paper>
+          );
+        })}
       </Stack>
 
       <Paper sx={{ p: 0, overflowX: "auto" }}>

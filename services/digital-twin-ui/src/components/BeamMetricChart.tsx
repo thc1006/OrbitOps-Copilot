@@ -9,6 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useTranslation } from "react-i18next";
 
 import type { BeamView, MetricsSnapshot } from "../types";
 
@@ -79,6 +80,7 @@ export default function BeamMetricChart({
   title,
   unit,
 }: BeamMetricChartProps) {
+  const { t } = useTranslation();
   const data = snapshotsToChartData(history, metric);
   const beamIds = beamIdsFromHistory(history);
 
@@ -93,7 +95,7 @@ export default function BeamMetricChart({
         }}
       >
         <Typography variant="body2" color="text.secondary">
-          {title}: no history yet — wait for the next /metrics scrape (5 s cadence).
+          {t("metricChart.noHistoryYet", { title })}
         </Typography>
       </Box>
     );
