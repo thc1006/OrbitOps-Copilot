@@ -11,6 +11,7 @@ import Beams from "./pages/Beams";
 import Gateways from "./pages/Gateways";
 import Anomalies from "./pages/Anomalies";
 import Copilot from "./pages/Copilot";
+import SatelliteView from "./pages/SatelliteView";
 
 const DRAWER_WIDTH = 248;
 
@@ -47,6 +48,7 @@ export default function App() {
           <Route path="/gateways" element={<Gateways data={data} />} />
           <Route path="/anomalies" element={<Anomalies data={data} />} />
           <Route path="/copilot" element={<Copilot data={data} />} />
+          <Route path="/satellite-view" element={<SatelliteView />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Box>

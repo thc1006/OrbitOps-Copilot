@@ -13,6 +13,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import PlayCircleOutlineRoundedIcon from "@mui/icons-material/PlayCircleOutlineRounded";
 import SatelliteAltRoundedIcon from "@mui/icons-material/SatelliteAltRounded";
+import PublicRoundedIcon from "@mui/icons-material/PublicRounded";
 import HubRoundedIcon from "@mui/icons-material/HubRounded";
 import ReportProblemRoundedIcon from "@mui/icons-material/ReportProblemRounded";
 import AssistantRoundedIcon from "@mui/icons-material/AssistantRounded";
@@ -46,6 +47,7 @@ const groups: NavGroup[] = [
     items: [
       { to: "/beams",    label: "Beams",    Icon: SatelliteAltRoundedIcon },
       { to: "/gateways", label: "Gateways", Icon: HubRoundedIcon },
+      { to: "/satellite-view", label: "Satellite Pass", Icon: PublicRoundedIcon },
     ],
   },
   {
