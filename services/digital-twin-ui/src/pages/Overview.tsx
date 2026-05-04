@@ -11,6 +11,7 @@ import SatelliteAltRoundedIcon from "@mui/icons-material/SatelliteAltRounded";
 import HubRoundedIcon from "@mui/icons-material/HubRounded";
 import ReportProblemRoundedIcon from "@mui/icons-material/ReportProblemRounded";
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
+import { Trans, useTranslation } from "react-i18next";
 
 import SectionHeader from "../components/SectionHeader";
 import StatusChip from "../components/StatusChip";
@@ -89,6 +90,7 @@ function StatCard({ Icon, label, value, hint, tone = "ok" }: StatCardProps) {
 }
 
 export default function Overview({ poll }: OverviewProps) {
+  const { t } = useTranslation();
   const data = poll.data;
   const beams = data?.beams ?? [];
   const gws = data?.gateways ?? [];
@@ -105,9 +107,9 @@ export default function Overview({ poll }: OverviewProps) {
   return (
     <Box>
       <SectionHeader
-        category="Cluster"
-        title="Overview"
-        subtitle="Live state of the OrbitOps NTN ground-station emulator. Auto-refresh every 5 s."
+        category={t("nav.cluster")}
+        title={t("nav.overview")}
+        subtitle={t("overview.subtitle")}
       />
 
       {poll.isLoading && !data && <LinearProgress sx={{ mb: 3 }} />}
@@ -121,7 +123,7 @@ export default function Overview({ poll }: OverviewProps) {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             Icon={SatelliteAltRoundedIcon}
-            label="Beams"
+            label={t("overview.metric.beams")}
             value={beams.length}
             tone={beamsTone}
             hint={
@@ -134,7 +136,7 @@ export default function Overview({ poll }: OverviewProps) {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             Icon={HubRoundedIcon}
-            label="Gateways"
+            label={t("overview.metric.gateways")}
             value={gws.length}
             tone={gwsDown > 0 ? "crit" : "ok"}
             hint={gwsDown > 0 ? `${gwsDown} unavailable` : "all available"}
@@ -143,7 +145,7 @@ export default function Overview({ poll }: OverviewProps) {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             Icon={ReportProblemRoundedIcon}
-            label="Active anomalies"
+            label={t("overview.metric.activeAnomalies")}
             value={data?.active_anomalies?.length ?? 0}
             tone={(data?.active_anomalies?.length ?? 0) > 0 ? "warn" : "ok"}
             hint={data?.active_anomalies?.join(", ") || "none"}
@@ -152,7 +154,7 @@ export default function Overview({ poll }: OverviewProps) {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             Icon={AccessTimeRoundedIcon}
-            label="Tick t"
+            label={t("overview.metric.tick")}
             value={`${data?.t_seconds ?? 0}s`}
             hint={`refreshed ${lastFetched}`}
           />
@@ -171,7 +173,7 @@ export default function Overview({ poll }: OverviewProps) {
             justifyContent: "space-between",
           }}
         >
-          <Typography variant="subtitle1">Beam summary</Typography>
+          <Typography variant="subtitle1">{t("overview.beamSummary")}</Typography>
           <Typography variant="caption">
             {beams.length} item(s) · live from /metrics
           </Typography>
@@ -197,20 +199,23 @@ export default function Overview({ poll }: OverviewProps) {
           >
             <thead>
               <tr>
-                <th>Beam ID</th>
-                <th>SNR (dB)</th>
-                <th>Latency (ms)</th>
-                <th>Loss</th>
-                <th>Doppler (Hz)</th>
-                <th>Handover</th>
-                <th>Status</th>
+                <th>{t("overview.table.beamId")}</th>
+                <th>{t("overview.table.snr")}</th>
+                <th>{t("overview.table.latency")}</th>
+                <th>{t("overview.table.loss")}</th>
+                <th>{t("overview.table.doppler")}</th>
+                <th>{t("overview.table.handover")}</th>
+                <th>{t("overview.table.status")}</th>
               </tr>
             </thead>
             <tbody>
               {beams.length === 0 && (
                 <tr>
                   <td colSpan={7} style={{ textAlign: "center", padding: "32px 0", color: "#64748B" }}>
-                    No beams. Load a scenario from <strong>Scenarios</strong>.
+                    <Trans
+                      i18nKey="overview.empty"
+                      components={{ 1: <strong /> }}
+                    />
                   </td>
                 </tr>
               )}

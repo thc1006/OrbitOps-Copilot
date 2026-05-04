@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import AssistantRoundedIcon from "@mui/icons-material/AssistantRounded";
+import { useTranslation } from "react-i18next";
 
 import SectionHeader from "../components/SectionHeader";
 import MetricSparkline from "../components/MetricSparkline";
@@ -39,11 +40,11 @@ interface CopilotProps {
   data: MetricsSnapshot | null;
 }
 
-const PRESET_QUESTIONS = [
-  "Which beam is degrading and why?",
-  "Is any gateway at risk of falling over?",
-  "What should the operator do in the next 30 minutes?",
-];
+const PRESET_QUESTION_KEYS = [
+  "copilot.preset.beamDegrading",
+  "copilot.preset.gatewayRisk",
+  "copilot.preset.next30min",
+] as const;
 
 const STATUS_COLORS: Record<CopilotResponse["status"], "success" | "warning" | "error" | "default"> = {
   ok: "success",
@@ -53,7 +54,8 @@ const STATUS_COLORS: Record<CopilotResponse["status"], "success" | "warning" | "
 };
 
 export default function Copilot({ data }: CopilotProps) {
-  const [question, setQuestion] = useState(PRESET_QUESTIONS[0]);
+  const { t } = useTranslation();
+  const [question, setQuestion] = useState(t(PRESET_QUESTION_KEYS[0]));
   const [busy, setBusy] = useState(false);
   const [response, setResponse] = useState<CopilotResponse | null>(null);
 
@@ -77,9 +79,9 @@ export default function Copilot({ data }: CopilotProps) {
   return (
     <Box>
       <SectionHeader
-        category="AI Ops"
-        title="Copilot"
-        subtitle="Evidence-grounded NTN ops assistant. Every response is constrained to /metrics observations; the model never invents data. Status field tells you which path the response took."
+        category={t("nav.aiOps")}
+        title={t("nav.copilot")}
+        subtitle={t("copilot.subtitle")}
       />
 
       <Paper sx={{ p: 3, mb: 3 }}>
@@ -88,7 +90,7 @@ export default function Copilot({ data }: CopilotProps) {
             fullWidth
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ask about beam health, gateway availability, anomalies…"
+            placeholder={t("copilot.askPlaceholder")}
             multiline
             minRows={2}
             disabled={busy}
@@ -100,27 +102,30 @@ export default function Copilot({ data }: CopilotProps) {
             startIcon={busy ? <CircularProgress size={16} color="inherit" /> : <SendRoundedIcon />}
             sx={{ minWidth: 140, alignSelf: { md: "flex-end" } }}
           >
-            {busy ? "Asking…" : "Ask Copilot"}
+            {busy ? t("copilot.askingButton") : t("copilot.askButton")}
           </Button>
         </Stack>
 
         <Stack direction="row" spacing={1} sx={{ mt: 2, flexWrap: "wrap", rowGap: 1 }}>
           <Typography variant="caption" sx={{ alignSelf: "center", mr: 1 }}>
-            Try:
+            {t("copilot.tryLabel")}
           </Typography>
-          {PRESET_QUESTIONS.map((q) => (
-            <Chip
-              key={q}
-              label={q}
-              variant="outlined"
-              size="small"
-              onClick={() => {
-                setQuestion(q);
-                ask(q);
-              }}
-              disabled={busy}
-            />
-          ))}
+          {PRESET_QUESTION_KEYS.map((key) => {
+            const q = t(key);
+            return (
+              <Chip
+                key={key}
+                label={q}
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setQuestion(q);
+                  ask(q);
+                }}
+                disabled={busy}
+              />
+            );
+          })}
         </Stack>
       </Paper>
 
@@ -131,7 +136,7 @@ export default function Copilot({ data }: CopilotProps) {
           <Box sx={{ px: 3, py: 2, bgcolor: "background.default", borderBottom: "1px solid", borderColor: "divider" }}>
             <Stack direction="row" alignItems="center" spacing={1.5}>
               <AssistantRoundedIcon color="primary" />
-              <Typography variant="subtitle1">Copilot response</Typography>
+              <Typography variant="subtitle1">{t("copilot.responseHeader")}</Typography>
               <Box sx={{ flexGrow: 1 }} />
               <Chip
                 label={response.status}
@@ -140,7 +145,7 @@ export default function Copilot({ data }: CopilotProps) {
                 sx={{ fontFamily: monoFamily }}
               />
               <Typography variant="caption" sx={{ ml: 2, color: "text.secondary" }}>
-                confidence {Math.round(response.confidence * 100)}%
+                {t("copilot.confidenceLabel", { percent: Math.round(response.confidence * 100) })}
               </Typography>
             </Stack>
           </Box>
@@ -148,14 +153,14 @@ export default function Copilot({ data }: CopilotProps) {
           <Box sx={{ p: 3 }}>
             {response.status === "REFUSED" && response.refusal_reason && (
               <Typography variant="body2" sx={{ mb: 2, color: "error.main" }}>
-                Refused: {response.refusal_reason}
+                {t("copilot.refusedPrefix", { reason: response.refusal_reason })}
               </Typography>
             )}
 
             {response.summary && (
               <Box sx={{ mb: 3 }}>
                 <Typography variant="overline" color="text.secondary">
-                  Summary
+                  {t("copilot.section.summary")}
                 </Typography>
                 <Typography variant="body1" sx={{ mt: 0.5, fontWeight: 500 }}>
                   {response.summary}
@@ -166,7 +171,7 @@ export default function Copilot({ data }: CopilotProps) {
             {response.likely_cause && (
               <Box sx={{ mb: 3 }}>
                 <Typography variant="overline" color="text.secondary">
-                  Likely cause
+                  {t("copilot.section.likelyCause")}
                 </Typography>
                 <Typography variant="body2" sx={{ mt: 0.5 }}>
                   {response.likely_cause}
@@ -177,7 +182,7 @@ export default function Copilot({ data }: CopilotProps) {
             {response.recommended_actions.length > 0 && (
               <Box sx={{ mb: 3 }}>
                 <Typography variant="overline" color="text.secondary">
-                  Recommended actions
+                  {t("copilot.section.recommendedActions")}
                 </Typography>
                 <Stack spacing={1.5} sx={{ mt: 1 }}>
                   {response.recommended_actions.map((a) => (
@@ -205,7 +210,7 @@ export default function Copilot({ data }: CopilotProps) {
             {response.risk_if_ignored && (
               <Box sx={{ mb: 3 }}>
                 <Typography variant="overline" color="text.secondary">
-                  Risk if ignored
+                  {t("copilot.section.riskIfIgnored")}
                 </Typography>
                 <Typography
                   variant="body2"
@@ -225,7 +230,7 @@ export default function Copilot({ data }: CopilotProps) {
             {response.evidence.metrics_used.length > 0 && (
               <Box sx={{ mb: 3 }}>
                 <Typography variant="overline" color="text.secondary">
-                  Metric citations ({response.evidence.metrics_used.length})
+                  {t("copilot.section.metricCitations", { count: response.evidence.metrics_used.length })}
                 </Typography>
                 <Box
                   component="ul"

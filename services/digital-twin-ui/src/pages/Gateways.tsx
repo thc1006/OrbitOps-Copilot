@@ -1,4 +1,5 @@
 import { Box, Grid2 as Grid, Paper, Stack, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 import SectionHeader from "../components/SectionHeader";
 import StatusChip from "../components/StatusChip";
@@ -11,18 +12,19 @@ interface GatewaysProps {
 }
 
 export default function Gateways({ data }: GatewaysProps) {
+  const { t } = useTranslation();
   const gws = data?.gateways ?? [];
   return (
     <Box>
       <SectionHeader
-        category="Workloads"
-        title="Gateways"
-        subtitle="Per-gateway availability + load. orbitops_gateway_available is a binary gauge (0/1); load (0..1) is reported when the emulator exposes orbitops_gateway_load."
+        category={t("nav.workloads")}
+        title={t("nav.gateways")}
+        subtitle={t("gateways.subtitle")}
       />
 
       {gws.length === 0 ? (
         <Paper sx={{ p: 6, textAlign: "center", color: "text.secondary" }}>
-          No gateways. Load a scenario first.
+          {t("gateways.empty")}
         </Paper>
       ) : (
         <Grid container spacing={2.5}>
@@ -33,12 +35,15 @@ export default function Gateways({ data }: GatewaysProps) {
                   <Typography variant="subtitle1" sx={{ fontFamily: monoFamily, fontWeight: 600 }}>
                     {g.gateway_id}
                   </Typography>
-                  <StatusChip status={g.available ? "ok" : "crit"} label={g.available ? "Available" : "Down"} />
+                  <StatusChip
+                    status={g.available ? "ok" : "crit"}
+                    label={g.available ? t("gateways.statusAvailable") : t("gateways.statusDown")}
+                  />
                 </Stack>
                 <Stack direction="row" spacing={4}>
                   <Box>
                     <Typography variant="overline" color="text.secondary">
-                      Available
+                      {t("gateways.fieldAvailable")}
                     </Typography>
                     <Typography variant="h6" sx={{ fontFamily: monoFamily }}>
                       {g.available ? "1" : "0"}
@@ -46,7 +51,7 @@ export default function Gateways({ data }: GatewaysProps) {
                   </Box>
                   <Box>
                     <Typography variant="overline" color="text.secondary">
-                      Load
+                      {t("gateways.fieldLoad")}
                     </Typography>
                     <MetricNumber value={g.load == null ? null : g.load * 100} precision={1} unit="%" />
                   </Box>

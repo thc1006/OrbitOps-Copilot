@@ -9,6 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { NavLink, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import PlayCircleOutlineRoundedIcon from "@mui/icons-material/PlayCircleOutlineRounded";
@@ -26,40 +27,42 @@ interface SideNavProps {
 }
 
 interface NavGroup {
-  label: string;
+  /** i18n key under nav.* — same key referenced by SectionHeader category */
+  labelKey: string;
   items: {
     to: string;
-    label: string;
+    /** i18n key under nav.* — same key as the page's SectionHeader title */
+    labelKey: string;
     Icon: typeof DashboardRoundedIcon;
   }[];
 }
 
 const groups: NavGroup[] = [
   {
-    label: "Cluster",
+    labelKey: "nav.cluster",
     items: [
-      { to: "/",          label: "Overview",  Icon: DashboardRoundedIcon },
-      { to: "/scenarios", label: "Scenarios", Icon: PlayCircleOutlineRoundedIcon },
+      { to: "/",          labelKey: "nav.overview",  Icon: DashboardRoundedIcon },
+      { to: "/scenarios", labelKey: "nav.scenarios", Icon: PlayCircleOutlineRoundedIcon },
     ],
   },
   {
-    label: "Workloads",
+    labelKey: "nav.workloads",
     items: [
-      { to: "/beams",    label: "Beams",    Icon: SatelliteAltRoundedIcon },
-      { to: "/gateways", label: "Gateways", Icon: HubRoundedIcon },
-      { to: "/satellite-view", label: "Satellite Pass", Icon: PublicRoundedIcon },
+      { to: "/beams",    labelKey: "nav.beams",    Icon: SatelliteAltRoundedIcon },
+      { to: "/gateways", labelKey: "nav.gateways", Icon: HubRoundedIcon },
+      { to: "/satellite-view", labelKey: "nav.satellitePass", Icon: PublicRoundedIcon },
     ],
   },
   {
-    label: "Events",
+    labelKey: "nav.events",
     items: [
-      { to: "/anomalies", label: "Anomalies", Icon: ReportProblemRoundedIcon },
+      { to: "/anomalies", labelKey: "nav.anomalies", Icon: ReportProblemRoundedIcon },
     ],
   },
   {
-    label: "AI Ops",
+    labelKey: "nav.aiOps",
     items: [
-      { to: "/copilot", label: "Copilot", Icon: AssistantRoundedIcon },
+      { to: "/copilot", labelKey: "nav.copilot", Icon: AssistantRoundedIcon },
     ],
   },
 ];
@@ -71,6 +74,7 @@ const externals: { href: string; label: string }[] = [
 
 export default function SideNav({ drawerWidth }: SideNavProps) {
   const loc = useLocation();
+  const { t } = useTranslation();
   return (
     <Drawer
       variant="permanent"
@@ -117,13 +121,13 @@ export default function SideNav({ drawerWidth }: SideNavProps) {
             variant="caption"
             sx={{ color: "rgba(255,255,255,0.55)", display: "block", lineHeight: 1.1 }}
           >
-            Sprint 1 · Local
+            {t("common.envBadge")}
           </Typography>
         </Box>
       </Box>
 
       {groups.map((g) => (
-        <Box key={g.label} sx={{ mt: 2 }}>
+        <Box key={g.labelKey} sx={{ mt: 2 }}>
           <Typography
             variant="overline"
             sx={{
@@ -132,7 +136,7 @@ export default function SideNav({ drawerWidth }: SideNavProps) {
               letterSpacing: "0.12em",
             }}
           >
-            {g.label}
+            {t(g.labelKey)}
           </Typography>
           <List dense disablePadding>
             {g.items.map((it) => {
@@ -165,7 +169,7 @@ export default function SideNav({ drawerWidth }: SideNavProps) {
                     <Icon fontSize="small" />
                   </ListItemIcon>
                   <ListItemText
-                    primary={it.label}
+                    primary={t(it.labelKey)}
                     primaryTypographyProps={{ fontSize: "0.8125rem" }}
                   />
                 </ListItemButton>
@@ -183,7 +187,7 @@ export default function SideNav({ drawerWidth }: SideNavProps) {
           variant="overline"
           sx={{ color: "rgba(255,255,255,0.4)", letterSpacing: "0.12em" }}
         >
-          External
+          {t("nav.external")}
         </Typography>
         {externals.map((e) => (
           <Box
