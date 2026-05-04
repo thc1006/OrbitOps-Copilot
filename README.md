@@ -39,10 +39,11 @@ See `docs/00_research_2026_04.md` for full sources.
 # Expected output (last lines):
 #   [verify ok]   helm chart lint + template + ADR-009 contract pass
 #   [verify]      all checks passed
-# 8 blocking + 2 advisory sub-gates:
+# 9 blocking + 2 advisory sub-gates:
 #   blocking — 1/5 lint(ruff, blocking since I-5) → 2/5 tests →
 #              3/5 secrets → 3b obs → 3c scenario-mirror →
-#              4/5 schemas → 5/5 k8s manifests → 5b helm + ADR-009
+#              4/5 schemas → 5/5 k8s manifests → 5b helm + ADR-009 →
+#              5c prod-overlay env contract (I-13, PR-#67)
 #   advisory — 1b TDD-discipline audit (CI 'tdd-discipline' is blocking)
 #              1c claims-audit marketing words (CI 'claims-audit' is blocking)
 

@@ -164,4 +164,19 @@ if [ -d deploy/helm/orbitops-copilot ]; then
   fi
 fi
 
+# ─── 5c. I-13 prod-overlay env contract (PR #66 self-review follow-up) ───
+# Asserts kustomize-rendered Grafana env from deploy/k8s/overlays/prod/
+# matches the security intent (secretKeyRef on admin password, anonymous
+# off, ORG_ROLE preserved, no placeholder Secret applied). Without this
+# gate, a base env reorder silently misapplies the JSON6902 indices and
+# admin password could stay literal "admin" in production.
+if [ -f deploy/k8s/overlays/prod/kustomization.yaml ]; then
+  if command -v kustomize >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1 && python3 -c "import yaml" >/dev/null 2>&1; then
+    info "5c/5 prod-overlay env contract (I-13)"
+    python3 scripts/check-prod-overlay-env.py
+  else
+    warn "kustomize + python3 + pyyaml required for I-13 prod-overlay contract — skipping"
+  fi
+fi
+
 info "all checks passed"

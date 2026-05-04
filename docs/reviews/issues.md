@@ -142,6 +142,18 @@
 
 ---
 
+## I-13 (RESOLVED 2026-05-04) — ~~prod-overlay JSON6902 patch is index-coupled with no contract test~~
+
+| Field | Value |
+|---|---|
+| Severity | ~~**Medium**~~ → **RESOLVED** |
+| Resolved by | PR #66 self-review follow-up (this PR) — `scripts/check-prod-overlay-env.py` + `verify.sh` 5c gate. |
+| File | `deploy/k8s/overlays/prod/kustomization.yaml`, `scripts/check-prod-overlay-env.py`, `verify.sh` |
+| Original problem | ~~PR #66 fixed the whole-array JSON6902 replace by switching to per-entry ops (`/env/1/value` for admin password, `/env/3/value` for anonymous flag), but the indices are coupled to base env order. A future PR reordering `deploy/k8s/base/grafana-deployment.yaml` env entries would silently misapply: admin password could stay literal `"admin"` in production, or `secretKeyRef` could land on an unrelated env name. `helm lint` / `kustomize build` / `kubectl apply --dry-run` would all stay green.~~ |
+| Resolution | New contract test renders the prod overlay and asserts: (a) `GF_SECURITY_ADMIN_PASSWORD` resolves to `valueFrom.secretKeyRef.name=orbitops-grafana-admin/key=password`; (b) `GF_AUTH_ANONYMOUS_ENABLED.value == "false"`; (c) `GF_AUTH_ANONYMOUS_ORG_ROLE.value == "Viewer"` (didn't get dropped); (d) no Secret manifest is rendered (the placeholder template stays operator-managed). Verified the gate FAILS when env indices are deliberately drifted (sed `/env/1/` → `/env/2/`); after revert, gate PASSES. Wired into `verify.sh` as gate 5c — blocking on every push. |
+
+---
+
 ## I-12 (Low) — Sprint 2 `OpenAICompatibleProvider` injection-guard reverification
 
 | Field | Value |
@@ -172,6 +184,7 @@
 | I-10 | claims-audit not in CI | Low | **YES** (advisory gate) |
 | I-11 | lockfile exclude pattern | Low | NO (Sprint 2) |
 | I-12 | Sprint-2 provider injection re-verify | Low | NO (Sprint 2 hand-off) |
+| I-13 | prod-overlay env index-coupling | Medium | **YES** — verify.sh 5c gate |
 
 **Auto-applied this PR**: I-3 partial (advisory script `scripts/check-tdd-discipline.sh`) + I-10 (`verify.sh` gate 6b advisory).
 

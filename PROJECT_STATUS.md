@@ -81,7 +81,7 @@ LogQL contract: `{service=~"orbitops-.*"}` — Alloy prepends `orbitops-` prefix
 | Severity | Count | Detail |
 |---|---|---|
 | RETIRED | 2 | I-1, I-2 (anonymity policy reversal 2026-05-01) |
-| RESOLVED | 8 | I-3, I-4, I-5, I-6, I-8, I-9, I-10, I-11 |
+| RESOLVED | 9 | I-3, I-4, I-5, I-6, I-8, I-9, I-10, I-11, I-13 |
 | Open by-design | 2 | I-7 (VS-12 voice; user-skipped, no GPU), I-12 (VS-8 LLM; user-skipped, no GPU) |
 
 ## What's next
@@ -98,8 +98,8 @@ User-skipped (out of scope): VS-8 LLM, VS-12 voice, VS-14/15/16/18 投件 delive
 
 ## Health gates
 
-- `make verify` (≡ `./verify.sh`) runs 8 blocking gates + 2 advisory:
-  - **Blocking**: 1/5 lint (ruff, blocking since I-5 PR #63) → 2/5 unit tests → 3/5 real-secrets scan → 3b/5 observability stack → 3c/5 scenario JSON ↔ UI mirror → 4/5 JSON schema validation → 5/5 k8s manifest validation → 5b/5 helm chart lint + template + ADR-009 service-name contract.
+- `make verify` (≡ `./verify.sh`) runs 9 blocking gates + 2 advisory:
+  - **Blocking**: 1/5 lint (ruff, blocking since I-5 PR #63) → 2/5 unit tests → 3/5 real-secrets scan → 3b/5 observability stack → 3c/5 scenario JSON ↔ UI mirror → 4/5 JSON schema validation → 5/5 k8s manifest validation → 5b/5 helm chart lint + template + ADR-009 service-name contract → 5c/5 prod-overlay env contract (I-13).
   - **Advisory** (warn only): 1b TDD-discipline audit (the blocking variant runs in CI's `tdd-discipline` job per PR #49) + 1c claims-audit marketing-word grep (the blocking variant runs in CI's `claims-audit` job per PR #63).
 - `make k8s-reload-observability` (PR #40) — re-applies kustomize overlay + restarts Grafana/Prometheus.
 - `tests/k8s-smoke/healthz.sh` (PR #63) — live-cluster smoke on all 7 deployments.
