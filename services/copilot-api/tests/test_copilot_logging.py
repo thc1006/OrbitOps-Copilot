@@ -100,17 +100,13 @@ def test_ask_emits_structured_log_with_status_and_question_chars(
         for rec in caplog.records
         if rec.name == "copilot_api.main" and getattr(rec, "msg", None) == "ask"
     ]
-    assert len(matching) == 1, (
-        f"expected exactly 1 ask log line; got {len(matching)}"
-    )
+    assert len(matching) == 1, f"expected exactly 1 ask log line; got {len(matching)}"
     rec = matching[0]
     # status from response body must equal status on log record
     body = r.json()
     assert getattr(rec, "status", None) == body["status"]
     # PII-safe: log captures char count, NOT the question text
-    assert getattr(rec, "question_chars", None) == len(
-        "Is beam-1 healthy right now?"
-    )
+    assert getattr(rec, "question_chars", None) == len("Is beam-1 healthy right now?")
     # Question text itself MUST NOT be logged (prompt-injection / privacy)
     rendered = json.dumps(rec.__dict__, default=str)
     assert "beam-1 healthy right now" not in rendered, (
@@ -151,9 +147,7 @@ def test_explain_emits_structured_log(
         for rec in caplog.records
         if rec.name == "copilot_api.main" and getattr(rec, "msg", None) == "explain"
     ]
-    assert len(matching) == 1, (
-        f"expected 1 explain log line; got {len(matching)}"
-    )
+    assert len(matching) == 1, f"expected 1 explain log line; got {len(matching)}"
     rec = matching[0]
     body = r.json()
     assert getattr(rec, "status", None) == body["status"]
@@ -176,9 +170,7 @@ def test_runbook_emits_structured_log(
         for rec in caplog.records
         if rec.name == "copilot_api.main" and getattr(rec, "msg", None) == "runbook"
     ]
-    assert len(matching) == 1, (
-        f"expected 1 runbook log line; got {len(matching)}"
-    )
+    assert len(matching) == 1, f"expected 1 runbook log line; got {len(matching)}"
     rec = matching[0]
     body = r.json()
     assert getattr(rec, "status", None) == body["status"]
@@ -203,3 +195,110 @@ def test_ask_explain_runbook_log_msg_distinguishable(
         if rec.name == "copilot_api.main"
     }
     assert {"ask", "explain", "runbook"}.issubset(msgs)
+
+
+# ─── round-3 / VS-10c: uvicorn-aware logging ────────────────────────
+# The 2026-05-04 live-cluster smoke surfaced that `setup_logging()`
+# only configures the root logger's handlers. uvicorn registers its
+# OWN handlers on `uvicorn` / `uvicorn.error` / `uvicorn.access` BEFORE
+# the app module is imported (uvicorn does its own logging.config call
+# during server startup), and those handlers don't propagate up to
+# root by default — they have their own StreamHandler with a plain-
+# text formatter. Result: pod stdout is a mix of:
+#
+#   {"ts":...,"msg":"ask",...}                                      ← good (root logger via app)
+#   INFO:     10.244.0.93:42194 - "GET /healthz HTTP/1.1" 200 OK    ← bad (uvicorn.access plain text)
+#
+# Loki receives both shapes; grep / parse gets harder. Proper fix:
+# `setup_logging()` must also iterate the uvicorn-namespace loggers
+# and force their handlers to use JsonFormatter (or remove their
+# handlers and let propagation up to the JSON-configured root handle
+# emission).
+
+
+def test_setup_logging_configures_uvicorn_loggers_to_json_format() -> None:
+    """After setup_logging(), uvicorn / uvicorn.error / uvicorn.access
+    loggers must produce JSON output, not plain-text 'INFO: ...' lines.
+
+    Mechanism options:
+      (a) Replace each uvicorn-namespace logger's handlers with one
+          using JsonFormatter (explicit).
+      (b) Clear each uvicorn-namespace logger's handlers + set
+          propagate=True so root's JsonFormatter handler picks them up
+          (idiomatic Python logging composition).
+
+    Either works; this test asserts the OBSERVABLE outcome (output
+    parses as JSON), not the mechanism. Passes for either fix."""
+    import io
+    import sys
+
+    from copilot_api._logging import _reset_for_tests, setup_logging
+
+    _reset_for_tests()
+
+    # Simulate uvicorn's "I added my own handler" by giving each
+    # uvicorn logger a plain-text StreamHandler before setup_logging.
+    plain_buf = io.StringIO()
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        lg = logging.getLogger(name)
+        lg.handlers.clear()
+        h = logging.StreamHandler(plain_buf)
+        h.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+        lg.addHandler(h)
+        lg.propagate = False  # uvicorn's default
+
+    # Now configure our logging — should override uvicorn's per-logger
+    # handlers OR redirect to root with JSON formatter.
+    setup_logging()
+
+    # Capture stdout for assertion.
+    json_buf = io.StringIO()
+    root = logging.getLogger()
+    for h in root.handlers:
+        if hasattr(h, "stream") and h.stream is sys.stdout:
+            h.stream = json_buf
+
+    # Emit a record on each uvicorn logger.
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        logging.getLogger(name).info("hello from %s", name)
+
+    captured = json_buf.getvalue()
+    # Each line that came out should be JSON parseable.
+    for line in captured.strip().split("\n"):
+        if not line:
+            continue
+        # Plain-text "INFO: hello from uvicorn" would fail this
+        try:
+            parsed = json.loads(line)
+            assert "ts" in parsed and "msg" in parsed, f"line missing ts/msg: {line!r}"
+        except json.JSONDecodeError as exc:
+            pytest.fail(
+                f"uvicorn-namespace log line is not JSON after setup_logging: "
+                f"{line!r} (parse error: {exc})"
+            )
+
+
+def test_setup_logging_does_not_double_emit_via_propagation() -> None:
+    """If we clear uvicorn handlers + set propagate=True, the message
+    must reach root EXACTLY ONCE (not 0, not 2). Belt-and-braces guard
+    against fix variants that would double-log."""
+    import io
+
+    from copilot_api._logging import _reset_for_tests, setup_logging
+
+    _reset_for_tests()
+    setup_logging()
+
+    json_buf = io.StringIO()
+    root = logging.getLogger()
+    for h in root.handlers:
+        if hasattr(h, "stream"):
+            h.stream = json_buf
+
+    logging.getLogger("uvicorn.access").info("single message")
+    output_lines = [line for line in json_buf.getvalue().strip().split("\n") if line]
+    matching = [line for line in output_lines if "single message" in line]
+    assert len(matching) == 1, (
+        f"expected exactly 1 emission of 'single message'; got "
+        f"{len(matching)}: {output_lines}"
+    )

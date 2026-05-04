@@ -82,14 +82,21 @@ class JsonFormatter(logging.Formatter):
 
 _CONFIGURED = False
 
+# Loggers uvicorn registers its own plain-text handlers on. Without
+# explicit handling these bypass our root JsonFormatter and produce
+# `INFO: 10.244.x.x - "GET /healthz HTTP/1.1" 200` lines that pollute
+# Loki. We clear their handlers + enable propagation so root's JSON
+# handler is the single emission point. (VS-10c, 2026-05-04)
+_UVICORN_LOGGERS = ("uvicorn", "uvicorn.error", "uvicorn.access")
+
 
 def setup_logging(level: int = logging.INFO) -> None:
     """Idempotent root-logger setup. Called once at app boot.
 
-    Replaces any existing handlers on the root logger with a single
-    StreamHandler-on-stdout using JsonFormatter. Subsequent calls are
-    no-ops so test fixtures that re-import the module don't stack
-    handlers (would duplicate every log line).
+    Configures BOTH the root logger AND uvicorn-namespace loggers so
+    every line on stdout is JSON-formatted. Without the uvicorn pass,
+    uvicorn's startup hook installs plain-text handlers that propagate
+    nowhere; live-cluster Loki sees a mix of formats. VS-10c (2026-05-04).
     """
     global _CONFIGURED
     if _CONFIGURED:
@@ -100,7 +107,25 @@ def setup_logging(level: int = logging.INFO) -> None:
     root.handlers.clear()
     root.addHandler(handler)
     root.setLevel(level)
+
+    # Tame uvicorn loggers: drop their plain-text handlers, enable
+    # propagation up to root (which now has JsonFormatter).
+    for name in _UVICORN_LOGGERS:
+        lg = logging.getLogger(name)
+        lg.handlers.clear()
+        lg.propagate = True
+
     _CONFIGURED = True
+
+
+def _reset_for_tests() -> None:
+    """Test-only: undo setup_logging() so a fresh setup can be tested."""
+    global _CONFIGURED
+    _CONFIGURED = False
+    logging.getLogger().handlers.clear()
+    for name in _UVICORN_LOGGERS:
+        logging.getLogger(name).handlers.clear()
+        logging.getLogger(name).propagate = True
 
 
 # Module-level logger that main.py uses for emulator events.

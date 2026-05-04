@@ -138,9 +138,7 @@ def test_scenario_tick_emits_structured_log(
     assert r.status_code == 200
 
     matching = [
-        rec
-        for rec in caplog.records
-        if getattr(rec, "msg", None) == "scenario.tick"
+        rec for rec in caplog.records if getattr(rec, "msg", None) == "scenario.tick"
     ]
     assert len(matching) >= 1
     rec = matching[0]
@@ -160,12 +158,82 @@ def test_anomaly_inject_emits_structured_log(
     assert r.status_code == 200
 
     matching = [
-        rec
-        for rec in caplog.records
-        if getattr(rec, "msg", None) == "anomaly.inject"
+        rec for rec in caplog.records if getattr(rec, "msg", None) == "anomaly.inject"
     ]
     assert len(matching) == 1
     rec = matching[0]
     assert getattr(rec, "event_type", None) == "snr_drop"
     assert getattr(rec, "target", None) == "beam-2"
     assert getattr(rec, "scenario_id", None) == "beam-degradation-001"
+
+
+# ─── round-3 / VS-10c: uvicorn-aware logging ──────────────────────────
+# Same contract as copilot-api's test_copilot_logging.py — see that
+# file's docstring for full rationale. emulator's setup_logging() must
+# also tame uvicorn-namespace loggers so pod stdout is JSON-only.
+
+
+def test_setup_logging_configures_uvicorn_loggers_to_json_format() -> None:
+    import io
+    import json as jsonlib
+    import logging
+    import sys
+
+    from ntn_metrics_emulator._logging import _reset_for_tests, setup_logging
+
+    _reset_for_tests()
+
+    plain_buf = io.StringIO()
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        lg = logging.getLogger(name)
+        lg.handlers.clear()
+        h = logging.StreamHandler(plain_buf)
+        h.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+        lg.addHandler(h)
+        lg.propagate = False
+
+    setup_logging()
+
+    json_buf = io.StringIO()
+    root = logging.getLogger()
+    for h in root.handlers:
+        if hasattr(h, "stream") and h.stream is sys.stdout:
+            h.stream = json_buf
+
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        logging.getLogger(name).info("hello from %s", name)
+
+    for line in json_buf.getvalue().strip().split("\n"):
+        if not line:
+            continue
+        try:
+            parsed = jsonlib.loads(line)
+            assert "ts" in parsed and "msg" in parsed
+        except jsonlib.JSONDecodeError as exc:
+            import pytest
+
+            pytest.fail(f"non-JSON line: {line!r} ({exc})")
+
+
+def test_setup_logging_does_not_double_emit_via_propagation() -> None:
+    import io
+    import logging
+
+    from ntn_metrics_emulator._logging import _reset_for_tests, setup_logging
+
+    _reset_for_tests()
+    setup_logging()
+
+    json_buf = io.StringIO()
+    root = logging.getLogger()
+    for h in root.handlers:
+        if hasattr(h, "stream"):
+            h.stream = json_buf
+
+    logging.getLogger("uvicorn.access").info("single message")
+    matching = [
+        line
+        for line in json_buf.getvalue().strip().split("\n")
+        if "single message" in line
+    ]
+    assert len(matching) == 1, f"got {len(matching)}: {matching}"
