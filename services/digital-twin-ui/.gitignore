@@ -2,3 +2,12 @@ node_modules
 dist
 .vite
 *.log
+
+# T1 (PR for SPEC-004 §AC-S004-5): `tsc -b` emits .js files next to
+# source if no `noEmit` / `outDir` is set in tsconfig. Vite handles
+# bundling, so these are pure detritus. Fixing tsconfig is a future
+# Sprint-3 cleanup; for now, gitignore prevents accidental commits.
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+vite.config.js

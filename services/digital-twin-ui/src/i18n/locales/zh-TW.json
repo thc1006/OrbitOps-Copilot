@@ -1,0 +1,27 @@
+{
+  "anomalies": {
+    "empty": "目前無作用中的異常事件。模擬器情境時鐘處於正常範圍。",
+    "injectButton": "注入 {{kind}}",
+    "injectingButton": "注入中…",
+    "injectFailed": "注入 {{kind}} 失敗：{{message}}",
+    "injectSuccess": "已注入 {{type}} 於 {{target}}（t={{tStart}}…{{tEnd}}）。目前作用中：{{active}}。",
+    "injectSectionTitle": "注入異常（執行時覆蓋；重新載入情境後重置）"
+  },
+  "beams": {
+    "chartCaption": "{{title}}（{{unit}}）— 最近 {{count}} 筆取樣",
+    "dopplerTitle": "都卜勒殘差",
+    "dopplerUnit": "Hz",
+    "latencyTitle": "延遲",
+    "latencyUnit": "ms",
+    "snrTitle": "SNR",
+    "snrUnit": "dB"
+  },
+  "common": {
+    "unit": {
+      "degrees": "°"
+    }
+  },
+  "metricChart": {
+    "noHistoryYet": "{{title}}：尚無歷史資料 — 等待下一次 /metrics 取樣（5 秒一次）。"
+  }
+}

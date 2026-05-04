@@ -8,6 +8,7 @@ import {
   Typography,
 } from "@mui/material";
 import EventNoteRoundedIcon from "@mui/icons-material/EventNoteRounded";
+import { useTranslation } from "react-i18next";
 
 import SectionHeader from "../components/SectionHeader";
 import StatusChip from "../components/StatusChip";
@@ -56,6 +57,7 @@ interface InjectFeedback {
 }
 
 export default function Anomalies({ data }: AnomaliesProps) {
+  const { t } = useTranslation();
   const active = data?.active_anomalies ?? [];
   const [feedback, setFeedback] = useState<InjectFeedback | null>(null);
   const [pending, setPending] = useState<AnomalyType | null>(null);
@@ -67,12 +69,21 @@ export default function Anomalies({ data }: AnomaliesProps) {
       const result = await injectAnomaly({ type });
       setFeedback({
         kind: "ok",
-        text: `Injected ${result.type} on ${result.target} (t=${result.t_start}…${result.t_end}). Currently active: ${result.currently_active.join(", ") || "(none)"}.`,
+        text: t("anomalies.injectSuccess", {
+          type: result.type,
+          target: result.target,
+          tStart: result.t_start,
+          tEnd: result.t_end,
+          active: result.currently_active.join(", ") || "(none)",
+        }),
       });
     } catch (err) {
       setFeedback({
         kind: "err",
-        text: `Inject ${type} failed: ${(err as Error).message}`,
+        text: t("anomalies.injectFailed", {
+          kind: type,
+          message: (err as Error).message,
+        }),
       });
     } finally {
       setPending(null);
@@ -93,7 +104,7 @@ export default function Anomalies({ data }: AnomaliesProps) {
           scrape (Prometheus 5s scrape_interval). */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="overline" sx={{ color: "text.secondary" }}>
-          Inject anomaly (runtime override; resets on /scenario/load)
+          {t("anomalies.injectSectionTitle")}
         </Typography>
         <Stack direction="row" spacing={1.5} sx={{ mt: 1.5, flexWrap: "wrap", rowGap: 1.5 }}>
           {INJECT_TYPES.map((kind) => (
@@ -105,7 +116,9 @@ export default function Anomalies({ data }: AnomaliesProps) {
               onClick={() => handleInject(kind)}
               sx={{ fontFamily: monoFamily, textTransform: "none" }}
             >
-              {pending === kind ? "Injecting…" : `Inject ${kind}`}
+              {pending === kind
+                ? t("anomalies.injectingButton")
+                : t("anomalies.injectButton", { kind })}
             </Button>
           ))}
         </Stack>
@@ -122,7 +135,7 @@ export default function Anomalies({ data }: AnomaliesProps) {
 
       {active.length === 0 ? (
         <Alert severity="success" icon={<EventNoteRoundedIcon />}>
-          No active anomalies. The emulator scenario clock is in nominal range.
+          {t("anomalies.empty")}
         </Alert>
       ) : (
         <Stack spacing={2}>

@@ -1,0 +1,27 @@
+{
+  "anomalies": {
+    "empty": "No active anomalies. The emulator scenario clock is in nominal range.",
+    "injectButton": "Inject {{kind}}",
+    "injectingButton": "Injecting…",
+    "injectFailed": "Inject {{kind}} failed: {{message}}",
+    "injectSuccess": "Injected {{type}} on {{target}} (t={{tStart}}…{{tEnd}}). Currently active: {{active}}.",
+    "injectSectionTitle": "Inject anomaly (runtime override; resets on /scenario/load)"
+  },
+  "beams": {
+    "chartCaption": "{{title}} ({{unit}}) — last {{count}} sample(s)",
+    "dopplerTitle": "Doppler residual",
+    "dopplerUnit": "Hz",
+    "latencyTitle": "Latency",
+    "latencyUnit": "ms",
+    "snrTitle": "SNR",
+    "snrUnit": "dB"
+  },
+  "common": {
+    "unit": {
+      "degrees": "°"
+    }
+  },
+  "metricChart": {
+    "noHistoryYet": "{{title}}: no history yet — wait for the next /metrics scrape (5 s cadence)."
+  }
+}
