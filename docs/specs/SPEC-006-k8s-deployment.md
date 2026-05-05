@@ -75,7 +75,7 @@ docker-compose 是 dev 快路徑，K8s 才是「真實部署形貌」。沒有 K
 - AC-S006-4（**MET 2026-05-02**）：`helm template` + `helm install --dry-run` exit 0（PR #47 + #48；CI `verify` job 5b/5 守住）。
 - AC-S006-5（**MET**）：所有 image tag ≠ `:latest`；所有 Deployment 含 requests/limits + 2 個 probe。
 - AC-S006-6（**partial / MET in base**）：`deploy/k8s/base/` Services 全 ClusterIP；`deploy/k8s/overlays/local/` 暫用 NodePort 為本機 demo 加速，已標記為 local-only（kubeadm InternalIP 31.41.34.19）；非 local 部署需走 port-forward 或 ingress。
-- AC-S006-7（Sprint 3）：`packages/nephio-stubs/` 通過 `kpt fn render` dry-run（不需真 Porch）。
+- AC-S006-7（**MET 2026-05-05** — VS-17）：`packages/nephio-stubs/orbitops-groundstation-package` 通過 `kpt fn render` dry-run（不需真 Porch）。verify.sh §5d 守住此 gate（soft：kpt 在 PATH 才跑；CI image 加裝 kpt 後 flip blocking）。`.krmignore` 排除 `groundstation-profile.example.json`（非 KRM；schema 驗證走 verify.sh §4）。
 
 ## 9. Test strategy
 
