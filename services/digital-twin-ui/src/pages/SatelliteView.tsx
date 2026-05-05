@@ -30,6 +30,7 @@ import {
   LabelGraphics,
   PolylineGraphics,
   CylinderGraphics,
+  CameraFlyTo,
 } from "resium";
 import {
   Cartesian2,
@@ -80,6 +81,27 @@ const OFFLINE_BASE_LAYER = ImageryLayer.fromProviderAsync(
 const NYCU_LAT = 24.787;
 const NYCU_LON = 120.998;
 const NYCU_ALT_M = 30;
+
+// VS-13 fix (2026-05-05): default Cesium camera sits at lon=0 (above
+// the Atlantic) ~10,000 km altitude. NYCU is at 120.998 °E — on the
+// far side of the globe from default view, so the ground-station pin,
+// pass polyline, satellite, and beam cones are all invisible until
+// the user manually orbits the camera to Taiwan. That is the root
+// cause of "screen has nothing" reported on /satellite-view.
+//
+// Fix: a <CameraFlyTo> on mount that frames the whole pass + ground
+// station inside the viewport. ~5000 km altitude over NYCU shows the
+// 16-degree-wide pass arc clearly without losing the world context.
+// flyOnce={true} so subsequent re-renders (state updates from the
+// playback interval) don't re-trigger the fly animation.
+const INITIAL_CAMERA_DESTINATION = Cartesian3.fromDegrees(
+  120.998, // NYCU lon
+  20.0,    // a few degrees south so the pass arc + ground pin are both
+           // comfortably above the horizon mid-frame, not hugging the
+           // bottom of the canvas.
+  5_000_000, // 5000 km — roughly 9× the LEO peak altitude; whole pass
+             // visible, no zoom-in needed for first-impression.
+);
 
 // VS-13 S3: precompute one demo pass at module load. The default
 // 600 s / 60-sample pass is replayed each page mount until S4+ wires
@@ -177,6 +199,11 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
           sceneModePicker={false}
           navigationHelpButton={false}
         >
+          <CameraFlyTo
+            destination={INITIAL_CAMERA_DESTINATION}
+            duration={2}
+            once={true}
+          />
           <Entity
             name="NYCU Ground Station"
             position={Cartesian3.fromDegrees(NYCU_LON, NYCU_LAT, NYCU_ALT_M)}

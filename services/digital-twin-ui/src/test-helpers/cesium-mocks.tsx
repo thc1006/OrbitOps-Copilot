@@ -79,6 +79,12 @@ export const mockResium = () => ({
   LabelGraphics: () => <div data-resium="label-graphics" />,
   PolylineGraphics: () => <div data-resium="polyline-graphics" />,
   CylinderGraphics: () => <div data-resium="cylinder-graphics" />,
+  // VS-13 camera-flyto fix (2026-05-05): SatelliteView mounts a
+  // <CameraFlyTo destination={...} once={true}> to fly the camera to
+  // NYCU on first render — without this, the default Cesium camera
+  // sits over the Atlantic and the user sees no entities (they are
+  // all on the far side of the globe).
+  CameraFlyTo: () => <div data-resium="camera-fly-to" />,
 });
 
 export const mockCesium = () => ({
