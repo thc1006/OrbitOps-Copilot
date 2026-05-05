@@ -174,3 +174,77 @@ describe("SatelliteView (VS-13 S4 — beam coverage cones)", () => {
     expect(screen.queryByTestId(/cesium-entity-Beam-/)).not.toBeInTheDocument();
   });
 });
+
+// ─── VS-13 S5 — animated satellite + play/pause (SPEC-S004-13d) ────────
+//
+// Vitest fake-timer hygiene per SPEC §6:
+//   - useFakeTimers in beforeEach + useRealTimers in afterEach
+//   - act() wrapper around advanceTimersByTime to silence React 19
+//     "state update outside act" warnings when the interval callback
+//     flushes setState
+//
+// The satellite Entity exposes a test-only `data-pass-fraction` attr
+// so tests assert the animation state without poking React internals.
+
+import { afterEach, beforeEach } from "vitest";
+import { act, fireEvent } from "@testing-library/react";
+
+describe("SatelliteView (VS-13 S5 — animated pass)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test("renders Play / Pause / Reset buttons with i18n labels", () => {
+    render(<SatelliteView data={null} />);
+    expect(screen.getByRole("button", { name: /play/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /pause/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reset/i })).toBeInTheDocument();
+  });
+
+  test("clicking Play advances data-pass-fraction; Pause freezes it", () => {
+    render(<SatelliteView data={null} />);
+    const sat = screen.getByTestId("cesium-entity-Satellite");
+    expect(sat.getAttribute("data-pass-fraction")).toBe("0");
+
+    fireEvent.click(screen.getByRole("button", { name: /play/i }));
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    const fracAfterPlay = Number(sat.getAttribute("data-pass-fraction"));
+    expect(fracAfterPlay).toBeGreaterThan(0);
+    expect(fracAfterPlay).toBeLessThan(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /pause/i }));
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(Number(sat.getAttribute("data-pass-fraction"))).toBeCloseTo(
+      fracAfterPlay,
+      6,
+    );
+  });
+
+  test("Reset returns fraction to 0 and stops playback", () => {
+    render(<SatelliteView data={null} />);
+    const sat = screen.getByTestId("cesium-entity-Satellite");
+    fireEvent.click(screen.getByRole("button", { name: /play/i }));
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(Number(sat.getAttribute("data-pass-fraction"))).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: /reset/i }));
+    expect(sat.getAttribute("data-pass-fraction")).toBe("0");
+
+    // After reset, advancing time must NOT re-advance fraction (Reset
+    // also stops playback per AC-S004-13d.4).
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(sat.getAttribute("data-pass-fraction")).toBe("0");
+  });
+});
