@@ -11,6 +11,7 @@ import {
 import RouterRoundedIcon from "@mui/icons-material/RouterRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import LaunchRoundedIcon from "@mui/icons-material/LaunchRounded";
+import { useTranslation } from "react-i18next";
 
 import { monoFamily } from "../theme";
 import { env_ } from "../api";
@@ -30,6 +31,7 @@ export default function TopBar({
   onRefresh,
   drawerWidth,
 }: TopBarProps) {
+  const { t } = useTranslation();
   return (
     <AppBar
       position="fixed"
@@ -43,10 +45,10 @@ export default function TopBar({
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
           <RouterRoundedIcon sx={{ fontSize: 22 }} />
           <Typography variant="h6" sx={{ fontWeight: 500 }}>
-            OrbitOps Copilot
+            {t("common.brand")}
           </Typography>
           <Chip
-            label="B5G / NTN"
+            label={t("common.brandTag")}
             size="small"
             variant="outlined"
             sx={{
@@ -74,7 +76,7 @@ export default function TopBar({
             }}
           >
             <Box component="span" sx={{ opacity: 0.7 }}>
-              scenario
+              {t("common.scenario")}
             </Box>
             <Box component="span" sx={{ fontWeight: 600 }}>
               {scenarioId}
@@ -95,14 +97,14 @@ export default function TopBar({
             }}
           >
             <Box component="span" sx={{ opacity: 0.7 }}>
-              t =
+              {t("common.tick")}
             </Box>
             <Box component="span" sx={{ fontWeight: 600 }}>
               {tickT}s
             </Box>
           </Box>
 
-          <Tooltip title="Refresh metrics">
+          <Tooltip title={t("common.refresh")}>
             <IconButton
               size="small"
               onClick={onRefresh}

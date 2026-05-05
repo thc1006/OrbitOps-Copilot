@@ -12,6 +12,7 @@ import {
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import FastForwardRoundedIcon from "@mui/icons-material/FastForwardRounded";
 import RocketLaunchRoundedIcon from "@mui/icons-material/RocketLaunchRounded";
+import { useTranslation } from "react-i18next";
 
 import SectionHeader from "../components/SectionHeader";
 import { loadScenario, tickScenario } from "../api";
@@ -40,28 +41,29 @@ type ScenarioPreset = {
   // unknown>` matches `loadScenario`'s parameter type and lets all 3 fit.
   // Server-side schema validation is the authoritative gate.
   body: Record<string, unknown>;
-  label: string;
+  /** i18n key under scenarios.preset.* — resolved at render time */
+  labelKey: string;
   description: string;
 };
 const SCENARIO_PRESETS: ScenarioPreset[] = [
   {
     id: "beam-degradation-001",
     body: PRESET_BEAM_DEGRADATION,
-    label: "Load beam-degradation",
+    labelKey: "scenarios.preset.beamDegradation",
     description:
       "3 beams (12.5 / 13.0 / 11.5 dB baseline). At t=60s, beam-1 drops 6 dB for 90 s (snr_drop). Walks AC-001.",
   },
   {
     id: "handover-failure-001",
     body: PRESET_HANDOVER_FAILURE,
-    label: "Load handover-failure",
+    labelKey: "scenarios.preset.handoverFailure",
     description:
       "At t=90s, beam-1 enters handover_failure for 60 s (state=2) plus a concurrent doppler_spike t=90..120. Tick to t=120 to land mid-window. Walks AC-002.",
   },
   {
     id: "gateway-fallback-001",
     body: PRESET_GATEWAY_FALLBACK,
-    label: "Load gateway-fallback",
+    labelKey: "scenarios.preset.gatewayFallback",
     description:
       "Gateway-outage scenario. orbitops_gateway_available drops to 0 during the event window. Walks AC-002 (gateway path).",
   },
@@ -78,6 +80,7 @@ interface ScenariosProps {
 const READY_TICK_SECONDS = 90;
 
 export default function Scenarios({ refetchMetrics }: ScenariosProps) {
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [tickSeconds, setTickSeconds] = useState(30);
   const [feedback, setFeedback] = useState<{
@@ -92,7 +95,11 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
       const r = await loadScenario(preset.body);
       setFeedback({
         severity: "success",
-        text: `Loaded ${r.loaded}: ${r.beams} beams, ${r.gateways} gateway(s).`,
+        text: t("scenarios.feedback.loadSuccess", {
+          loaded: r.loaded,
+          beams: r.beams,
+          gateways: r.gateways,
+        }),
       });
       refetchMetrics();
     } catch (e) {
@@ -109,7 +116,10 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
       const r = await tickScenario(tickSeconds);
       setFeedback({
         severity: r.active_anomalies.length ? "info" : "success",
-        text: `t = ${r.t}s · active: ${r.active_anomalies.join(", ") || "(none)"}`,
+        text: t("scenarios.feedback.tickSuccess", {
+          t: r.t,
+          active: r.active_anomalies.join(", ") || t("scenarios.feedback.tickActiveNone"),
+        }),
       });
       refetchMetrics();
     } catch (e) {
@@ -139,7 +149,7 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
     } catch (e) {
       setFeedback({
         severity: "error",
-        text: `Load failed before any state changed: ${(e as Error).message}`,
+        text: t("scenarios.feedback.loadFailed", { message: (e as Error).message }),
       });
       setBusy(false);
       return;
@@ -157,27 +167,29 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
       if (ticked.active_anomalies.length === 0) {
         setFeedback({
           severity: "warning",
-          text:
-            `${loaded.loaded} loaded but NO anomaly is active at t=${ticked.t}s ` +
-            `— Copilot will return INSUFFICIENT_EVIDENCE. ` +
-            `Re-load and try a different tick value, or check the scenario file.`,
+          text: t("scenarios.feedback.readyNoAnomaly", {
+            loaded: loaded.loaded,
+            t: ticked.t,
+          }),
         });
       } else {
         setFeedback({
           severity: "success",
-          text:
-            `Ready for Copilot · ${loaded.loaded} loaded, ` +
-            `t = ${ticked.t}s · active: ${ticked.active_anomalies.join(", ")} · ` +
-            `Open the Copilot tab and ask "Which beam is degrading and why?"`,
+          text: t("scenarios.feedback.readySuccess", {
+            loaded: loaded.loaded,
+            t: ticked.t,
+            active: ticked.active_anomalies.join(", "),
+          }),
         });
       }
       refetchMetrics();
     } catch (e) {
       setFeedback({
         severity: "error",
-        text:
-          `${loaded.loaded} loaded (t=0) but tick failed: ${(e as Error).message}. ` +
-          `Click "Tick + Ns" to retry, or "Load preset" to reset.`,
+        text: t("scenarios.feedback.tickFailed", {
+          loaded: loaded.loaded,
+          message: (e as Error).message,
+        }),
       });
     } finally {
       setBusy(false);
@@ -187,9 +199,9 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
   return (
     <Box>
       <SectionHeader
-        category="Cluster"
-        title="Scenarios"
-        subtitle="Load a scenario into the emulator and advance simulated time. Sprint-1 ships 3 presets (beam-degradation-001 / handover-failure-001 / gateway-fallback-001); custom JSON support lands in VS-3."
+        category={t("nav.cluster")}
+        title={t("nav.scenarios")}
+        subtitle={t("scenarios.subtitle")}
       />
 
       <Stack direction={{ xs: "column", lg: "row" }} spacing={3}>
@@ -198,8 +210,9 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
             Presets — 3 Sprint-1 scenarios
           </Typography>
           <Typography variant="body2" sx={{ mb: 2 }}>
-            Click a preset to POST it to <code>/scenario/load</code> on the emulator.
-            Custom-JSON load is VS-3 future work. <strong>Ready for Copilot</strong>{" "}
+            Click a preset to POST it to <code>/scenario/load</code> on the emulator.{" "}
+            {t("scenarios.customLoadFutureWork")}{" "}
+            <strong>{t("scenarios.readyForCopilot")}</strong>{" "}
             (below) is a one-click <em>load + tick to t={READY_TICK_SECONDS}s</em> for{" "}
             <code>beam-degradation-001</code> only — designed so a fresh demo session
             lands inside the snr_drop window before Copilot is asked anything.
@@ -215,7 +228,7 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
                     startIcon={<PlayArrowRoundedIcon />}
                     sx={{ minWidth: 220 }}
                   >
-                    {preset.label}
+                    {t(preset.labelKey)}
                   </Button>
                   {preset.id === "beam-degradation-001" && (
                     <Button
@@ -225,7 +238,7 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
                       disabled={busy}
                       startIcon={<RocketLaunchRoundedIcon />}
                     >
-                      Ready for Copilot
+                      {t("scenarios.readyForCopilot")}
                     </Button>
                   )}
                 </Stack>
@@ -268,7 +281,7 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
           </Typography>
           <Stack direction="row" spacing={1.5} alignItems="center">
             <TextField
-              label="Seconds"
+              label={t("scenarios.tickPickLabel")}
               type="number"
               value={tickSeconds}
               onChange={(e) => setTickSeconds(Number(e.target.value) || 0)}

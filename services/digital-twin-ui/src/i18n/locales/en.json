@@ -17,11 +17,105 @@
     "snrUnit": "dB"
   },
   "common": {
+    "brand": "OrbitOps Copilot",
+    "brandTag": "B5G / NTN",
+    "envBadge": "Sprint 1 · Local",
+    "refresh": "Refresh metrics",
+    "scenario": "scenario",
+    "tick": "t =",
     "unit": {
       "degrees": "°"
     }
   },
+  "copilot": {
+    "askButton": "Ask Copilot",
+    "askPlaceholder": "Ask about beam health, gateway availability, anomalies…",
+    "askingButton": "Asking…",
+    "confidenceLabel": "confidence {{percent}}%",
+    "preset": {
+      "beamDegrading": "Which beam is degrading and why?",
+      "gatewayRisk": "Is any gateway at risk of falling over?",
+      "next30min": "What should the operator do in the next 30 minutes?"
+    },
+    "refusedPrefix": "Refused: {{reason}}",
+    "responseHeader": "Copilot response",
+    "section": {
+      "likelyCause": "Likely cause",
+      "metricCitations": "Metric citations ({{count}})",
+      "recommendedActions": "Recommended actions",
+      "riskIfIgnored": "Risk if ignored",
+      "summary": "Summary"
+    },
+    "subtitle": "Evidence-grounded NTN ops assistant. Every response is constrained to /metrics observations; the model never invents data. Status field tells you which path the response took.",
+    "tryLabel": "Try:"
+  },
+  "gateways": {
+    "empty": "No gateways. Load a scenario first.",
+    "fieldAvailable": "Available",
+    "fieldLoad": "Load",
+    "statusAvailable": "Available",
+    "statusDown": "Down",
+    "subtitle": "Per-gateway availability + load. orbitops_gateway_available is a binary gauge (0/1); load (0..1) is reported when the emulator exposes orbitops_gateway_load."
+  },
   "metricChart": {
     "noHistoryYet": "{{title}}: no history yet — wait for the next /metrics scrape (5 s cadence)."
+  },
+  "nav": {
+    "aiOps": "AI Ops",
+    "anomalies": "Anomalies",
+    "beams": "Beams",
+    "cluster": "Cluster",
+    "copilot": "Copilot",
+    "events": "Events",
+    "external": "External",
+    "gateways": "Gateways",
+    "overview": "Overview",
+    "satellitePass": "Satellite Pass",
+    "scenarios": "Scenarios",
+    "workloads": "Workloads"
+  },
+  "overview": {
+    "beamSummary": "Beam summary",
+    "empty": "No beams. Load a scenario from <1>$t(nav.scenarios)</1>.",
+    "metric": {
+      "activeAnomalies": "Active anomalies",
+      "beams": "Beams",
+      "gateways": "Gateways",
+      "tick": "Tick t"
+    },
+    "subtitle": "Cluster-wide health snapshot. Numbers come from the emulator /metrics scrape; the table is the live view of every beam in the active scenario.",
+    "table": {
+      "beamId": "Beam ID",
+      "doppler": "Doppler (Hz)",
+      "handover": "Handover",
+      "latency": "Latency (ms)",
+      "loss": "Loss",
+      "snr": "SNR (dB)",
+      "status": "Status"
+    }
+  },
+  "scenarios": {
+    "checklist": {
+      "askCopilot": "Open the Copilot tab and ask \"$t(copilot.preset.beamDegrading)\"",
+      "retryHint": "Click \"Tick + Ns\" to retry, or \"Load preset\" to reset."
+    },
+    "customLoadFutureWork": "Custom-JSON load is VS-3 future work.",
+    "feedback": {
+      "loadFailed": "Load failed before any state changed: {{message}}",
+      "loadSuccess": "Loaded {{loaded}}: {{beams}} beams, {{gateways}} gateway(s).",
+      "readyNoAnomaly": "{{loaded}} loaded but NO anomaly is active at t={{t}}s — Copilot will return INSUFFICIENT_EVIDENCE. Re-load and try a different tick value, or check the scenario file.",
+      "readySuccess": "$t(scenarios.readyForCopilot) · {{loaded}} loaded, t = {{t}}s · active: {{active}} · $t(scenarios.checklist.askCopilot)",
+      "tickActiveNone": "(none)",
+      "tickFailed": "{{loaded}} loaded (t=0) but tick failed: {{message}}. $t(scenarios.checklist.retryHint)",
+      "tickSuccess": "t = {{t}}s · active: {{active}}"
+    },
+    "preset": {
+      "beamDegradation": "Load beam-degradation",
+      "gatewayFallback": "Load gateway-fallback",
+      "handoverFailure": "Load handover-failure"
+    },
+    "readyForCopilot": "Ready for Copilot",
+    "subtitle": "Load a preset scenario, advance the emulator clock with Tick + Ns, then jump straight to Copilot for a grounded answer.",
+    "tickPickLabel": "Seconds"
   }
 }

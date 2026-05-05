@@ -17,11 +17,105 @@
     "snrUnit": "dB"
   },
   "common": {
+    "brand": "OrbitOps Copilot",
+    "brandTag": "B5G / NTN",
+    "envBadge": "Sprint 1 · 本機",
+    "refresh": "重新整理指標",
+    "scenario": "情境",
+    "tick": "t =",
     "unit": {
       "degrees": "°"
     }
   },
+  "copilot": {
+    "askButton": "請教 Copilot",
+    "askPlaceholder": "詢問波束健康、閘道可用性或異常事件…",
+    "askingButton": "詢問中…",
+    "confidenceLabel": "信心度 {{percent}}%",
+    "preset": {
+      "beamDegrading": "哪一條波束正在劣化？為什麼？",
+      "gatewayRisk": "有哪一座閘道有失效風險？",
+      "next30min": "未來 30 分鐘運維人員應該採取什麼行動？"
+    },
+    "refusedPrefix": "已拒答：{{reason}}",
+    "responseHeader": "Copilot 回應",
+    "section": {
+      "likelyCause": "可能原因",
+      "metricCitations": "指標引用（{{count}}）",
+      "recommendedActions": "建議行動",
+      "riskIfIgnored": "若忽略的風險",
+      "summary": "摘要"
+    },
+    "subtitle": "證據優先的 NTN 運維助理。每一則回答都只能引用 /metrics 觀測值；模型不可自行生成資料。Status 欄位顯示本次回應走哪條路徑。",
+    "tryLabel": "試試："
+  },
+  "gateways": {
+    "empty": "尚無閘道。請先載入情境。",
+    "fieldAvailable": "可用",
+    "fieldLoad": "負載",
+    "statusAvailable": "可用",
+    "statusDown": "下線",
+    "subtitle": "各閘道可用性 + 負載。orbitops_gateway_available 為二元指標（0/1）；若模擬器暴露 orbitops_gateway_load 則同時回報負載（0..1）。"
+  },
   "metricChart": {
     "noHistoryYet": "{{title}}：尚無歷史資料 — 等待下一次 /metrics 取樣（5 秒一次）。"
+  },
+  "nav": {
+    "aiOps": "AI 運維",
+    "anomalies": "異常事件",
+    "beams": "波束",
+    "cluster": "叢集",
+    "copilot": "Copilot",
+    "events": "事件",
+    "external": "外部連結",
+    "gateways": "閘道",
+    "overview": "總覽",
+    "satellitePass": "衛星過境",
+    "scenarios": "情境",
+    "workloads": "工作負載"
+  },
+  "overview": {
+    "beamSummary": "波束摘要",
+    "empty": "尚無波束。請從 <1>$t(nav.scenarios)</1> 頁面載入情境。",
+    "metric": {
+      "activeAnomalies": "作用中異常",
+      "beams": "波束",
+      "gateways": "閘道",
+      "tick": "情境時鐘 t"
+    },
+    "subtitle": "全叢集健康快照。數值來自模擬器 /metrics 取樣；表格為當前情境每一條波束的即時檢視。",
+    "table": {
+      "beamId": "波束 ID",
+      "doppler": "都卜勒（Hz）",
+      "handover": "換手",
+      "latency": "延遲（ms）",
+      "loss": "封包遺失",
+      "snr": "SNR（dB）",
+      "status": "狀態"
+    }
+  },
+  "scenarios": {
+    "checklist": {
+      "askCopilot": "切到 Copilot 頁,詢問「$t(copilot.preset.beamDegrading)」",
+      "retryHint": "點「Tick + Ns」重試，或「Load preset」重置。"
+    },
+    "customLoadFutureWork": "自訂 JSON 載入為 VS-3 後續工作。",
+    "feedback": {
+      "loadFailed": "Load 失敗，狀態未改變：{{message}}",
+      "loadSuccess": "已載入 {{loaded}}：{{beams}} 條波束、{{gateways}} 座閘道。",
+      "readyNoAnomaly": "{{loaded}} 已載入，但 t={{t}}s 時無作用中異常 — Copilot 會回 INSUFFICIENT_EVIDENCE。請重新載入並改用其他 tick 值，或檢查情境檔。",
+      "readySuccess": "$t(scenarios.readyForCopilot) · 已載入 {{loaded}}，t = {{t}}s · 作用中：{{active}} · $t(scenarios.checklist.askCopilot)",
+      "tickActiveNone": "(無)",
+      "tickFailed": "{{loaded}} 已載入（t=0）但 tick 失敗：{{message}}。$t(scenarios.checklist.retryHint)",
+      "tickSuccess": "t = {{t}}s · 作用中：{{active}}"
+    },
+    "preset": {
+      "beamDegradation": "載入 beam-degradation",
+      "gatewayFallback": "載入 gateway-fallback",
+      "handoverFailure": "載入 handover-failure"
+    },
+    "readyForCopilot": "準備好詢問 Copilot",
+    "subtitle": "載入預設情境，以 Tick + Ns 推進模擬器時鐘，然後直接跳到 Copilot 取得有證據的回答。",
+    "tickPickLabel": "秒數"
   }
 }
