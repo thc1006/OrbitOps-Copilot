@@ -187,9 +187,26 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
         }
       />
 
-      <Box sx={{ height: "70vh", borderRadius: 1, overflow: "hidden" }}>
+      <Box
+        sx={{
+          height: "70vh",
+          width: "100%",
+          // VS-13 fix (2026-05-05): Resium's `full` prop makes the
+          // cesium canvas `position:absolute; 100% × 100% of viewport`,
+          // which escapes the MUI Layout and pins the globe to the
+          // top-left corner of the page (Sidebar + TopBar overlap it).
+          // `position: relative` on the wrapper Box + dropping `full`
+          // makes resium fall back to filling its parent — which is
+          // exactly this Box. The `& > div` rule covers Resium's
+          // internal wrapper div that, without `full`, has no inline
+          // size and would collapse to height: 0.
+          position: "relative",
+          borderRadius: 1,
+          overflow: "hidden",
+          "& > div": { height: "100%", width: "100%" },
+        }}
+      >
         <Viewer
-          full
           baseLayer={OFFLINE_BASE_LAYER}
           timeline={false}
           animation={false}
