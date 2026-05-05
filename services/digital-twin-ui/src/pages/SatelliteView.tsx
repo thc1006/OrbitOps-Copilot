@@ -21,7 +21,9 @@
  * into public/cesium/ via npm `predev` / `prebuild` / `pretest` hooks.
  * vite.config.ts exposes the path via CESIUM_BASE_URL=/cesium global.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { CesiumComponentRef } from "resium";
+import type { Viewer as CesiumViewer } from "cesium";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import {
   Viewer,
@@ -138,6 +140,26 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
   const [passFraction, setPassFraction] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // VS-13 fix v3 (2026-05-05) — clamp + dampen mouse interaction.
+  // Reported: "敏感度太靈敏" — Cesium's default
+  // ScreenSpaceCameraController has inertia = 0.9 (slow decay) and
+  // unbounded zoom range, so a small scroll wheel tick shoots the
+  // camera through the globe. Lower inertia + reasonable zoom bounds
+  // (200 km min – 30,000 km max) keep the demo controllable.
+  const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null);
+  useEffect(() => {
+    const viewer = viewerRef.current?.cesiumElement;
+    if (!viewer) return;
+    const ctrl = viewer.scene.screenSpaceCameraController;
+    ctrl.minimumZoomDistance = 200_000;       // 200 km — closer than this
+                                              // crashes the camera into Earth.
+    ctrl.maximumZoomDistance = 30_000_000;    // 30,000 km — anything farther is
+                                              // just a thin Earth in space.
+    ctrl.inertiaSpin = 0.5;                    // default 0.9 — half-decay halves
+    ctrl.inertiaTranslate = 0.5;               // perceived sensitivity.
+    ctrl.inertiaZoom = 0.5;
+  }, []);
+
   // Interval-driven playback. Each tick advances fraction by
   // tickMs / (durationMs / speed). At fraction ≥ 1 we clamp + auto-
   // pause (predictable end-state for the demo). The cleanup function
@@ -191,28 +213,43 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
         sx={{
           height: "70vh",
           width: "100%",
-          // VS-13 fix (2026-05-05): without `full`, Resium's wrapper
-          // div has no inline size and Cesium's <canvas> + .cesium-
-          // viewer + .cesium-widget all default to small intrinsic
-          // sizes — the user reports "Earth in top-left, only a
-          // small slice visible". Force every cesium-internal node
-          // to fill the wrapper Box. !important is necessary because
-          // Cesium sets inline width/height attributes on the canvas
-          // element itself in JS based on its own size calculations.
+          // VS-13 fix v3 (2026-05-05): inset:0 absolute fill is the
+          // robust pattern. Resium's wrapping div has no inherent
+          // size; making it `position:absolute; inset:0` against this
+          // `position:relative` Box guarantees it fills the available
+          // 70vh × 100% area before Cesium reads container size in
+          // its constructor. !important on cesium-internal class
+          // names backstops Cesium's inline attribute writes.
           position: "relative",
           borderRadius: 1,
           overflow: "hidden",
-          "& > div, & .cesium-viewer, & .cesium-widget": {
-            height: "100% !important",
+          "& > div": {
+            position: "absolute !important",
+            inset: 0,
             width: "100% !important",
+            height: "100% !important",
           },
+          "& .cesium-viewer, & .cesium-widget, & .cesium-viewer-cesiumWidgetContainer":
+            {
+              width: "100% !important",
+              height: "100% !important",
+              position: "absolute !important",
+              inset: 0,
+            },
           "& canvas.cesium-widget-canvas": {
-            height: "100% !important",
             width: "100% !important",
+            height: "100% !important",
           },
+          // VS-13 fix v3: hide the built-in Cesium credit container
+          // ("CESIUM ion" watermark + Bing logo). NaturalEarthII is
+          // public-domain (Tom Patterson via Cesium); attribution
+          // moved to the page's caption Typography below.
+          "& .cesium-viewer-bottom, & .cesium-credit-textContainer, & .cesium-credit-logoContainer":
+            { display: "none !important" },
         }}
       >
         <Viewer
+          ref={viewerRef}
           style={{ height: "100%", width: "100%" }}
           baseLayer={OFFLINE_BASE_LAYER}
           timeline={false}
@@ -222,6 +259,15 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
           homeButton={false}
           sceneModePicker={false}
           navigationHelpButton={false}
+          // VS-13 fix v3: disable the 4 default widgets that were
+          // escaping into the document flow when the cesium widget
+          // container computed at small intrinsic size — observed
+          // in the live cluster screenshot as floating fullscreen
+          // icons + "×" close button + audio-mute icon.
+          fullscreenButton={false}
+          infoBox={false}
+          selectionIndicator={false}
+          vrButton={false}
         >
           <CameraFlyTo
             destination={INITIAL_CAMERA_DESTINATION}
