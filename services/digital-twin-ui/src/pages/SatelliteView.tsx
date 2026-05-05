@@ -146,18 +146,34 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
   // unbounded zoom range, so a small scroll wheel tick shoots the
   // camera through the globe. Lower inertia + reasonable zoom bounds
   // (200 km min – 30,000 km max) keep the demo controllable.
+  //
+  // VS-13 fix v4 (2026-05-05): Cesium reads container.clientWidth at
+  // construction time. With React 19 + Suspense + lazy chunk, the
+  // parent flexbox may not have laid out yet → Cesium hardcodes
+  // canvas to 300×150 default and never re-resizes. Force a resize
+  // pass after mount + observe parent box for further size changes.
   const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const viewer = viewerRef.current?.cesiumElement;
     if (!viewer) return;
     const ctrl = viewer.scene.screenSpaceCameraController;
-    ctrl.minimumZoomDistance = 200_000;       // 200 km — closer than this
-                                              // crashes the camera into Earth.
-    ctrl.maximumZoomDistance = 30_000_000;    // 30,000 km — anything farther is
-                                              // just a thin Earth in space.
-    ctrl.inertiaSpin = 0.5;                    // default 0.9 — half-decay halves
-    ctrl.inertiaTranslate = 0.5;               // perceived sensitivity.
+    ctrl.minimumZoomDistance = 200_000;       // 200 km
+    ctrl.maximumZoomDistance = 30_000_000;    // 30,000 km
+    ctrl.inertiaSpin = 0.5;
+    ctrl.inertiaTranslate = 0.5;
     ctrl.inertiaZoom = 0.5;
+
+    // Kick a resize on next frame after layout settles.
+    requestAnimationFrame(() => viewer.resize());
+
+    // Observe parent box; on any layout change call viewer.resize so
+    // canvas drawing buffer stays in sync with display size.
+    const box = boxRef.current;
+    if (!box) return;
+    const ro = new ResizeObserver(() => viewer.resize());
+    ro.observe(box);
+    return () => ro.disconnect();
   }, []);
 
   // Interval-driven playback. Each tick advances fraction by
@@ -210,6 +226,7 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
       />
 
       <Box
+        ref={boxRef}
         sx={{
           height: "70vh",
           width: "100%",
@@ -236,7 +253,12 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
               position: "absolute !important",
               inset: 0,
             },
-          "& canvas.cesium-widget-canvas": {
+          // VS-13 fix v4 (2026-05-05): Cesium 1.141's canvas does NOT
+          // get the `cesium-widget-canvas` class — verified via live
+          // DOM dump (cesium-widget > <canvas width="300" height="150">
+          // with no class). The class-specific selector missed; use
+          // a plain `& canvas` descendant selector.
+          "& canvas": {
             width: "100% !important",
             height: "100% !important",
           },
