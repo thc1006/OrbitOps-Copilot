@@ -144,16 +144,15 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
   // Reported: "敏感度太靈敏" — Cesium's default
   // ScreenSpaceCameraController has inertia = 0.9 (slow decay) and
   // unbounded zoom range, so a small scroll wheel tick shoots the
-  // camera through the globe. Lower inertia + reasonable zoom bounds
-  // (200 km min – 30,000 km max) keep the demo controllable.
+  // camera through the globe.
   //
-  // VS-13 fix v4 (2026-05-05): Cesium reads container.clientWidth at
-  // construction time. With React 19 + Suspense + lazy chunk, the
-  // parent flexbox may not have laid out yet → Cesium hardcodes
-  // canvas to 300×150 default and never re-resizes. Force a resize
-  // pass after mount + observe parent box for further size changes.
+  // VS-13 fix v5 (2026-05-05): v4's ResizeObserver caused an infinite
+  // re-render loop ("線一直閃" reported; headless Chrome never settles
+  // for screenshot). CesiumWidget.render() ALREADY compares
+  // canvas.clientWidth vs canvas.width on every frame and auto-resizes
+  // the drawing buffer when CSS-driven display size grows. Pure CSS
+  // (the !important selectors below) is sufficient. Reverted.
   const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null);
-  const boxRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const viewer = viewerRef.current?.cesiumElement;
     if (!viewer) return;
@@ -163,17 +162,6 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
     ctrl.inertiaSpin = 0.5;
     ctrl.inertiaTranslate = 0.5;
     ctrl.inertiaZoom = 0.5;
-
-    // Kick a resize on next frame after layout settles.
-    requestAnimationFrame(() => viewer.resize());
-
-    // Observe parent box; on any layout change call viewer.resize so
-    // canvas drawing buffer stays in sync with display size.
-    const box = boxRef.current;
-    if (!box) return;
-    const ro = new ResizeObserver(() => viewer.resize());
-    ro.observe(box);
-    return () => ro.disconnect();
   }, []);
 
   // Interval-driven playback. Each tick advances fraction by
@@ -226,7 +214,6 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
       />
 
       <Box
-        ref={boxRef}
         sx={{
           height: "70vh",
           width: "100%",
