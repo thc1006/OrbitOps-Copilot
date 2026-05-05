@@ -17,11 +17,35 @@
 import type { ReactNode } from "react";
 
 export const mockResium = () => ({
-  Viewer: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="cesium-viewer" data-resium="viewer">
-      {children}
-    </div>
-  ),
+  Viewer: ({
+    children,
+    baseLayer,
+  }: {
+    children?: ReactNode;
+    /** ADR-011 contract: SatelliteView MUST pass `baseLayer` to override
+     * the default Ion-backed Bing imagery. Mock exposes its presence
+     * through a data-attr so the test can assert the prop arrives at
+     * the boundary. Catches future regressions where the prop is
+     * removed and Ion silently re-engages. */
+    baseLayer?: unknown;
+  }) => {
+    const baseLayerKind =
+      baseLayer && typeof baseLayer === "object" && "__mock" in baseLayer
+        ? String((baseLayer as { __mock: unknown }).__mock)
+        : baseLayer === undefined
+          ? "(default-ion-backed)"
+          : "(custom)";
+    return (
+      <div
+        data-testid="cesium-viewer"
+        data-resium="viewer"
+        data-has-base-layer={baseLayer !== undefined ? "true" : "false"}
+        data-base-layer-kind={baseLayerKind}
+      >
+        {children}
+      </div>
+    );
+  },
   Entity: ({
     children,
     name,
