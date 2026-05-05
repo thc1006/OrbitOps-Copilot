@@ -94,6 +94,15 @@
       "status": "狀態"
     }
   },
+  "satellite": {
+    "playback": {
+      "pause": "暫停",
+      "play": "播放",
+      "progress": "t = {{t}}s / {{duration}}s",
+      "reset": "重置",
+      "speedHint": "（播放速度：{{speed}}×）"
+    }
+  },
   "scenarios": {
     "checklist": {
       "askCopilot": "切到 Copilot 頁,詢問「$t(copilot.preset.beamDegrading)」",

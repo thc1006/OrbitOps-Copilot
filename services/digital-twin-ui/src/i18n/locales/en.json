@@ -94,6 +94,15 @@
       "status": "Status"
     }
   },
+  "satellite": {
+    "playback": {
+      "pause": "Pause",
+      "play": "Play",
+      "progress": "t = {{t}}s / {{duration}}s",
+      "reset": "Reset",
+      "speedHint": "(playback speed: {{speed}}×)"
+    }
+  },
   "scenarios": {
     "checklist": {
       "askCopilot": "Open the Copilot tab and ask \"$t(copilot.preset.beamDegrading)\"",

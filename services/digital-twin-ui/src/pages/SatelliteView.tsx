@@ -21,7 +21,8 @@
  * into public/cesium/ via npm `predev` / `prebuild` / `pretest` hooks.
  * vite.config.ts exposes the path via CESIUM_BASE_URL=/cesium global.
  */
-import { Box, Typography } from "@mui/material";
+import { useEffect, useState } from "react";
+import { Box, Button, Stack, Typography } from "@mui/material";
 import {
   Viewer,
   Entity,
@@ -31,11 +32,22 @@ import {
   CylinderGraphics,
 } from "resium";
 import { Cartesian2, Cartesian3, Color } from "cesium";
+import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
+import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
+import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
+import { useTranslation } from "react-i18next";
 
 import SectionHeader from "../components/SectionHeader";
 import { calculateSinPass } from "../lib/orbital-pass";
 import { calculateBeamCones } from "../lib/beam-cone";
+import { interpolateSampleAtFraction } from "../lib/pass-animation";
 import type { MetricsSnapshot } from "../types";
+
+// VS-13 S5 (SPEC-S004-13d) — playback constants. Module-scope so they
+// are stable across renders and discoverable by future tests that want
+// to override deterministically.
+const PLAYBACK_TICK_MS = 50;       // 20 fps animation tick.
+const PLAYBACK_SPEED_X = 30;       // 30× wall-clock; 600 s pass plays in 20 s.
 
 // NYCU ground-station anchor. Lat/lon picked to match the campus
 // coordinates referenced in `docs/02_architecture.md`.
@@ -53,21 +65,13 @@ const POLYLINE_POSITIONS = DEMO_PASS.samples.map((s) =>
   Cartesian3.fromDegrees(s.lon_deg, s.lat_deg, s.alt_m),
 );
 
-// Satellite "current position" Entity sits at the peak of the pass
-// (mid-sample). S4+ replaces this with a SampledPositionProperty that
-// animates through all 60 samples over the pass duration.
-const PEAK_SAMPLE = DEMO_PASS.samples[Math.floor(DEMO_PASS.samples.length / 2)];
-const SATELLITE_POSITION = Cartesian3.fromDegrees(
-  PEAK_SAMPLE.lon_deg,
-  PEAK_SAMPLE.lat_deg,
-  PEAK_SAMPLE.alt_m,
-);
-
 interface SatelliteViewProps {
   data: MetricsSnapshot | null;
 }
 
 export default function SatelliteView({ data }: SatelliteViewProps) {
+  const { t } = useTranslation();
+
   // VS-13 S4: derive beam cones from the live metrics snapshot. When
   // no scenario is loaded (data === null) the array is empty and the
   // viewer renders just the ground station + pass trace.
@@ -78,6 +82,50 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
   const beamCones = calculateBeamCones(beams, NYCU_LAT, NYCU_LON, {
     groundAltitudeMeters: NYCU_ALT_M,
   });
+
+  // VS-13 S5 (SPEC-S004-13d) — playback state. The fraction is the
+  // canonical animation cursor; lon/lat/alt are derived. Start
+  // paused at the entry point (fraction=0) instead of the old static
+  // peak placement so the demo presenter explicitly starts playback.
+  const [passFraction, setPassFraction] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  // Interval-driven playback. Each tick advances fraction by
+  // tickMs / (durationMs / speed). At fraction ≥ 1 we clamp + auto-
+  // pause (predictable end-state for the demo). The cleanup function
+  // clears the interval on (a) unmount, (b) isPlaying flipping false,
+  // (c) any dependency change — preventing leaked timers across tests.
+  useEffect(() => {
+    if (!isPlaying) return;
+    const durationMs = DEMO_PASS.durationSeconds * 1000;
+    const id = setInterval(() => {
+      setPassFraction((f) => {
+        const next = f + (PLAYBACK_TICK_MS * PLAYBACK_SPEED_X) / durationMs;
+        if (next >= 1) {
+          // Auto-pause at end. Schedule the isPlaying flip in a
+          // microtask to avoid a setState-during-render warning.
+          queueMicrotask(() => setIsPlaying(false));
+          return 1;
+        }
+        return next;
+      });
+    }, PLAYBACK_TICK_MS);
+    return () => clearInterval(id);
+  }, [isPlaying]);
+
+  // Current satellite sample, derived live from the fraction. New
+  // Cartesian3 each render — bounded allocation (~12k over a full
+  // playback at 20 fps) and zero new cesium mock surface (uses the
+  // existing Cartesian3.fromDegrees mock).
+  const currentSample = interpolateSampleAtFraction(
+    DEMO_PASS.samples,
+    passFraction,
+  );
+  const satellitePosition = Cartesian3.fromDegrees(
+    currentSample.lon_deg,
+    currentSample.lat_deg,
+    currentSample.alt_m,
+  );
 
   return (
     <Box>
@@ -143,9 +191,10 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
           </Entity>
 
           <Entity
-            name="Satellite (peak)"
-            position={SATELLITE_POSITION}
-            description={`Peak position of the demo pass: ${PEAK_SAMPLE.lat_deg.toFixed(2)}°N, ${PEAK_SAMPLE.lon_deg.toFixed(2)}°E, ${(PEAK_SAMPLE.alt_m / 1000).toFixed(0)} km. Static placement; future PR animates this through all 60 samples.`}
+            name="Satellite"
+            position={satellitePosition}
+            description={`Animated demo pass position: ${currentSample.lat_deg.toFixed(2)}°N, ${currentSample.lon_deg.toFixed(2)}°E, ${(currentSample.alt_m / 1000).toFixed(0)} km. Click Play to traverse the pass at ${PLAYBACK_SPEED_X}× wall clock.`}
+            data-pass-fraction={passFraction}
           >
             <PointGraphics
               pixelSize={10}
@@ -194,20 +243,60 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
         </Viewer>
       </Box>
 
+      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 2 }}>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<PlayArrowRoundedIcon />}
+          onClick={() => setIsPlaying(true)}
+          disabled={isPlaying || passFraction >= 1}
+        >
+          {t("satellite.playback.play")}
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<PauseRoundedIcon />}
+          onClick={() => setIsPlaying(false)}
+          disabled={!isPlaying}
+        >
+          {t("satellite.playback.pause")}
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<RestartAltRoundedIcon />}
+          onClick={() => {
+            setIsPlaying(false);
+            setPassFraction(0);
+          }}
+        >
+          {t("satellite.playback.reset")}
+        </Button>
+        <Typography
+          variant="caption"
+          sx={{ ml: 2, fontFamily: "monospace", color: "text.secondary" }}
+        >
+          {t("satellite.playback.progress", {
+            t: Math.round(currentSample.t_seconds),
+            duration: DEMO_PASS.durationSeconds,
+          })}{" "}
+          {t("satellite.playback.speedHint", { speed: PLAYBACK_SPEED_X })}
+        </Typography>
+      </Stack>
+
       <Typography
         variant="caption"
         sx={{ display: "block", mt: 2, color: "text.secondary" }}
       >
-        VS-13 S3 + S4: static great-circle pass over NYCU
-        ({DEMO_PASS.durationSeconds}s, {DEMO_PASS.samples.length} samples;
-        peak {(PEAK_SAMPLE.alt_m / 1000).toFixed(0)} km) +{" "}
+        VS-13 S3 + S4 + S5: animated great-circle pass over NYCU
+        ({DEMO_PASS.durationSeconds}s, {DEMO_PASS.samples.length} samples) +{" "}
         {beams.length} per-beam coverage cone{beams.length === 1 ? "" : "s"}
         {beams.length > 0 ? ` (apex at NYCU, opening upward; color = snr_db health)` : ""}.
-        Animation (SampledPositionProperty + play/pause), real TLE
-        propagation, and per-beam azimuth pointing are future PRs —
-        current cones point straight up (zenith) regardless of
-        scenario azimuth. See src/lib/orbital-pass.ts and
-        src/lib/beam-cone.ts.
+        Real TLE propagation and per-beam azimuth pointing are future PRs —
+        current cones point straight up (zenith) regardless of scenario
+        azimuth. See src/lib/orbital-pass.ts, src/lib/pass-animation.ts,
+        and src/lib/beam-cone.ts.
       </Typography>
     </Box>
   );

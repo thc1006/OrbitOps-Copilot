@@ -20,80 +20,22 @@
 import { describe, expect, test, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-// Mock resium FIRST (before SatelliteView import) so the dynamic
-// imports inside the page resolve to our stubs. resium re-exports
-// React-friendly wrappers around cesium primitives.
-vi.mock("resium", () => ({
-  Viewer: ({ children }: { children?: React.ReactNode }) => (
-    <div data-testid="cesium-viewer" data-resium="viewer">
-      {children}
-    </div>
-  ),
-  Entity: ({
-    children,
-    name,
-  }: {
-    children?: React.ReactNode;
-    name?: string;
-    position?: unknown;
-  }) => (
-    <div
-      data-testid={`cesium-entity-${name?.replace(/\s+/g, "-") ?? "anon"}`}
-      data-resium="entity"
-      data-name={name}
-    >
-      {children}
-    </div>
-  ),
-  PointGraphics: () => <div data-resium="point-graphics" />,
-  LabelGraphics: () => <div data-resium="label-graphics" />,
-  // VS-13 S3: SatelliteView now renders a PolylineGraphics for the
-  // pass trace. Mock returns a discriminable element so tests can
-  // assert the polyline exists in the rendered tree.
-  PolylineGraphics: () => <div data-resium="polyline-graphics" />,
-  // VS-13 S4: per-beam coverage cones via CylinderGraphics
-  // (bottomRadius=0 → cone). Mock so tests can assert cones are
-  // rendered without loading the cesium runtime.
-  CylinderGraphics: () => <div data-resium="cylinder-graphics" />,
-}));
-
-// Mock cesium primitives — only the surfaces SatelliteView calls.
-vi.mock("cesium", () => ({
-  // VS-13 S3 (PR #77 review #4 fix): pixelOffset is screen-space —
-  // Cartesian2(x, y) in pixels, NOT Cartesian3.fromDegrees(lon, lat).
-  // Test mock returns a discriminable struct so the component's Label
-  // pixelOffset can be verified by shape if a future test asserts it.
-  Cartesian2: class {
-    x: number;
-    y: number;
-    constructor(x: number, y: number) {
-      this.x = x;
-      this.y = y;
-    }
-  },
-  Cartesian3: {
-    fromDegrees: (lon: number, lat: number, height = 0) => ({
-      lon,
-      lat,
-      height,
-    }),
-  },
-  Color: {
-    // VS-13 S4: SatelliteView calls
-    // `Color.fromCssColorString(hex).withAlpha(alpha)` for translucent
-    // cone materials. The chained `.withAlpha` must exist on the mock
-    // return; otherwise the cone Entity blows up at render with
-    // "withAlpha is not a function" — caught by component-level tests.
-    fromCssColorString: (css: string) => ({
-      css,
-      withAlpha: (alpha: number) => ({ css, alpha }),
-    }),
-    RED: { name: "RED" },
-    YELLOW: { name: "YELLOW" },
-    LIME: { name: "LIME" },
-  },
-  Ion: { defaultAccessToken: "" },
-}));
+// VS-13 S5: cesium + resium mocks extracted to a shared helper so the
+// zh-no-english-leak smoke test can mount <App /> (which routes to
+// <SatelliteView />) without duplicating ~50 lines of mock scaffolding.
+//
+// vi.mock hoists factories above all imports — passing an imported
+// function reference fails ("Cannot access __vi_import_X__ before
+// initialization"). Async factory + dynamic import resolves at call
+// time, after hoisting completes.
+vi.mock("resium", async () => {
+  const m = await import("../test-helpers/cesium-mocks");
+  return m.mockResium();
+});
+vi.mock("cesium", async () => {
+  const m = await import("../test-helpers/cesium-mocks");
+  return m.mockCesium();
+});
 
 import SatelliteView from "./SatelliteView";
 

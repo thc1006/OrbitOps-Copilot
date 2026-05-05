@@ -22,6 +22,24 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
 
+// SPEC-S004-13d: this test mounts <App /> which routes to
+// <SatelliteView /> on /satellite-view. The real cesium + resium
+// modules pull WebGL + Workers and crash jsdom. Mocks must be
+// installed before App is imported.
+//
+// vi.mock hoists factories above all imports, so we cannot pass an
+// imported function directly (would error "Cannot access '__vi_import_X__'
+// before initialization"). Async factory + dynamic import works because
+// the dynamic import resolves at call time, after hoisting completes.
+vi.mock("resium", async () => {
+  const m = await import("../test-helpers/cesium-mocks");
+  return m.mockResium();
+});
+vi.mock("cesium", async () => {
+  const m = await import("../test-helpers/cesium-mocks");
+  return m.mockCesium();
+});
+
 import App from "../App";
 import { orbitopsTheme } from "../theme";
 import { initI18n, _resetI18nForTests } from "./index";
@@ -119,6 +137,11 @@ const ENGLISH_LEAK_PATTERNS_SCENARIOS: RegExp[] = [
   /\bloaded,\s*t = /, /Load failed before any state changed/,
 ];
 
+// SPEC-S004-13d (VS-13 S5): Play / Pause / Reset must localize.
+const ENGLISH_LEAK_PATTERNS_SATELLITE: RegExp[] = [
+  /\bPlay\b/, /\bPause\b/, /\bReset\b/,
+];
+
 function expectNoEnglishLeak(patterns: RegExp[], where: string): void {
   for (const pat of patterns) {
     expect(
@@ -172,5 +195,14 @@ describe("zh-TW no-english-leak (SPEC-S004-5b)", () => {
       expect(screen.getByText(/載入 beam-degradation/)).toBeInTheDocument();
     });
     expectNoEnglishLeak(ENGLISH_LEAK_PATTERNS_SCENARIOS, "Scenarios");
+  });
+
+  test("SatelliteView page is fully zh-TW (SPEC-S004-13d Play/Pause/Reset)", async () => {
+    render(wrap("/satellite-view"));
+    await waitFor(() => {
+      // sentinel zh-TW: satellite.playback.play
+      expect(screen.getByRole("button", { name: /播放/ })).toBeInTheDocument();
+    });
+    expectNoEnglishLeak(ENGLISH_LEAK_PATTERNS_SATELLITE, "SatelliteView");
   });
 });
