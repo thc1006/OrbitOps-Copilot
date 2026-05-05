@@ -8,15 +8,17 @@ dist
 # Workers + Assets + Widgets + ThirdParty; not tracked.
 public/cesium/
 
-# T1 (PR for SPEC-004 §AC-S004-5): `tsc -b` emits .js files next to
-# source if no `noEmit` / `outDir` is set in tsconfig. Vite handles
-# bundling, so these are pure detritus. Fixing tsconfig is tracked
-# as I-15 (issue #70); for now, gitignore prevents accidental commits.
+# I-15 (issue #70, closed by tsconfig `noEmit: true`): the patterns
+# below were originally a workaround for `tsc -b` emitting .js / .js.map
+# / .d.ts next to source. tsconfig.json now sets `noEmit: true`, so any
+# tsc invocation (including IDE / editor TS server in build mode) is
+# guaranteed not to emit. We keep the patterns as a defensive backstop —
+# a future override (someone running `tsc --noEmit false` directly, or
+# a misconfigured editor plugin) will still be caught before commit.
 #
 # VS-13 S1.1 follow-up: src/types/ holds INTENTIONAL ambient
-# declarations (CSS modules, @fontsource side-effect imports). Carve
-# it out as an exception so legitimate `.d.ts` files don't get caught
-# by the auto-emit sweep.
+# declarations (CSS modules, @fontsource side-effect imports). The
+# `!src/types/**` carve-out keeps legitimate .d.ts tracked.
 src/**/*.js
 src/**/*.js.map
 src/**/*.d.ts
