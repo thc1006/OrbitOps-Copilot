@@ -95,7 +95,11 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
       const r = await loadScenario(preset.body);
       setFeedback({
         severity: "success",
-        text: `Loaded ${r.loaded}: ${r.beams} beams, ${r.gateways} gateway(s).`,
+        text: t("scenarios.feedback.loadSuccess", {
+          loaded: r.loaded,
+          beams: r.beams,
+          gateways: r.gateways,
+        }),
       });
       refetchMetrics();
     } catch (e) {
@@ -112,7 +116,10 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
       const r = await tickScenario(tickSeconds);
       setFeedback({
         severity: r.active_anomalies.length ? "info" : "success",
-        text: `t = ${r.t}s · active: ${r.active_anomalies.join(", ") || "(none)"}`,
+        text: t("scenarios.feedback.tickSuccess", {
+          t: r.t,
+          active: r.active_anomalies.join(", ") || t("scenarios.feedback.tickActiveNone"),
+        }),
       });
       refetchMetrics();
     } catch (e) {
@@ -142,7 +149,7 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
     } catch (e) {
       setFeedback({
         severity: "error",
-        text: `Load failed before any state changed: ${(e as Error).message}`,
+        text: t("scenarios.feedback.loadFailed", { message: (e as Error).message }),
       });
       setBusy(false);
       return;
@@ -160,27 +167,29 @@ export default function Scenarios({ refetchMetrics }: ScenariosProps) {
       if (ticked.active_anomalies.length === 0) {
         setFeedback({
           severity: "warning",
-          text:
-            `${loaded.loaded} loaded but NO anomaly is active at t=${ticked.t}s ` +
-            `— Copilot will return INSUFFICIENT_EVIDENCE. ` +
-            `Re-load and try a different tick value, or check the scenario file.`,
+          text: t("scenarios.feedback.readyNoAnomaly", {
+            loaded: loaded.loaded,
+            t: ticked.t,
+          }),
         });
       } else {
         setFeedback({
           severity: "success",
-          text:
-            `${t("scenarios.readyForCopilot")} · ${loaded.loaded} loaded, ` +
-            `t = ${ticked.t}s · active: ${ticked.active_anomalies.join(", ")} · ` +
-            t("scenarios.checklist.askCopilot"),
+          text: t("scenarios.feedback.readySuccess", {
+            loaded: loaded.loaded,
+            t: ticked.t,
+            active: ticked.active_anomalies.join(", "),
+          }),
         });
       }
       refetchMetrics();
     } catch (e) {
       setFeedback({
         severity: "error",
-        text:
-          `${loaded.loaded} loaded (t=0) but tick failed: ${(e as Error).message}. ` +
-          t("scenarios.checklist.retryHint"),
+        text: t("scenarios.feedback.tickFailed", {
+          loaded: loaded.loaded,
+          message: (e as Error).message,
+        }),
       });
     } finally {
       setBusy(false);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Button,
@@ -54,10 +54,23 @@ const STATUS_COLORS: Record<CopilotResponse["status"], "success" | "warning" | "
 };
 
 export default function Copilot({ data }: CopilotProps) {
-  const { t } = useTranslation();
-  const [question, setQuestion] = useState(t(PRESET_QUESTION_KEYS[0]));
+  const { t, i18n } = useTranslation();
+  const [question, setQuestion] = useState<string>(() => t(PRESET_QUESTION_KEYS[0]));
   const [busy, setBusy] = useState(false);
   const [response, setResponse] = useState<CopilotResponse | null>(null);
+
+  // Re-sync the textarea with the current locale when the user toggles
+  // language while the page is mounted — but only if the textarea still
+  // holds one of the preset translations (i.e. the user hasn't typed a
+  // custom question we'd otherwise clobber).
+  useEffect(() => {
+    setQuestion((current) => {
+      const isPreset = PRESET_QUESTION_KEYS.some(
+        (k) => current === t(k, { lng: "en" }) || current === t(k, { lng: "zh-TW" }),
+      );
+      return isPreset ? t(PRESET_QUESTION_KEYS[0]) : current;
+    });
+  }, [i18n.language, t]);
 
   // VS-9b.4: accumulate the same sliding-window history the Beams page
   // uses, so each metric citation can render an inline sparkline of

@@ -76,7 +76,7 @@
   },
   "overview": {
     "beamSummary": "Beam summary",
-    "empty": "No beams. Load a scenario from <1>Scenarios</1>.",
+    "empty": "No beams. Load a scenario from <1>$t(nav.scenarios)</1>.",
     "metric": {
       "activeAnomalies": "Active anomalies",
       "beams": "Beams",
@@ -96,10 +96,19 @@
   },
   "scenarios": {
     "checklist": {
-      "askCopilot": "Open the Copilot tab and ask \"Which beam is degrading and why?\"",
+      "askCopilot": "Open the Copilot tab and ask \"$t(copilot.preset.beamDegrading)\"",
       "retryHint": "Click \"Tick + Ns\" to retry, or \"Load preset\" to reset."
     },
     "customLoadFutureWork": "Custom-JSON load is VS-3 future work.",
+    "feedback": {
+      "loadFailed": "Load failed before any state changed: {{message}}",
+      "loadSuccess": "Loaded {{loaded}}: {{beams}} beams, {{gateways}} gateway(s).",
+      "readyNoAnomaly": "{{loaded}} loaded but NO anomaly is active at t={{t}}s — Copilot will return INSUFFICIENT_EVIDENCE. Re-load and try a different tick value, or check the scenario file.",
+      "readySuccess": "$t(scenarios.readyForCopilot) · {{loaded}} loaded, t = {{t}}s · active: {{active}} · $t(scenarios.checklist.askCopilot)",
+      "tickActiveNone": "(none)",
+      "tickFailed": "{{loaded}} loaded (t=0) but tick failed: {{message}}. $t(scenarios.checklist.retryHint)",
+      "tickSuccess": "t = {{t}}s · active: {{active}}"
+    },
     "preset": {
       "beamDegradation": "Load beam-degradation",
       "gatewayFallback": "Load gateway-fallback",

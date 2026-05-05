@@ -76,7 +76,7 @@
   },
   "overview": {
     "beamSummary": "波束摘要",
-    "empty": "尚無波束。請從 <1>情境</1> 頁面載入情境。",
+    "empty": "尚無波束。請從 <1>$t(nav.scenarios)</1> 頁面載入情境。",
     "metric": {
       "activeAnomalies": "作用中異常",
       "beams": "波束",
@@ -96,10 +96,19 @@
   },
   "scenarios": {
     "checklist": {
-      "askCopilot": "切到 Copilot 頁，詢問「哪一條波束正在劣化？為什麼？」",
+      "askCopilot": "切到 Copilot 頁,詢問「$t(copilot.preset.beamDegrading)」",
       "retryHint": "點「Tick + Ns」重試，或「Load preset」重置。"
     },
     "customLoadFutureWork": "自訂 JSON 載入為 VS-3 後續工作。",
+    "feedback": {
+      "loadFailed": "Load 失敗，狀態未改變：{{message}}",
+      "loadSuccess": "已載入 {{loaded}}：{{beams}} 條波束、{{gateways}} 座閘道。",
+      "readyNoAnomaly": "{{loaded}} 已載入，但 t={{t}}s 時無作用中異常 — Copilot 會回 INSUFFICIENT_EVIDENCE。請重新載入並改用其他 tick 值，或檢查情境檔。",
+      "readySuccess": "$t(scenarios.readyForCopilot) · 已載入 {{loaded}}，t = {{t}}s · 作用中：{{active}} · $t(scenarios.checklist.askCopilot)",
+      "tickActiveNone": "(無)",
+      "tickFailed": "{{loaded}} 已載入（t=0）但 tick 失敗：{{message}}。$t(scenarios.checklist.retryHint)",
+      "tickSuccess": "t = {{t}}s · 作用中：{{active}}"
+    },
     "preset": {
       "beamDegradation": "載入 beam-degradation",
       "gatewayFallback": "載入 gateway-fallback",
