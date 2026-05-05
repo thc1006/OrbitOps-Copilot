@@ -5,9 +5,11 @@ emulator:
   enabled: true
   image:
     repository: orbitops/ntn-metrics-emulator
-    # PR #35 bumped both emulator + copilot to this tag (G6/G7/G8 sprint-1 spec parity).
-    # Helm chart was drifted at 0.0.1-dev pre-PR-G; aligned here.
-    tag: "0.1.2-dev-sprint2"
+    # 2026-05-05 bump: 0.1.2-dev-sprint2 → 0.1.3-dev-sprint3 syncs Helm tag with
+    # the Kustomize base after Sprint-3 PR train (#62/#66 minor logging/review
+    # changes). PR #35 first aligned this chart with the overlay; the parity
+    # rule still holds.
+    tag: "0.1.3-dev-sprint3"
     pullPolicy: IfNotPresent
   replicaCount: 1
   service:
@@ -35,7 +37,7 @@ copilot:
   enabled: true
   image:
     repository: orbitops/copilot-api
-    tag: "0.1.2-dev-sprint2"
+    tag: "0.1.3-dev-sprint3"
     pullPolicy: IfNotPresent
   replicaCount: 1
   service:
@@ -67,10 +69,13 @@ ui:
   enabled: true
   image:
     repository: orbitops/digital-twin-ui
-    # UI image was NOT bumped in PR #35 (no UI code changed in PR #34); the
-    # Phase F UI button (PR #42) was rebuilt locally over 0.1.0-dev rather
-    # than tag-bumped. Sprint-2 will revisit + may bump alongside Recharts.
-    tag: "0.1.2-dev-sprint2"
+    # 2026-05-05 bump: 0.1.2-dev-sprint2 → 0.1.3-dev-sprint3 picks up the
+    # Sprint-3 frontend train (PR #73-#82): Node 22 / Vite 8 / React 19 /
+    # CesiumJS satellite-pass + beam cones / i18n broader coverage / tsconfig
+    # noEmit. UI image was the largest drift item between live cluster and
+    # main; this bump is what makes the demo's zh-TW + /satellite-view route
+    # actually work in-cluster.
+    tag: "0.1.3-dev-sprint3"
     pullPolicy: IfNotPresent
   replicaCount: 1
   service:

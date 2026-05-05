@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: copilot
-          image: orbitops/copilot-api:0.1.2-dev-sprint2
+          image: orbitops/copilot-api:0.1.3-dev-sprint3
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8001
