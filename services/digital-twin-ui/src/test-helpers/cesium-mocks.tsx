@@ -17,11 +17,35 @@
 import type { ReactNode } from "react";
 
 export const mockResium = () => ({
-  Viewer: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="cesium-viewer" data-resium="viewer">
-      {children}
-    </div>
-  ),
+  Viewer: ({
+    children,
+    baseLayer,
+  }: {
+    children?: ReactNode;
+    /** ADR-011 contract: SatelliteView MUST pass `baseLayer` to override
+     * the default Ion-backed Bing imagery. Mock exposes its presence
+     * through a data-attr so the test can assert the prop arrives at
+     * the boundary. Catches future regressions where the prop is
+     * removed and Ion silently re-engages. */
+    baseLayer?: unknown;
+  }) => {
+    const baseLayerKind =
+      baseLayer && typeof baseLayer === "object" && "__mock" in baseLayer
+        ? String((baseLayer as { __mock: unknown }).__mock)
+        : baseLayer === undefined
+          ? "(default-ion-backed)"
+          : "(custom)";
+    return (
+      <div
+        data-testid="cesium-viewer"
+        data-resium="viewer"
+        data-has-base-layer={baseLayer !== undefined ? "true" : "false"}
+        data-base-layer-kind={baseLayerKind}
+      >
+        {children}
+      </div>
+    );
+  },
   Entity: ({
     children,
     name,
@@ -83,4 +107,23 @@ export const mockCesium = () => ({
     LIME: { name: "LIME" },
   },
   Ion: { defaultAccessToken: "" },
+  // VS-13 fix (2026-05-05): SatelliteView passes
+  // `baseLayer={ImageryLayer.fromProviderAsync(TileMapServiceImageryProvider.fromUrl(...))}`
+  // to bypass Cesium's default Ion-backed Bing imagery (offline
+  // NaturalEarthII texture). Mock both factories so the cesium import
+  // doesn't throw "X is not a function" at component mount.
+  ImageryLayer: {
+    fromProviderAsync: (providerPromise: unknown, options?: unknown) => ({
+      __mock: "ImageryLayer.fromProviderAsync",
+      providerPromise,
+      options,
+    }),
+  },
+  TileMapServiceImageryProvider: {
+    fromUrl: (url: string) =>
+      Promise.resolve({
+        __mock: "TileMapServiceImageryProvider",
+        url,
+      }),
+  },
 });

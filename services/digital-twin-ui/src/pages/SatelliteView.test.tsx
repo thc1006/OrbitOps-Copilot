@@ -45,6 +45,27 @@ describe("SatelliteView (VS-13 S2 — CesiumJS skeleton)", () => {
     expect(screen.getByTestId("cesium-viewer")).toBeInTheDocument();
   });
 
+  test("ADR-011: <Viewer> receives an offline ImageryLayer baseLayer (no Ion fallback)", () => {
+    // Per ADR-011 (offline-first cesium imagery): the production
+    // <Viewer> MUST be invoked with an explicit `baseLayer` prop sourced
+    // from `ImageryLayer.fromProviderAsync(TileMapServiceImageryProvider
+    // .fromUrl(...))`. Without this prop, Cesium's constructor falls
+    // back to Ion-backed Bing imagery and prints the "default ion access
+    // token" warning + 401s once the demo token's quota is exhausted.
+    //
+    // The resium mock (test-helpers/cesium-mocks.tsx) inspects the
+    // baseLayer prop's __mock discriminator and surfaces both presence
+    // and kind via data-* attributes. A future regression that removes
+    // the baseLayer prop would flip data-has-base-layer to "false" and
+    // data-base-layer-kind to "(default-ion-backed)" — fail-loud here.
+    render(<SatelliteView data={null} />);
+    const viewer = screen.getByTestId("cesium-viewer");
+    expect(viewer.dataset.hasBaseLayer).toBe("true");
+    expect(viewer.dataset.baseLayerKind).toBe(
+      "ImageryLayer.fromProviderAsync",
+    );
+  });
+
   test("renders an NYCU ground-station entity", () => {
     render(<SatelliteView data={null} />);
     // Ground station name is the contract surface S3 (pass animation)

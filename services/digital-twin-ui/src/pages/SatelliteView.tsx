@@ -31,7 +31,13 @@ import {
   PolylineGraphics,
   CylinderGraphics,
 } from "resium";
-import { Cartesian2, Cartesian3, Color } from "cesium";
+import {
+  Cartesian2,
+  Cartesian3,
+  Color,
+  ImageryLayer,
+  TileMapServiceImageryProvider,
+} from "cesium";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
@@ -48,6 +54,26 @@ import type { MetricsSnapshot } from "../types";
 // to override deterministically.
 const PLAYBACK_TICK_MS = 50;       // 20 fps animation tick.
 const PLAYBACK_SPEED_X = 30;       // 30× wall-clock; 600 s pass plays in 20 s.
+
+// VS-13 fix (2026-05-05): default Cesium <Viewer> uses Bing aerial
+// imagery served by Cesium Ion CDN, which prints "default ion access
+// token" warning and 401s once the demo token's rate limit is hit.
+// Override with offline NaturalEarthII texture bundled into
+// public/cesium/Assets/Textures/ by scripts/copy-cesium-assets.mjs.
+// Zero Ion dependency, zero rate limit, zero signup, fully offline.
+//
+// Cesium 1.131+ replaced the deprecated `imageryProvider` constructor
+// option with `baseLayer: ImageryLayer.fromProviderAsync(...)`; Resium
+// 1.21 reflects the same readonly-prop surface (see resium d.ts line
+// 653 — `cesiumReadonlyProps_18` includes `baseLayer`, NOT
+// `imageryProvider`). `fromUrl` is the async factory that lazy-loads
+// the tilemapresource.xml.
+const OFFLINE_BASE_LAYER = ImageryLayer.fromProviderAsync(
+  TileMapServiceImageryProvider.fromUrl(
+    "/cesium/Assets/Textures/NaturalEarthII",
+  ),
+  {},
+);
 
 // NYCU ground-station anchor. Lat/lon picked to match the campus
 // coordinates referenced in `docs/02_architecture.md`.
@@ -142,6 +168,7 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
       <Box sx={{ height: "70vh", borderRadius: 1, overflow: "hidden" }}>
         <Viewer
           full
+          baseLayer={OFFLINE_BASE_LAYER}
           timeline={false}
           animation={false}
           baseLayerPicker={false}
