@@ -83,4 +83,23 @@ export const mockCesium = () => ({
     LIME: { name: "LIME" },
   },
   Ion: { defaultAccessToken: "" },
+  // VS-13 fix (2026-05-05): SatelliteView passes
+  // `baseLayer={ImageryLayer.fromProviderAsync(TileMapServiceImageryProvider.fromUrl(...))}`
+  // to bypass Cesium's default Ion-backed Bing imagery (offline
+  // NaturalEarthII texture). Mock both factories so the cesium import
+  // doesn't throw "X is not a function" at component mount.
+  ImageryLayer: {
+    fromProviderAsync: (providerPromise: unknown, options?: unknown) => ({
+      __mock: "ImageryLayer.fromProviderAsync",
+      providerPromise,
+      options,
+    }),
+  },
+  TileMapServiceImageryProvider: {
+    fromUrl: (url: string) =>
+      Promise.resolve({
+        __mock: "TileMapServiceImageryProvider",
+        url,
+      }),
+  },
 });
