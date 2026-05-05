@@ -1,0 +1,15 @@
+# VS-17 (AC-S006-7): kpt's resource walker treats every file in the
+# package directory as a candidate KRM resource. This package ships a
+# JSON "twin" of groundstation-profile.yaml that is used by verify.sh
+# gate 4 (schema validation against tests/contracts/groundstation-
+# profile.schema.json) — it intentionally does NOT have apiVersion /
+# kind because it is a profile descriptor, not a Kubernetes object.
+#
+# Without this exclusion `kpt fn render` errors with:
+#   input resource list must contain only KRM resources:
+#   groundstation-profile.example.json: resource must have `apiVersion`
+#
+# The JSON twin stays in-package because the README documents both
+# files side-by-side; .krmignore is the kpt-idiomatic way to keep
+# non-KRM artefacts in the package directory.
+groundstation-profile.example.json

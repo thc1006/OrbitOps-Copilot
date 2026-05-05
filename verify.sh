@@ -179,4 +179,19 @@ if [ -f deploy/k8s/overlays/prod/kustomization.yaml ]; then
   fi
 fi
 
+# ─── 5d. AC-S006-7 (VS-17): kpt fn render dry-run on Nephio stub ───
+# Per SPEC-006 §AC-S006-7: packages/nephio-stubs/ must pass
+# `kpt fn render` (no real Porch needed). Soft gate — kpt is not a
+# CI-installed tool by default; warns when missing instead of failing.
+# Once kpt is in CI image, change `warn` → `fail` to make this blocking.
+if [ -d packages/nephio-stubs/orbitops-groundstation-package ]; then
+  if command -v kpt >/dev/null 2>&1; then
+    info "5d/5 AC-S006-7 — kpt fn render dry-run on Nephio stub package"
+    kpt fn render packages/nephio-stubs/orbitops-groundstation-package/ >/dev/null
+    ok "kpt fn render: 0 mutators / 0 validators executed cleanly"
+  else
+    warn "kpt not installed; install from https://kpt.dev/installation/ to run AC-S006-7 locally — CI image must add kpt before this becomes blocking"
+  fi
+fi
+
 info "all checks passed"
