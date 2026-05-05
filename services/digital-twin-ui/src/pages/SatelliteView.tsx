@@ -191,22 +191,29 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
         sx={{
           height: "70vh",
           width: "100%",
-          // VS-13 fix (2026-05-05): Resium's `full` prop makes the
-          // cesium canvas `position:absolute; 100% × 100% of viewport`,
-          // which escapes the MUI Layout and pins the globe to the
-          // top-left corner of the page (Sidebar + TopBar overlap it).
-          // `position: relative` on the wrapper Box + dropping `full`
-          // makes resium fall back to filling its parent — which is
-          // exactly this Box. The `& > div` rule covers Resium's
-          // internal wrapper div that, without `full`, has no inline
-          // size and would collapse to height: 0.
+          // VS-13 fix (2026-05-05): without `full`, Resium's wrapper
+          // div has no inline size and Cesium's <canvas> + .cesium-
+          // viewer + .cesium-widget all default to small intrinsic
+          // sizes — the user reports "Earth in top-left, only a
+          // small slice visible". Force every cesium-internal node
+          // to fill the wrapper Box. !important is necessary because
+          // Cesium sets inline width/height attributes on the canvas
+          // element itself in JS based on its own size calculations.
           position: "relative",
           borderRadius: 1,
           overflow: "hidden",
-          "& > div": { height: "100%", width: "100%" },
+          "& > div, & .cesium-viewer, & .cesium-widget": {
+            height: "100% !important",
+            width: "100% !important",
+          },
+          "& canvas.cesium-widget-canvas": {
+            height: "100% !important",
+            width: "100% !important",
+          },
         }}
       >
         <Viewer
+          style={{ height: "100%", width: "100%" }}
           baseLayer={OFFLINE_BASE_LAYER}
           timeline={false}
           animation={false}
