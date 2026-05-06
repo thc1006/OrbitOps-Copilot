@@ -95,12 +95,33 @@
     }
   },
   "satellite": {
+    "anomaly": {
+      "banner": "{{kind}} 異常於情境時鐘 t = {{t}}s 作用中 — {{count}} 條波束受影響"
+    },
+    "beams": {
+      "empty": "目前無作用中波束。請從情境頁載入情境。",
+      "title": "作用中波束（{{count}}）"
+    },
+    "handover": {
+      "empty": "目前無換手事件。",
+      "failure": "失敗",
+      "preparing": "準備中",
+      "title": "換手事件"
+    },
     "playback": {
       "pause": "暫停",
       "play": "播放",
       "progress": "t = {{t}}s / {{duration}}s",
       "reset": "重置",
       "speedHint": "（播放速度：{{speed}}×）"
+    },
+    "sparkline": {
+      "empty": "正在輪詢 /metrics — 取樣達 2 筆後才會出現 sparkline。",
+      "title": "即時 SNR（60 秒視窗）"
+    },
+    "subtitle": "Cesium 地球 + 各波束遙測。NaturalEarthII 離線圖層（ADR-011）；衛星過境用 calculateSinPass 示範軌道；波束 cone 顏色由 /metrics 即時的 snr_db 決定。",
+    "timeline": {
+      "title": "過境進度"
     }
   },
   "scenarios": {
