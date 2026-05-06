@@ -37,7 +37,20 @@ vi.mock("cesium", async () => {
   return m.mockCesium();
 });
 
+// SPEC-S004-13e — mock MetricSparkline at the component boundary
+// so the SNR sparkline panel tests can assert "one sparkline per beam"
+// without re-validating the chart's internal Recharts rendering
+// (covered by MetricSparkline.test.tsx). Mirrors Copilot.test.tsx mock.
+vi.mock("../components/MetricSparkline", () => ({
+  default: ({ beamId, metric }: { beamId: string; metric: string }) => (
+    <div data-testid={`mock-sparkline-${beamId}-${metric}`}>
+      mocked-sparkline {beamId} {metric}
+    </div>
+  ),
+}));
+
 import SatelliteView from "./SatelliteView";
+import type { MetricsSnapshot } from "../types";
 
 describe("SatelliteView (VS-13 S2 — CesiumJS skeleton)", () => {
   test("renders a Cesium viewer container", () => {
@@ -209,5 +222,122 @@ describe("SatelliteView (VS-13 S5 — animated pass)", () => {
       vi.advanceTimersByTime(1000);
     });
     expect(sat.getAttribute("data-pass-fraction")).toBe("0");
+  });
+});
+
+// ─── SPEC-S004-13e — ops-console redesign (4 telemetry panels) ────────
+//
+// AC-S004-13e.{1..7} bound to test surface here. The Cesium runtime
+// remains [skip-tdd] (jsdom limitation), but the React composition of
+// the 4 telemetry panels is fully testable via the existing mocks.
+
+const SNAPSHOT_WITH_DEGRADED_BEAM: MetricsSnapshot = {
+  scenario_id: "beam-degradation-001",
+  t_seconds: 90,
+  beams: [
+    {
+      beam_id: "beam-1",
+      snr_db: 6.5,
+      sinr_db: 4.2,
+      latency_ms: 80,
+      packet_loss_ratio: 0.05,
+      doppler_residual_hz: 1500,
+      handover_state: 2 as const,
+      elevation_deg: 25,
+      health: "crit" as const,
+    },
+    {
+      beam_id: "beam-2",
+      snr_db: 13.0,
+      sinr_db: 11.5,
+      latency_ms: 25,
+      packet_loss_ratio: 0.001,
+      doppler_residual_hz: 50,
+      handover_state: 1 as const,
+      elevation_deg: 60,
+      health: "ok" as const,
+    },
+    {
+      beam_id: "beam-3",
+      snr_db: 11.5,
+      sinr_db: 9.0,
+      latency_ms: 30,
+      packet_loss_ratio: 0.002,
+      doppler_residual_hz: 80,
+      handover_state: 0 as const,
+      elevation_deg: 45,
+      health: "ok" as const,
+    },
+  ],
+  gateways: [],
+  active_anomaly: "snr_drop",
+  active_anomalies: ["snr_drop"],
+  scraped_at: new Date().toISOString(),
+};
+
+describe("SatelliteView (SPEC-S004-13e — ops-console panels)", () => {
+  test("AC-13e.1: anomaly banner is hidden when no active anomalies", () => {
+    render(<SatelliteView data={null} />);
+    // The banner uses MUI Alert which renders role=alert.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  test("AC-13e.1: anomaly banner appears with active_anomalies + cites kind", () => {
+    render(<SatelliteView data={SNAPSHOT_WITH_DEGRADED_BEAM} />);
+    const banner = screen.getByRole("alert");
+    expect(banner).toBeInTheDocument();
+    // i18n string "{{kind}} active at scenario t = {{t}}s — {{count}} beam(s) degraded"
+    // — assert the interpolation pulled the snr_drop kind through.
+    expect(banner).toHaveTextContent(/snr_drop/);
+  });
+
+  test("AC-13e.2: active beams panel renders one row per beam", () => {
+    render(<SatelliteView data={SNAPSHOT_WITH_DEGRADED_BEAM} />);
+    // beam_id appears in the active-beams panel; getAllByText covers
+    // potential duplicates (e.g. inside sparkline labels).
+    expect(screen.getAllByText("beam-1").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("beam-2").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("beam-3").length).toBeGreaterThan(0);
+  });
+
+  test("AC-13e.3: active beams panel shows empty-state text when data is null", () => {
+    render(<SatelliteView data={null} />);
+    // The i18n key resolves to "No beams active. Load a scenario from Scenarios."
+    // when no resource is loaded test-setup falls back to the EN string.
+    expect(
+      screen.getByText(/No beams active|目前無作用中波束/),
+    ).toBeInTheDocument();
+  });
+
+  test("AC-13e.4: handover events panel filters by handover_state > 0", () => {
+    render(<SatelliteView data={SNAPSHOT_WITH_DEGRADED_BEAM} />);
+    // Snapshot has beam-1 (state=2 FAILURE), beam-2 (state=1 preparing),
+    // beam-3 (state=0 stable). Both labels should be visible somewhere
+    // in the document.
+    expect(screen.getByText(/FAILURE|失敗/)).toBeInTheDocument();
+    expect(screen.getByText(/preparing|準備中/)).toBeInTheDocument();
+  });
+
+  test("AC-13e.5: SNR sparkline panel renders one MetricSparkline per beam", () => {
+    render(<SatelliteView data={SNAPSHOT_WITH_DEGRADED_BEAM} />);
+    expect(
+      screen.getByTestId("mock-sparkline-beam-1-snr_db"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("mock-sparkline-beam-2-snr_db"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("mock-sparkline-beam-3-snr_db"),
+    ).toBeInTheDocument();
+  });
+
+  test("AC-13e.6: section header uses nav.* shared keys (no hardcoded English)", () => {
+    render(<SatelliteView data={null} />);
+    // "Workloads" comes from t("nav.workloads") — same key the SideNav
+    // renders. If a future regression switches back to hardcoded
+    // "Visualization", this test fails because the i18n string
+    // "Workloads" won't be in the rendered SectionHeader.
+    expect(screen.getAllByText("Workloads").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Satellite Pass").length).toBeGreaterThan(0);
   });
 });
