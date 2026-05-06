@@ -25,7 +25,7 @@
  * src/test-helpers/cesium-mocks.tsx). Pure-function libs
  * (orbital-pass + pass-animation + beam-cone) run in tests directly.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CesiumComponentRef } from "resium";
 import type { Viewer as CesiumViewer } from "cesium";
 import {
@@ -105,6 +105,25 @@ const POLYLINE_POSITIONS = DEMO_PASS.samples.map((s) =>
   Cartesian3.fromDegrees(s.lon_deg, s.lat_deg, s.alt_m),
 );
 
+// VS-13 fix v6 (2026-05-06): "黃色軌道一直閃". Inline
+// `Color.fromCssColorString(...)` and `new Cartesian2(...)` calls in
+// JSX run on EVERY render — at 20 fps playback that produces 20 new
+// Color/Cartesian2 references per second. Resium does shallow-equal
+// diffing on Entity props; new references → "prop changed" → Cesium
+// recreates the polyline / point / label material → visible flicker.
+//
+// Hoist every visual constant to module scope so the references are
+// stable across renders. Per-beam-cone materials (which legitimately
+// change when SNR changes) use useMemo below.
+const COLOR_BLACK = Color.fromCssColorString("#000000");
+const COLOR_WHITE = Color.fromCssColorString("#ffffff");
+const COLOR_POLYLINE = Color.fromCssColorString("#fdcb6e");   // pass trace
+const COLOR_GS_FILL = Color.fromCssColorString("#0055ff");    // NYCU pin
+const COLOR_SAT_FILL = Color.fromCssColorString("#ff7675");   // satellite pin
+const PIXEL_OFFSET_LABEL_LARGE = new Cartesian2(0, -18);
+const PIXEL_OFFSET_LABEL_SMALL = new Cartesian2(0, -16);
+const NYCU_GS_POSITION = Cartesian3.fromDegrees(NYCU_LON, NYCU_LAT, NYCU_ALT_M);
+
 interface SatelliteViewProps {
   data: MetricsSnapshot | null;
 }
@@ -115,6 +134,31 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
   const beamCones = calculateBeamCones(beams, NYCU_LAT, NYCU_LON, {
     groundAltitudeMeters: NYCU_ALT_M,
   });
+
+  // VS-13 fix v6: stabilize per-cone Color/Cartesian3 references so
+  // the playback re-render storm doesn't trigger Cesium to re-build
+  // every cone's material 20× per second. Key on the cone array
+  // identity (which is stable while SNR doesn't change — calculateBeamCones
+  // is called on `beams` which is === stable while data hasn't refetched).
+  const stableCones = useMemo(
+    () =>
+      beamCones.map((cone) => ({
+        ...cone,
+        position: Cartesian3.fromDegrees(
+          cone.position.lon_deg,
+          cone.position.lat_deg,
+          cone.position.alt_m,
+        ),
+        materialColor: Color.fromCssColorString(cone.color.hex).withAlpha(
+          cone.color.alpha,
+        ),
+        outlineColor: Color.fromCssColorString(cone.color.hex),
+      })),
+    // beamCones identity changes only when `beams` changes (every 5 s
+    // metrics poll); the playback interval doesn't touch it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [beamCones],
+  );
   const activeAnomalies = data?.active_anomalies ?? [];
   const handoverEvents = beams.filter((b) => b.handover_state > 0);
 
@@ -249,22 +293,22 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
               />
               <Entity
                 name="NYCU Ground Station"
-                position={Cartesian3.fromDegrees(NYCU_LON, NYCU_LAT, NYCU_ALT_M)}
+                position={NYCU_GS_POSITION}
                 description="OrbitOps reference ground station. 24.787 °N, 120.998 °E."
               >
                 <PointGraphics
                   pixelSize={12}
-                  color={Color.fromCssColorString("#0055ff")}
-                  outlineColor={Color.fromCssColorString("#ffffff")}
+                  color={COLOR_GS_FILL}
+                  outlineColor={COLOR_WHITE}
                   outlineWidth={2}
                 />
                 <LabelGraphics
                   text="NYCU GS"
                   font="14px sans-serif"
-                  fillColor={Color.fromCssColorString("#ffffff")}
-                  outlineColor={Color.fromCssColorString("#000000")}
+                  fillColor={COLOR_WHITE}
+                  outlineColor={COLOR_BLACK}
                   outlineWidth={2}
-                  pixelOffset={new Cartesian2(0, -18)}
+                  pixelOffset={PIXEL_OFFSET_LABEL_LARGE}
                 />
               </Entity>
 
@@ -272,7 +316,7 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
                 <PolylineGraphics
                   positions={POLYLINE_POSITIONS}
                   width={2}
-                  material={Color.fromCssColorString("#fdcb6e")}
+                  material={COLOR_POLYLINE}
                   clampToGround={false}
                 />
               </Entity>
@@ -284,39 +328,33 @@ export default function SatelliteView({ data }: SatelliteViewProps) {
               >
                 <PointGraphics
                   pixelSize={10}
-                  color={Color.fromCssColorString("#ff7675")}
-                  outlineColor={Color.fromCssColorString("#ffffff")}
+                  color={COLOR_SAT_FILL}
+                  outlineColor={COLOR_WHITE}
                   outlineWidth={2}
                 />
                 <LabelGraphics
                   text="SAT"
                   font="13px sans-serif"
-                  fillColor={Color.fromCssColorString("#ffffff")}
-                  outlineColor={Color.fromCssColorString("#000000")}
+                  fillColor={COLOR_WHITE}
+                  outlineColor={COLOR_BLACK}
                   outlineWidth={2}
-                  pixelOffset={new Cartesian2(0, -16)}
+                  pixelOffset={PIXEL_OFFSET_LABEL_SMALL}
                 />
               </Entity>
 
-              {beamCones.map((cone) => (
+              {stableCones.map((cone) => (
                 <Entity
                   key={cone.beam_id}
                   name={`Beam ${cone.beam_id} coverage cone`}
-                  position={Cartesian3.fromDegrees(
-                    cone.position.lon_deg,
-                    cone.position.lat_deg,
-                    cone.position.alt_m,
-                  )}
+                  position={cone.position}
                 >
                   <CylinderGraphics
                     length={cone.lengthMeters}
                     topRadius={cone.topRadiusMeters}
                     bottomRadius={cone.bottomRadiusMeters}
-                    material={Color.fromCssColorString(cone.color.hex).withAlpha(
-                      cone.color.alpha,
-                    )}
+                    material={cone.materialColor}
                     outline
-                    outlineColor={Color.fromCssColorString(cone.color.hex)}
+                    outlineColor={cone.outlineColor}
                     outlineWidth={1}
                   />
                 </Entity>
