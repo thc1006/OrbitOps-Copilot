@@ -95,12 +95,33 @@
     }
   },
   "satellite": {
+    "anomaly": {
+      "banner": "{{kind}} active at scenario t = {{t}}s — {{count}} beam(s) degraded"
+    },
+    "beams": {
+      "empty": "No beams active. Load a scenario from Scenarios.",
+      "title": "Active beams ({{count}})"
+    },
+    "handover": {
+      "empty": "No handover events.",
+      "failure": "FAILURE",
+      "preparing": "preparing",
+      "title": "Handover events"
+    },
     "playback": {
       "pause": "Pause",
       "play": "Play",
       "progress": "t = {{t}}s / {{duration}}s",
       "reset": "Reset",
       "speedHint": "(playback speed: {{speed}}×)"
+    },
+    "sparkline": {
+      "empty": "Polling /metrics — sparkline appears after the second sample.",
+      "title": "Live SNR (60 s window)"
+    },
+    "subtitle": "Cesium globe + per-beam telemetry. NaturalEarthII offline imagery (ADR-011); pass uses calculateSinPass demo orbit; beam cones colored by snr_db live from /metrics.",
+    "timeline": {
+      "title": "Pass progress"
     }
   },
   "scenarios": {

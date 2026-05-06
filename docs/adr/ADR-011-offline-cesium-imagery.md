@@ -99,3 +99,82 @@ const OFFLINE_BASE_LAYER = ImageryLayer.fromProviderAsync(
 - Cesium ref-doc: https://cesium.com/learn/cesiumjs/ref-doc/Viewer.html (look for `baseLayer` constructor option, added 1.131).
 - ADR-002: parent decision (CesiumJS as primary visualization stack).
 - ADR-008: Sprint-1 frontend stack pin (cesium ^1.141.0 + resium ^1.21.0).
+
+---
+
+## Appendix A — Resium reference-stability gotchas
+
+**Added 2026-05-06 after PR #88 commit `7527ed5` ("yellow polyline keeps flashing")**.
+
+Resium 1.21 does **shallow-equal diffing** on `Entity` child props (`PolylineGraphics.material`, `PointGraphics.color`, `LabelGraphics.fillColor`, `CylinderGraphics.material`, etc.). When a prop's reference changes, Resium tells Cesium to recreate the entity → visible flicker. This is a quiet trap because Cesium primitives like `Color` and `Cartesian2` have value-equality semantics for the developer but reference-equality semantics for Resium's diff.
+
+### Failure mode
+
+Inline construction inside JSX:
+
+```tsx
+<PolylineGraphics
+  material={Color.fromCssColorString("#fdcb6e")}     // 🚨 NEW Color per render
+  positions={POLYLINE_POSITIONS}
+/>
+<LabelGraphics
+  pixelOffset={new Cartesian2(0, -18)}                // 🚨 NEW Cartesian2 per render
+/>
+```
+
+When the component re-renders (e.g. driven by a 50 ms playback `setInterval` updating `passFraction`), each render allocates new `Color` and `Cartesian2` instances. Resium's diff detects "prop changed" and Cesium recreates the geometry → polyline visibly flashes 20× per second.
+
+The bug is asymptomatic when the component is static; it surfaces only when an unrelated state update (animation, polling, hover) re-renders the component.
+
+### Pattern
+
+**Static visuals**: hoist `Color`, `Cartesian2`, `Cartesian3` constants to module scope so the references are stable across all renders.
+
+```ts
+// Top of SatelliteView.tsx, OUTSIDE the component
+const COLOR_POLYLINE = Color.fromCssColorString("#fdcb6e");
+const PIXEL_OFFSET_LABEL_LARGE = new Cartesian2(0, -18);
+const NYCU_GS_POSITION = Cartesian3.fromDegrees(120.998, 24.787, 30);
+
+// Inside JSX
+<PolylineGraphics material={COLOR_POLYLINE} ... />
+<LabelGraphics pixelOffset={PIXEL_OFFSET_LABEL_LARGE} ... />
+<Entity position={NYCU_GS_POSITION} ... />
+```
+
+**Dynamic visuals** (e.g. per-beam cone color that changes when SNR changes): wrap in `useMemo` keyed on the source data array. The result identity is preserved across renders that don't change the source.
+
+```tsx
+const stableCones = useMemo(
+  () =>
+    beamCones.map((cone) => ({
+      ...cone,
+      position: Cartesian3.fromDegrees(...),
+      materialColor: Color.fromCssColorString(cone.color.hex).withAlpha(cone.color.alpha),
+      outlineColor: Color.fromCssColorString(cone.color.hex),
+    })),
+  [beamCones],   // beamCones identity changes only on metrics-poll refresh (5 s)
+);
+
+{stableCones.map((cone) => (
+  <Entity key={cone.beam_id} position={cone.position}>
+    <CylinderGraphics material={cone.materialColor} outlineColor={cone.outlineColor} ... />
+  </Entity>
+))}
+```
+
+### Verify
+
+For any future Cesium / Resium PR touching SatelliteView, run:
+
+```bash
+grep -nE 'Color\.fromCssColorString|new Cartesian2|Cartesian3\.fromDegrees' \
+  services/digital-twin-ui/src/pages/SatelliteView.tsx \
+  | grep -nE '<\w|return \(|<Viewer'
+```
+
+…to confirm zero such constructions remain inside JSX `return` blocks. The matching constructions should all sit at module scope or inside `useMemo`. SPEC-S004-13e §AC-S004-13e.8 codifies this as an explicit acceptance criterion for the redesigned page.
+
+### Adjacent gotcha — ResizeObserver render loop
+
+PR #88 commit `0cdee2b` added a `ResizeObserver` calling `viewer.resize()` to keep the canvas drawing buffer in sync with display size. Backed out in `cca042d` because it caused an infinite re-render loop (the `viewer.resize()` call somehow re-fired the observer). **Do not re-introduce ResizeObserver on the wrapper Box without re-validating with headless Chrome screenshot**; `CesiumWidget.render()` already auto-resizes the drawing buffer per frame when the canvas's `clientWidth/Height` differs from its drawing-buffer width/height — pure CSS (the `& canvas { 100% !important }` rule) is sufficient.
