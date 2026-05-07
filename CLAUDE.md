@@ -252,6 +252,7 @@ kustomize build deploy/k8s/overlays/local | kubeconform -strict -summary -
 - 任何新 metric → 額外跑 `observability-dashboard` 的 30-second visibility check。
 - pitch / docs/06–08 變更 → 額外跑 `claims-audit` skill。
 - 包 zip / 投件 → 跑 `/release` 命令。
+- **任何 PR**（含 docs-only）→ walk `docs/reviews/anti-pattern-checklist.md` 的 7 + 1 chain self-audit（7 條 code chain：#1 grep-verify、#2 POST-WRITE、#3 cross-page alignment、#4 NaN guard、#5 first-call-only、#6 partial-migration、#7 Resium reference-stability；+ Chain #X process）。每條結果寫進 PR body（`.github/pull_request_template.md` 已含欄位）；不適用必須標 `N/A — <理由>`，silent skip 等同這份 checklist 抓的 anti-pattern。
 
 ### 13.4 委派決策樹（給未來 session 參考）
 
