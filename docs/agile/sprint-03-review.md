@@ -28,7 +28,7 @@
 | Sprint closeout — image bump 0.1.2→0.1.3 | ✅ done | — | #83 | 3 manifests + Helm + compose |
 | Sprint closeout — release notes + tag | ✅ done | — | #86 | first formal git tag in repo history (`v0.1.3-dev-sprint3` @ e1ed164) |
 | Hot-fix — Cesium Ion warning | ✅ done | (post-tag) | #87 | ADR-011 offline imagery |
-| Hot-fix — SatelliteView visual saga | ✅ done | (post-tag) | #88 | 8 commits chasing visual bugs → codified Chain #6 + Chain #X |
+| Hot-fix — SatelliteView visual saga | ✅ done | (post-tag) | #88 | 8 commits chasing visual bugs → codified Chain #7 + Chain #X (Chain # corrected from #6 in PR #89) |
 
 **16 PRs delivered (#73–#88), 10 ✅ ship + 4 ⏭ skip + 2 hot-fix**.
 
@@ -39,7 +39,7 @@
 - **VS-13 satellite-pass viz** went from skeleton → polyline → animated → ops console redesign with 4 telemetry panels (anomaly banner, beam telemetry, handover events, live SNR sparkline). Demo path now tells a coherent story: `/scenarios` Ready → `/satellite-view` shows anomaly + sparkline drop → `/copilot` ask cites same metric.
 - **i18n broader coverage**: 91 keys, en/zh-TW parity, 5 pages migrated, 3 anti-pattern chains caught in self-review.
 - **Nephio kpt VS-17**: `packages/nephio-stubs/orbitops-groundstation-package/` passes `kpt fn render` dry-run; verify.sh §5d advisory gate.
-- **Anti-pattern accountability**: 6 chains documented in release notes §8 + ADR-011 Appendix A + new `docs/reviews/anti-pattern-checklist.md`.
+- **Anti-pattern accountability**: 7 code chains + 1 process chain documented in `docs/reviews/anti-pattern-checklist.md` (canonical), with cross-refs in release notes §8 (informal historical list) + ADR-011 Appendix A (Chain #7 Resium reference-stability detail).
 - **Offline-first imagery**: ADR-011 — no Cesium Ion, no external CDN, no token. Air-gappable demo.
 
 ## What we did NOT ship (and why)
@@ -71,7 +71,7 @@
 - **UX surprises during sprint**:
   - User asked "你模擬這樣誰看的懂嗎" (who can read this) — drove the SatelliteView ops-console redesign.
   - Cesium Ion warning in DevTools — drove ADR-011.
-  - Yellow polyline flicker — drove Chain #6 (Resium reference-stability).
+  - Yellow polyline flicker — drove Chain #7 (Resium reference-stability).
 - **Screenshots**: not captured this sprint; recommended for Sprint-4 (action item below).
 
 ## Retrospective

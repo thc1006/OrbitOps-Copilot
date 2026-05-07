@@ -117,7 +117,7 @@ See `docs/acceptance/AC-S004-13e-satellite-ops-console.md`. Summary:
 
 - **Anti-pattern chain accountability**:
   - Chain #3 cross-page semantic alignment: `nav.workloads` shared with SideNav; `nav.satellitePass` shared with SideNav nav item. Verified.
-  - Chain #6 (NEW) reference-stability for Cesium props: hoist constants + useMemo dynamics. Documented in ADR-011 appendix.
+  - Chain #7 (NEW) reference-stability for Cesium props: hoist constants + useMemo dynamics. Documented in ADR-011 appendix. (Written as "Chain #6 (NEW)" at PR #88 commit time; renumbered to #7 in PR #89 after `docs/reviews/anti-pattern-checklist.md` revealed the existing #6 slot was held by partial-migration from PR #81.)
 - **i18n parity** preserved: every new key in en + zh-TW; `REQUIRED_KEYS` extended.
 - **Test discipline**: ≥4 panel render tests required before merge.
 

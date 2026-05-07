@@ -1,12 +1,14 @@
 # Anti-pattern checklist — pre-PR
 
-> 走過去 6 條 chain。**任何一條適用而沒被驗證 = PR description 不誠實**。
+> 走過去 7 條 code chain + 1 條 process chain。**任何一條適用而沒被驗證 = PR description 不誠實**。
 > 不適用就標 `N/A — <理由>`，不要靜默跳過。
-> 來源：PR #75/#76/#77/#78/#79/#80/#81 (Sprint-3 自審) + PR #88 (新增 chain #6)。
+> 來源：PR #75/#76（#1）、#77/#78（#2）、#79（#3、#4）、#80（#5）、#81 self-review（#6）、#88（#7、#X）。
+>
+> **Numbering history note**：`docs/releases/v0.1.3-dev-sprint3.md` §8 使用 informal 1–5 列表 + "a 6th: partial-migration"。本 checklist 是 post-Sprint-3 canonical registry，把那個 informal 6th 提升為正式 Chain #6，PR #88 surfaced 的 Resium reference-stability 排在 Chain #7。SPEC-S004-13e + ADR-011 Appendix A 在 PR #88 寫的「Chain #6 (NEW)」是 off-by-one bug，已於 PR #89 (this commit) 修正為 Chain #7。
 
 ## 使用方法
 
-1. 開 PR 前 / `/review` 前，把下面 6 條走一遍。
+1. 開 PR 前 / `/review` 前，把下面 7 條 code chain + 1 條 process chain 走一遍。
 2. 對每條 chain 在 PR body 寫一行：`Chain #N: <verify 結果或 N/A 原因>`。
 3. PR template 可以 copy 整段；自查不誠實，後面 reviewer 抓到要回追，比現在多花 3 倍時間。
 
@@ -104,11 +106,34 @@ if (i18next.isInitialized && lng && lng !== i18next.language) {
 
 ---
 
-## Chain #6 — Resium / Cesium reference-stability
+## Chain #6 — partial-migration（class-wide 遷移看似完整其實沒完）
+
+**規則**：當執行「把 class X 從系統 A 遷到 B」這類 mass-migration（i18n key 抽取、color token 化、ORM rename、API surface migrate），**不能靠 visual spot-check 認定完成**。必須有 enumerative test 走遍整個 surface，fail 的數量 == 預期遷移數量。
+
+**Why**：PR #81 self-review 反例 — 多頁 i18n migration 看似完整，但**串接/模板**字串（`'Loaded ' + name + ': ' + count + ' beams'` 這種 concat）繞過了 key 抽取，translation extractor 跟單純 `grep "Loaded "` 都看不到。zh-TW 使用者在 feedback toast 看到 "Loaded foo: 3 beams" 混合英文。fix：抽到 `scenarios.feedback.loadSuccess` + i18next interpolation + `$t()` cross-bundle reference；加 `zh-no-english-leak.test.tsx` mount 每頁在 zh-TW、斷言 rendered DOM 零 ASCII 英文字母。
+
+**How to apply / verify**：
+- **i18n migration**：mount 每頁在目標 locale 的 smoke test，斷言 rendered DOM 零 ASCII English（`zh-no-english-leak.test.tsx` pattern）。
+- **Color/style token migration**：ESLint rule 禁 component 內 hex literal。
+- **ORM / API rename**：grep + LSP "find references" 雙確認舊 surface 零 callsite；加 deprecation runtime log 過渡一段時間。
+- **通用原則**：寫一個會 fail 的測試**枚舉整個 class**（不是抽樣），看 fail 的數量是否 == 預期遷移數量；migration 完應該全綠。
+
+```bash
+# i18n 例：找出可能繞過 key 抽取的英文模板字串
+grep -nE "['\`][^'\`]*[A-Z][a-z]+ (of|in|at|to|on|by) " \
+  services/digital-twin-ui/src/pages/*.tsx services/digital-twin-ui/src/components/**/*.tsx \
+  | grep -vE "(import|from |//)"
+```
+
+**現有 enforcement**：`src/i18n/zh-no-english-leak.test.tsx`（PR #81 self-review；i18n 子類）。其他子類（color/ORM）目前無 generalized gate；下次有類似 mass-migration 再開對應 enumerative test。
+
+---
+
+## Chain #7 — Resium / Cesium reference-stability
 
 **規則**：Resium 1.21 對 `Entity` / `*Graphics` 子 prop 做 **shallow-equal diff**。`Color`、`Cartesian2`、`Cartesian3`、`Material` 在 JSX 內 inline 建構 = 每次 render 新 reference = Resium 重建 entity = visible flicker。
 
-**Why**：PR #88 反例 — `<PolylineGraphics material={Color.fromCssColorString("#fdcb6e")}>` 在 50ms playback `setInterval` 驅動下每秒新建 20 次 Color，黃色軌道 visible flashing。詳見 ADR-011 Appendix A。
+**Why**：PR #88 反例 — `<PolylineGraphics material={Color.fromCssColorString("#fdcb6e")}>` 在 50ms playback `setInterval` 驅動下每秒新建 20 次 Color，黃色軌道 visible flashing。詳見 ADR-011 Appendix A（Appendix 撰寫時誤標為 "Chain #6"，實際應為 Chain #7；PR #89 修正）。
 
 **How to apply**：
 - **靜態視覺**：hoist 到 module scope。
@@ -134,7 +159,7 @@ grep -nE 'Color\.fromCssColorString|new Cartesian2|Cartesian3\.fromDegrees' \
   services/digital-twin-ui/src/pages/SatelliteView.tsx \
   | grep -E '<\w|return \(|<Viewer' || echo "OK: no inline Cesium constructions in JSX"
 ```
-零命中 = pass。SPEC-S004-13e §AC-13e.8 codify 為 acceptance criterion。
+零命中 = pass。SPEC-S004-13e §AC-13e.8 codify 為 acceptance criterion（SPEC 內文寫 "Chain #6 (NEW)" 是 PR #88 落筆時的 off-by-one，實際對應本 chain 即 Chain #7；PR #89 修正）。
 
 **現有 enforcement**：
 - `vitest src/pages/SatelliteView.test.tsx` 7 panel render tests + 1 baseLayer prop assertion（PR #88）。
@@ -144,7 +169,7 @@ grep -nE 'Color\.fromCssColorString|new Cartesian2|Cartesian3\.fromDegrees' \
 
 ## Chain #X — Process: 別追逐 moving-target visual bug
 
-**這條不在 6 條 code chain 裡**，但 PR #88 學到必須 codify。
+**這條不在 7 條 code chain 裡**，但 PR #88 學到必須 codify。
 
 **規則**：修 visual bug 時**先寫測試 pin 住可見行為**，再改 code。不要 ship 8 commits 追同一個 moving target。
 
@@ -169,6 +194,7 @@ grep -nE 'Color\.fromCssColorString|new Cartesian2|Cartesian3\.fromDegrees' \
 - Chain #3 (cross-page alignment): <verify result or N/A — no shared concepts>
 - Chain #4 (NaN guard): <verify result or N/A — no numeric paths>
 - Chain #5 (first-call-only): <verify result or N/A — no init/lazy logic>
-- Chain #6 (Resium reference-stability): <verify result or N/A — no Cesium/Resium changes>
+- Chain #6 (partial-migration): <verify result or N/A — no class-wide migration>
+- Chain #7 (Resium reference-stability): <verify result or N/A — no Cesium/Resium changes>
 - Chain #X (process): regression test exists / "untestable because <reason>"
 ```

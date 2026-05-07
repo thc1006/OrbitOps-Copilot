@@ -27,7 +27,8 @@ PR title rule (CLAUDE.md §12.4): `[SPEC-NNN] <imperative summary>` for code; `d
 - **#3 cross-page semantic alignment**:
 - **#4 NaN guard**:
 - **#5 first-call-only ignore**:
-- **#6 Resium reference-stability**:
+- **#6 partial-migration (class-wide migration enumerated, not spot-checked)**:
+- **#7 Resium reference-stability**:
 - **#X (process) — visual-bug regression test exists / "untestable because <reason>"**:
 
 ## Verification
