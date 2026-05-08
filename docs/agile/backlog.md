@@ -62,6 +62,14 @@
 | **VS-17** | Nephio kpt package full doc | packages/nephio-stubs/ 文件化 + kpt fn render dry-run | 0.5d | 006 |
 | **VS-18** | Pre-submission claims audit + zip | claims-audit skill 全 pass + `make archive` + DoD §3.4 全 checked | 0.5d | 007 |
 
+> **Sprint-3 outcome（2026-05-07，see `sprint-03-review.md`）**:
+> - ✅ **VS-13** done — CesiumJS satellite-pass S2→S5 + ops console redesign + flicker fix（PRs #74/#77/#78/#79/#84/#87/#88；15 of 17 ACs across S004-13a..13e）
+> - ⏭ **VS-14 / VS-15 / VS-16 / VS-18** skipped — RunSpace 投件 deliverables；user 於 2026-05-04 撤回投件（`user_skip_rules.md`）；archived under "won't-fix unless RunSpace re-engaged"
+> - ✅ **VS-17** done — Nephio kpt fn render dry-run + `.krmignore` + verify.sh §5d advisory（PR #85；closes AC-S006-7）
+> - 🔁 **Carry-overs**: ⏭ Sprint-2 VS-8 real LLM Ollama Qwen3.6 — skipped, no GPU；⏭ Sprint-2 VS-12 voice stub — skipped, low evidence value
+> - 🆕 **Post-tag adds**: anti-pattern checklist canonical registry (#1–#7 + #X), PR template, CLAUDE.md §13.3 enforcement hook（PR #89）
+> - Sprint-1 VS-8 (UI "Ready for Copilot" affordance, 上方表格內 line 36) — 不是同一個 VS-8；那個 ✅ done in PR #42
+
 ## Backlog（暫不排，待 P2/P3）
 
 - 真 OAI / srsRAN NTN wrapper（emulator → real RAN stack）
