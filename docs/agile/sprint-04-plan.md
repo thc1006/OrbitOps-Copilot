@@ -5,7 +5,7 @@
 | Status | Draft (2026-05-08) — awaiting user commit before kickoff |
 | Duration | 1 週（建議 2026-05-09 ~ 2026-05-15） |
 | Sprint goal | **「copilot-api 進入 auth-required 狀態（OIDC + JWT）；3 個 latency-critical endpoint 跑進 SLO budget（CI 阻擋 regression）；同時為 Sprint-5 closed-loop GitOps 出 SPEC + ADR 設計階段成果」** |
-| Demo | `/login` page → token → `/copilot` ask still works；`scripts/perf-smoke.sh` green table；ADR-013 + SPEC-S006-2 + AC-S006-2 Sprint-5 spike-ready |
+| Demo | `/login` page → token → `/copilot` ask still works；`scripts/perf-smoke.sh` green table；ADR-013 + SPEC-S006-VS21 + AC-S006-VS21 Sprint-5 spike-ready |
 
 ## Sprint goal restatement
 
@@ -18,9 +18,9 @@
 
 | ID | Slice | 切到的層 | Est | SPEC | AC | 狀態 |
 |---|---|---|---|---|---|---|
-| **VS-19** | copilot-api OIDC + JWT auth (impl) | copilot-api(_auth.py + Depends + 13 tests) + UI(/login page + axios interceptors + 4 tests) + docker-compose(mock-oidc) + K8s overlay(local) | 3d | SPEC-S003-2 | AC-S003-2 (15 ACs) | committed |
-| **VS-20** | Perf SLO baselines + CI gate (impl) | k6 1.0 (3 scripts) + scripts/perf-smoke.sh + verify.sh §6/6 advisory + docs/perf-slo.md + .github/workflows/ci.yml perf-smoke job | 2d | SPEC-S005-2 | AC-S005-2 (12 ACs) | committed |
-| **VS-21** | Closed-loop GitOps reconcile (DESIGN PHASE only) | docs/specs/SPEC-S006-2 (already drafted) + docs/acceptance/AC-S006-2 (already drafted) + docs/adr/ADR-013 + docs/adr/ADR-004 closed-loop clause extension | 1d (mostly done in this draft PR) | SPEC-S006-2 | AC-S006-2 §A (8 design ACs) | committed (deliverable: SPEC + AC + ADR-013) |
+| **VS-19** | copilot-api OIDC + JWT auth (impl) | copilot-api(_auth.py + Depends + 13 tests) + UI(/login page + axios interceptors + 4 tests) + docker-compose(mock-oidc) + K8s overlay(local) | 3d | SPEC-S003-VS19 | AC-S003-VS19 (15 ACs) | committed |
+| **VS-20** | Perf SLO baselines + CI gate (impl) | k6 1.0 (3 scripts) + scripts/perf-smoke.sh + verify.sh §6/6 advisory + docs/perf-slo.md + .github/workflows/ci.yml perf-smoke job | 2d | SPEC-S005-VS20 | AC-S005-VS20 (12 ACs) | committed |
+| **VS-21** | Closed-loop GitOps reconcile (DESIGN PHASE only) | docs/specs/SPEC-S006-VS21 (already drafted) + docs/acceptance/AC-S006-VS21 (already drafted) + docs/adr/ADR-013 + docs/adr/ADR-004 closed-loop clause extension | 1d (mostly done in this draft PR) | SPEC-S006-VS21 | AC-S006-VS21 §A (8 design ACs) | committed (deliverable: SPEC + AC + ADR-013) |
 
 **Total 6d**（含 carry-overs / weekend buffer，1 週可完成）。
 
@@ -37,9 +37,9 @@
 
 ## Acceptance gates
 
-- [ ] AC-S003-2 全 15 條 ACs 綠 (含 `pytest services/copilot-api/tests -q` ≥ 122 passing；UI vitest 加 4 條 auth-related 通過)
-- [ ] AC-S005-2 全 12 條 ACs 綠 (含 `scripts/perf-smoke.sh` exit 0；`docs/perf-slo.md` 數字皆 measured 非 TBD)
-- [ ] AC-S006-2 §A 全 8 條 design-phase ACs 綠 (SPEC-S006-2 + AC-S006-2 + ADR-013 + ADR-004 closed-loop clause 全 commit)
+- [ ] AC-S003-VS19 全 15 條 ACs 綠 (含 `pytest services/copilot-api/tests -q` ≥ 122 passing；UI vitest 加 4 條 auth-related 通過)
+- [ ] AC-S005-VS20 全 12 條 ACs 綠 (含 `scripts/perf-smoke.sh` exit 0；`docs/perf-slo.md` 數字皆 measured 非 TBD)
+- [ ] AC-S006-VS21 §A 全 8 條 design-phase ACs 綠 (SPEC-S006-VS21 + AC-S006-VS21 + ADR-013 + ADR-004 closed-loop clause 全 commit)
 - [ ] `make verify` 全綠（9 blocking + 4 advisory；§6/6 perf 為新增 advisory）
 - [ ] `scripts/check-no-secrets.sh` clean（特別注意 PyJWT signing key 不可入 repo；走 env / Secret）
 - [ ] anti-pattern self-audit on 每個 PR（CLAUDE.md §13.3 已強制）
@@ -68,7 +68,7 @@
 3. login `demo:demo` → 取 token → 到 `/scenarios` load beam-degradation
 4. 跳 `/copilot` ask "Which beam is degrading?" → 還是有 evidence response（auth 不破 grounding）
 5. 終端跑 `scripts/perf-smoke.sh` → 看到 3 個 scenario 的 p50/p95/p99 + budget 表
-6. 開 `docs/specs/SPEC-S006-2-*.md` + `docs/adr/ADR-013-*.md` review setting → 解釋 Sprint-5 的 design 已就緒
+6. 開 `docs/specs/SPEC-S006-VS21-*.md` + `docs/adr/ADR-013-*.md` review setting → 解釋 Sprint-5 的 design 已就緒
 
 ## DoD（per CLAUDE.md §11 + sprint-review-template）
 

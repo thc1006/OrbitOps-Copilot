@@ -1,4 +1,4 @@
-# SPEC-S006-2 — Closed-loop GitOps reconcile (DESIGN PHASE)
+# SPEC-S006-VS21 — Closed-loop GitOps reconcile (DESIGN PHASE)
 
 | Field | Value |
 |---|---|
@@ -6,8 +6,8 @@
 | Parent | SPEC-006 (k8s-deployment) |
 | Owner | architect + k8s-platform-engineer + llm-copilot-engineer |
 | Sprint | 4 design phase (VS-21); Sprint-5+ impl |
-| Depends on | SPEC-003 (copilot-api), SPEC-S003-2 (auth), ADR-004 (LLM grounding contract), ADR-009 (Helm service naming) |
-| Related ACs | AC-S006-2 |
+| Depends on | SPEC-003 (copilot-api), SPEC-S003-VS19 (auth), ADR-004 (LLM grounding contract), ADR-009 (Helm service naming) |
+| Related ACs | AC-S006-VS21 |
 | Research basis | `docs/00_research_2026_04.md` §"Sprint-4 技術選型 T3" (2026-05-08) — KubeCon EU 2026 reference; Akuity + Intuit `argoproj-labs/mcp-for-argocd`; Kargo v1.3 |
 
 ## 1. Goal — DESIGN PHASE
@@ -15,7 +15,7 @@
 **Sprint-4 範圍：完成 SPEC + AC + ADR-013 (apply mechanism decision)，把 Sprint-5 impl 的所有設計問題逼出來並決議**。不寫 code。產物：
 
 - 本 SPEC 文件（含 safe action surface、apply mechanism、observation harness、approval flow、rollback、threat model）
-- AC-S006-2（含 design-phase ACs + impl-phase ACs 兩組）
+- AC-S006-VS21（含 design-phase ACs + impl-phase ACs 兩組）
 - ADR-013-closed-loop-apply-mechanism（Sprint-4 sprint exit 必須 commit）
 
 **Sprint-5+ 範圍**（**不在本 SPEC 涵蓋**）：上述設計的 implementation。
@@ -86,7 +86,7 @@ Rejection rationale for the alternative:
 - **Direct kubectl from in-cluster ServiceAccount**: explicitly called out as anti-pattern at KubeCon EU 2026 (Akuity + Intuit MCP for ArgoCD talk). Bypasses git audit trail, breaks single source of truth, blocks regulated-environment compliance.
 
 Concrete flow (Sprint-5 impl):
-1. UI Apply button → copilot-api `POST /action/{id}/apply` with `Authorization: Bearer <jwt>` (SPEC-S003-2)
+1. UI Apply button → copilot-api `POST /action/{id}/apply` with `Authorization: Bearer <jwt>` (SPEC-S003-VS19)
 2. copilot-api validates rate-limit (1 per 5 min per scenario_id), constructs Kustomize patch under `deploy/k8s/overlays/local/closed-loop-overrides/`, commits to a dedicated branch `closed-loop/auto/<timestamp>-<sub>` via GitHub App PAT (env `CLOSED_LOOP_GH_APP_TOKEN`)
 3. Kargo v1.3 promotion pipeline picks up the branch; `requiresVerification: true` step pauses for human approval; once approved, Kargo merges to `main` (or to a deploy branch) and triggers ArgoCD sync
 4. ArgoCD reconciles cluster state
@@ -113,7 +113,7 @@ Concrete flow (Sprint-5 impl):
 |---|---|
 | LLM hallucinates impossible action_id | API rejects unknown action_id (whitelist enforcement; 422) |
 | LLM-suggested action causes cluster damage | Human-approval gate; bounded action surface (§5.1); rate-limit |
-| Compromised UI submits forged action | JWT (SPEC-S003-2) + per-route audience check; sub recorded in audit |
+| Compromised UI submits forged action | JWT (SPEC-S003-VS19) + per-route audience check; sub recorded in audit |
 | Race: rapid-fire identical actions | Rate-limit (1 per 5 min per scenario_id); dedupe by action_id+params hash |
 | Git PR queue flood | Rate-limit + Kargo `pendingPRs.maxOpen` config |
 | ArgoCD sync after revert leaves stale state | Kargo `requiresVerification` + `cleanup` step in promotion pipeline |
@@ -139,7 +139,7 @@ Concrete flow (Sprint-5 impl):
 
 ## 8. Acceptance criteria
 
-See `docs/acceptance/AC-S006-2-closed-loop-gitops-reconcile.md` (split: design-phase ACs for Sprint-4; impl-phase ACs for Sprint-5+).
+See `docs/acceptance/AC-S006-VS21-closed-loop-gitops-reconcile.md` (split: design-phase ACs for Sprint-4; impl-phase ACs for Sprint-5+).
 
 ## 9. Anti-pattern accountability
 

@@ -1,4 +1,4 @@
-# SPEC-S003-2 — copilot-api OIDC + JWT auth
+# SPEC-S003-VS19 — copilot-api OIDC + JWT auth
 
 | Field | Value |
 |---|---|
@@ -7,7 +7,7 @@
 | Owner | llm-copilot-engineer + security-reviewer |
 | Sprint | 4 (VS-19) |
 | Depends on | SPEC-003 |
-| Related ACs | AC-S003-2 |
+| Related ACs | AC-S003-VS19 |
 | Research basis | `docs/00_research_2026_04.md` §"Sprint-4 技術選型 T1" (2026-05-08) |
 
 ## 1. Goal
@@ -19,7 +19,7 @@ copilot-api 從**全 public** 進入**auth-required** 狀態。所有 LLM-eviden
 - **Full OIDC server impl**：用 navikt/mock-oauth2-server 3.0.1（Docker），不寫自己的 IdP。
 - **Multi-tenancy**：JWT `sub` claim 視同 user identifier，但 copilot-api 不分租戶；evidence/scenario state 維持 process-global（既有行為）。
 - **Token refresh / revocation list**：Sprint-5+。本 sprint 只做 verify。
-- **K8s OIDC integration**：copilot-api 透過 sidecar / ServiceAccount token authenticate to K8s 是 Sprint-5+ closed-loop scope（見 SPEC-S006-2）。
+- **K8s OIDC integration**：copilot-api 透過 sidecar / ServiceAccount token authenticate to K8s 是 Sprint-5+ closed-loop scope（見 SPEC-S006-VS21）。
 - **Authlib / fastapi-users**：研究結果排除（前者過重，後者已停滯）。
 
 ## 3. Inputs (current state, 2026-05-08)
@@ -37,9 +37,10 @@ copilot-api 從**全 public** 進入**auth-required** 狀態。所有 LLM-eviden
   - `verify_jwt(authorization: str = Header(...))` FastAPI dependency
   - 啟動時從 `JWT_JWKS_URL` 拉 JWKS，cache in-process 1h；過期重抓
   - 驗 `aud` == `JWT_AUDIENCE`，`exp` 未過，`alg` ∈ {`RS256`}（hardcoded allowlist; 拒絕 `none` / `HS256`）
-- 路由 dependency 注入：
-  - **Protected**: `/ask`、`/explain`、`/runbook`、`/providers`、`/anomaly/inject`、`/scenario/load|tick` → `Depends(verify_jwt)`
+- 路由 dependency 注入（**copilot-api only**；emulator 路由不在本 SPEC scope）：
+  - **Protected**: `/ask`、`/explain`、`/runbook`、`/providers` → `Depends(verify_jwt)`
   - **Public**: `/healthz`、`/metrics` → 無 dependency
+  - **Out-of-scope**: `/anomaly/inject`、`/scenario/load`、`/scenario/tick` 為 **ntn-metrics-emulator** endpoint（見 `services/ntn-metrics-emulator/src/ntn_metrics_emulator/main.py:225/272/362`）而非 copilot-api endpoint；emulator-side auth 由獨立的 SPEC-S002-1 (Sprint-5+; not yet drafted) 處理。Sprint-4 transitional state: emulator 維持 public，視為 known surface gap，記錄在 `docs/perf-slo.md` + Sprint-4 review
 - Error response shape：401 `{"status":"unauthenticated","error":"<reason>"}`；403 `{"status":"forbidden","error":"<reason>"}`（既有 evidence schema 不變）
 
 ### 4.2 IdP（dev / CI）
@@ -101,10 +102,11 @@ copilot-api verifies via JWKS → 200 + evidence response
 2. **Token expiry policy**: 1h (mock-oauth2-server default) — too short for live demo? Re-login UX during demo is annoying. Consider 8h dev-only.
 3. **UI login UX**: full-page login vs modal? Just static-token-injection for demo simplicity? **Recommendation**: full-page `/login` (mirrors nycu-bus-admin pattern) — re-uses existing ProtectedRoute idiom.
 4. **CI test fixture**: pre-baked JWT signed with mock-oauth2-server's static key? Or runtime-call `/token` in test setup? Latter is more realistic but slower.
+5. **Emulator-side auth scope**: `/anomaly/inject` + `/scenario/load|tick` are state-mutating emulator endpoints currently public; they SHOULD also require auth, but tracked separately in **SPEC-S002-1 (Sprint-5+; not yet drafted)** to keep this SPEC scoped to copilot-api. Sprint-4 ships with emulator public; Sprint-4 review will add this as a known security gap.
 
 ## 8. Acceptance criteria
 
-See `docs/acceptance/AC-S003-2-copilot-oidc-jwt-auth.md`.
+See `docs/acceptance/AC-S003-VS19-copilot-oidc-jwt-auth.md`.
 
 ## 9. Anti-pattern accountability
 

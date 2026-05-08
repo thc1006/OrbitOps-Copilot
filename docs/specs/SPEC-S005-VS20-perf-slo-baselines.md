@@ -1,4 +1,4 @@
-# SPEC-S005-2 — Performance SLO baselines + CI gate
+# SPEC-S005-VS20 — Performance SLO baselines + CI gate
 
 | Field | Value |
 |---|---|
@@ -7,7 +7,7 @@
 | Owner | observability-engineer + release-engineer |
 | Sprint | 4 (VS-20) |
 | Depends on | SPEC-002 (emulator), SPEC-003 (copilot-api) |
-| Related ACs | AC-S005-2 |
+| Related ACs | AC-S005-VS20 |
 | Research basis | `docs/00_research_2026_04.md` §"Sprint-4 技術選型 T2" (2026-05-08) |
 
 ## 1. Goal
@@ -42,7 +42,7 @@ emulator 與 copilot-api 的 latency-critical endpoint 進入 **CI-enforced SLO 
 
 ### 4.2 Wrapper script
 - `scripts/perf-smoke.sh`：
-  - 起 docker-compose 起 emulator + copilot + mock-oidc（SPEC-S003-2 dep；若無 token，`JWT_REQUIRED=false` 跳過）
+  - 起 docker-compose 起 emulator + copilot + mock-oidc（SPEC-S003-VS19 dep；若無 token，`JWT_REQUIRED=false` 跳過）
   - 跑 3 個 k6 script
   - 解析 JSON，斷言 thresholds 全 pass
   - 輸出 summary 表格（p50/p95/p99 + RPS + error rate）
@@ -116,14 +116,14 @@ export const options = {
 
 ## 7. Open questions (resolve at impl)
 
-1. **k6 vs scripts/stress.js (existing js)**: 既有 `scripts/stress.js` 是 k6 script？若是，是否複用？— SPEC: 若 stress.js 是 k6，merge 進 `tests/perf/`；若 raw node，rewrite 成 k6 1.0 syntax。
+1. **No existing perf scripts in repo**: `find . -name "stress*" -not -path "./node_modules/*"` 在 SPEC commit time (2026-05-08) 回 0 hits。VS-20 starts greenfield 在 `tests/perf/`。 (Earlier draft of this SPEC erroneously referenced a `scripts/stress.js` from a sibling repo's CLAUDE.md context — Chain #1 grep-verify violation caught and corrected in PR #91 self-/review.)
 2. **CI runner 數字 vs dev machine 數字**: dev 比 CI 快 2-5x 是常態；budget 鎖 CI 數字。文件 docs/perf-slo.md 寫明此 caveat。
 3. **Allow re-run on flaky CI**: 因 GitHub runner noisy neighbour 可能造成偽 breach。Sprint-4 advisory 模式不擋；Sprint-5 升 blocking 時加 retry-once 邏輯。
 4. **Histogram in Grafana**: 是否同時加 Prom histogram alert（`histogram_quantile`）作為 production-side SLO？— 此 SPEC 不擋，但建議 Sprint-5 補。
 
 ## 8. Acceptance criteria
 
-See `docs/acceptance/AC-S005-2-perf-slo-baselines.md`.
+See `docs/acceptance/AC-S005-VS20-perf-slo-baselines.md`.
 
 ## 9. Anti-pattern accountability
 
