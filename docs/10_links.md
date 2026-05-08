@@ -103,6 +103,35 @@
 - https://github.com/QwenLM/Qwen3.6
 - https://github.com/moonshotai/Kimi-K2
 
+## Sprint-4 技術選型（2026-05-08）
+
+### JWT / OIDC
+- https://github.com/fastapi/fastapi/discussions/11345
+- https://github.com/fastapi/fastapi/discussions/9587
+- https://pypi.org/project/PyJWT/
+- https://pyjwt.readthedocs.io/en/stable/changelog.html
+- https://github.com/advisories/GHSA-752w-5fwx-jx9f
+- https://nvd.nist.gov/vuln/detail/CVE-2026-32597
+- https://snyk.io/advisor/python/pyjwt
+- https://github.com/navikt/mock-oauth2-server/releases
+- https://docs.authlib.org/en/latest/client/fastapi.html
+- https://www.scottbrady.io/jose/jwts-which-signing-algorithm-should-i-use
+
+### Load Testing
+- https://grafana.com/blog/grafana-k6-1-0-release/
+- https://github.com/grafana/k6/releases
+- https://k6.io/open-source/
+- https://github.com/tsenart/vegeta
+- https://sharkbench.dev/web/python-fastapi
+
+### GitOps / ArgoCD / AI-driven ops
+- https://www.kubermatic.com/blog/kubecon-eu-2026-recap/
+- https://www.codecentric.de/en/knowledge-hub/blog/kubecon-europe-2026-ai-agents-go-to-production
+- https://akuity.io/blog/argo-cd-mcp-server
+- https://github.com/akuity/argocd-mcp
+- https://akuity.io/blog/what-s-new-in-kargo-v1-3-smarter-gitops-with-conditional-steps-advanced-verification
+- https://developers.redhat.com/articles/2026/04/09/build-resilient-guardrails-openclaw-ai-agents-kubernetes
+
 ## Claude Code
 
 - https://docs.claude.com/en/docs/claude-code/memory
