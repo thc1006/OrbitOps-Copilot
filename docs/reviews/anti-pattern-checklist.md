@@ -198,3 +198,34 @@ grep -nE 'Color\.fromCssColorString|new Cartesian2|Cartesian3\.fromDegrees' \
 - Chain #7 (Resium reference-stability): <verify result or N/A — no Cesium/Resium changes>
 - Chain #X (process): regression test exists / "untestable because <reason>"
 ```
+
+---
+
+## Case studies
+
+### CS-1 — Recovery sessions (2026-05-08)
+
+**Context.** 22-min pause between commit-staging (`git status` showed 6 RM + 1 M, no untracked) and the user returning to ask "ultrathink find me the latest state". User believed a separate Claude session might have been running concurrently. JSONL forensics confirmed it was the same session paused — no concurrent edits, working tree was the assistant's own staged-but-uncommitted recovery work for PR #91 review fix-pack. The session resumed: extracted the planned commit message verbatim from JSONL, ran `git add -A` + `git commit` + `git push`, CI green, PR #91 squash-merged → main `acb8340`.
+
+**5 self-violations caught by deep self-/review afterward**:
+
+| # | Violation | Chain | Why it slipped | Mitigation |
+|---|---|---|---|---|
+| 1 | AC-count regex `^### AC-S00[356]-VS\d+\.\d+` produced **0 ACs** for `AC-S006-VS21` because that file uses `A1..A8 + B1..B10` letter-prefixed numbering (design + impl split). Real count was 18 (8+10), claim was 18 — ground-truth correct, but verification regex too narrow. | #1 grep-verify, #2 POST-WRITE | Designed regex from a single-file mental model; didn't check the third file's actual numbering before reusing pattern. | Always read the actual document before crafting count regex. Prefer `grep -c '^### '` and visually compare per-file headers, OR include explicit OR alternation: `^### AC-S006-VS21\.([0-9]+\|[AB][0-9]+)`. |
+| 2 | `originSessionId` field in memory file used JSONL UUID (`58a2f3fe-...`); earlier files use date-strings (`2026-05-07-harvest`). Mixed convention. | #3 cross-page alignment (memory-file convention) | No documented standard for this field; reused whatever was at hand. | Pick one convention, document in `docs/agile/sprint-NN-plan.md`-style template OR memory-file template. **Recommendation: date-string `YYYY-MM-DD-keyword`** — human-readable, sorts naturally, decoupled from session UUIDs that may rotate. |
+| 3 | Squash-merge collapsed two branch commits (`555d099` initial draft + `7d08457` review fix-pack) into a single main commit `acb8340`. The `[skip-tdd]` fix-pack story now lives in PR #91 web page only — `git log` on main shows only the title of the first commit. Future bisect / `git log --grep "fix-pack"` returns nothing. | (informational, project convention) | Project convention IS squash; not strictly a violation. But `git log` reader loses context of "this PR had a deep-/review round + correction". | **Either** (a) accept the loss; (b) push merge commits when the fix-pack is non-trivial; (c) if squashing, edit the squash commit message to mention the fix-pack: "*Includes /review fix-pack — rename collision + 2 Chain #1 violations.*". Pick a project convention and document. |
+| 4 | TaskCreate not used for the 7-step recovery (Discovery → Recovery commit → Push → CI wait → Merge → Sync → Memory write). Harness reminder fired ≥ 4 times during the session. | #X process | Steps were sequential, tight, and felt small individually. Underestimated total scope. | Rule of thumb: if the assistant is going to send ≥ 3 separate `Bash`/`Edit`/`Write` tool calls for one user request, open TaskCreate first. Reminder is a **guard rail**, not noise. |
+| 5 | `verify.sh` ran **only post-commit**. Pre-commit verify skipped because the changes were "just renames + sed". | #X process | Risk-tolerance based on familiarity, not on policy. | `verify.sh` is cheap (≤ 30 s). Run pre-commit unconditionally for any `services/**` or `docs/specs/` / `docs/acceptance/` change. The only exception is one-line typo fixes. |
+
+**Meta-finding.** Deep self-review caught (1) by re-running its own grep with broader pattern. The recovery process worked: Chain #1 + Chain #2 are recursively applicable to the assistant's own verification scripts, not just to source code. **Add this to mental model: when you write a verification grep, the grep itself can have Chain #1 violations.**
+
+**Process gap exposed.** No project convention for memory file `originSessionId`, no convention for whether squash merges should annotate fix-packs in their commit message. CLAUDE.md §12.4 covers PR title format but not these details. Either tighten CLAUDE.md or accept the inconsistency.
+
+### When to add a case study
+
+A case study earns its slot when **all three** of:
+1. The slip-up went past pre-merge gates (CI / `/review` / self-audit).
+2. The root cause is a **gap in the chain definitions or process**, not contributor inattention.
+3. Concrete mitigation can be written without re-litigating the original PR.
+
+Otherwise, just fix the issue in a follow-up PR and move on. Avoid case-study inflation.
