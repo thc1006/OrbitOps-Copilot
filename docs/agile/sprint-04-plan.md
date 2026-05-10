@@ -2,8 +2,8 @@
 
 | 欄位 | 值 |
 |---|---|
-| Status | Draft (2026-05-08) — awaiting user commit before kickoff |
-| Duration | 1 週（建議 2026-05-09 ~ 2026-05-15） |
+| Status | **Kicked off 2026-05-10** — user accepted Option β + PyJWT/RS256/mock-oauth2-server + k6 1.0 + git→Kargo→ArgoCD; see §Kickoff log below |
+| Duration | 1 週（2026-05-10 ~ 2026-05-16；shifted +1d from initial 05-09 estimate due to 2-day deliberation gap） |
 | Sprint goal | **「copilot-api 進入 auth-required 狀態（OIDC + JWT）；3 個 latency-critical endpoint 跑進 SLO budget（CI 阻擋 regression）；同時為 Sprint-5 closed-loop GitOps 出 SPEC + ADR 設計階段成果」** |
 | Demo | `/login` page → token → `/copilot` ask still works；`scripts/perf-smoke.sh` green table；ADR-013 + SPEC-S006-VS21 + AC-S006-VS21 Sprint-5 spike-ready |
 
@@ -84,12 +84,31 @@
 - **Chain #6 partial-migration**: VS-21 closed-loop §5.1 的 3 個 action 在 Sprint-5 ship 必須一起，不可分批
 - **Chain #X process**: 任何 visual regression 在 UI auth flow 需先寫 test，不要再 PR #88 般追跑 8 commits
 
-## Open commitments
+## Kickoff log
 
-user 開 sprint 前確認：
-1. 接受 β（impl VS-19 + VS-20 + design VS-21）— 還是改 α / γ / δ？
-2. 接受 PyJWT + RS256 + mock-oauth2-server 技術選型（research 驗 2026-05-08）— 還是改？
-3. 接受 k6 1.0 OSS 為 perf gate tool — 還是改 Locust / Vegeta？
-4. 接受 closed-loop 走 git-commit-PR + Kargo + ArgoCD 路線（KubeCon EU 2026 consensus）— 還是改？
+### 2026-05-10 — sprint kickoff confirmed
 
-回答完就開工。
+User accepted all 4 architect/researcher recommendations:
+
+| # | 問題 | 答覆 |
+|---|---|---|
+| 1 | Sprint scope option | **β** — impl VS-19 + VS-20 + design-only VS-21, total 6d |
+| 2 | VS-19 auth tech | **PyJWT 2.12.1 + RS256/JWKS + mock-oauth2-server 3.0.1** — research 驗 2026-05-08 |
+| 3 | VS-20 perf gate tool | **k6 1.0 OSS** — sibling-repo `nycu-bus-backend` parity |
+| 4 | VS-21 closed-loop apply path | **git-commit-PR + Kargo + ArgoCD** — KubeCon EU 2026 consensus; reject direct-kubectl-from-SA |
+
+Implementation order (per `## Dependencies` §): VS-19 lands first (auth must exist before perf measures `/ask` with token), then VS-20, then VS-21 (design). VS-21 is doc-only and can run in parallel.
+
+**No `[skip-tdd]` allowed for VS-19 / VS-20 implementation commits**: per Sprint-3 case study CS-1 in `docs/reviews/anti-pattern-checklist.md`, auth and perf both have testable surfaces (pytest for auth dep + k6 scripts that capture p99); a `red(...)` commit precedes every impl commit.
+
+### Sprint-4 PR sequence (planned)
+
+| Order | Branch | What |
+|---|---|---|
+| 1 | `feat/vs-19-copilot-oidc-jwt-auth` | red(SPEC-S003-VS19): failing test for `/ask` 401 without JWT |
+| 2 | (same branch, follow-up commit) | green(SPEC-S003-VS19): `_auth.py` + `Depends(verify_jwt)` on copilot-api routes; mock-oidc compose service |
+| 3 | (same branch, follow-up) | green(SPEC-S003-VS19) UI: `/login` page + axios interceptors + 4 vitest |
+| 4 | `feat/vs-20-perf-slo-baselines` | red(SPEC-S005-VS20): k6 script that fails because no token; impl follows |
+| 5 | `feat/vs-21-closed-loop-gitops-design` (docs only) | ADR-012 (auth stack) + ADR-013 (closed-loop apply) + ADR-004 closed-loop clause extension |
+
+Each PR runs `verify.sh` pre- and post-commit (CS-1 lesson #5).
