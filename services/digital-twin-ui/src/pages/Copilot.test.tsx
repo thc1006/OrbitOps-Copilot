@@ -221,4 +221,26 @@ describe("Copilot — VS-9b.4 sparkline wiring", () => {
       expect(Number(sl.dataset.historyLength)).toBe(1);
     });
   });
+
+  test("renders the grounded closed-loop action recommendation (VS-23)", async () => {
+    vi.spyOn(api, "askCopilot").mockResolvedValue({
+      ...RESPONSE_WITH_RISK,
+      action_plan: {
+        action_id: "set_payload_mode",
+        params: { mode: "regenerative" },
+        rationale: "Regenerative payload improves effective SNR on the downlink.",
+        inverse_action_id: "set_payload_mode",
+      },
+    });
+    render(wrap(SNAPSHOT));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /ask copilot/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("set_payload_mode")).toBeInTheDocument();
+      expect(
+        screen.getByText(/Regenerative payload improves effective SNR/i),
+      ).toBeInTheDocument();
+    });
+  });
 });

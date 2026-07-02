@@ -221,6 +221,39 @@ export default function Copilot({ data }: CopilotProps) {
               </Box>
             )}
 
+            {response.action_plan && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="overline" color="text.secondary">
+                  {t("closedLoop.recommendedTitle")}
+                </Typography>
+                <Box
+                  sx={{
+                    mt: 1,
+                    p: 1.5,
+                    borderLeft: 3,
+                    borderColor: "secondary.main",
+                    bgcolor: "action.hover",
+                  }}
+                >
+                  <Chip
+                    label={response.action_plan.action_id}
+                    size="small"
+                    sx={{ fontFamily: monoFamily, mb: 1 }}
+                  />
+                  <Typography variant="body2">
+                    {response.action_plan.rationale}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: "block", mt: 0.5 }}
+                  >
+                    {t("closedLoop.recommendedHint")}
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+
             {response.risk_if_ignored && (
               <Box sx={{ mb: 3 }}>
                 <Typography variant="overline" color="text.secondary">

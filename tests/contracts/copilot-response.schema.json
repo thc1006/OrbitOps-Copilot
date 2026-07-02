@@ -62,6 +62,18 @@
         }
       }
     },
+    "action_plan": {
+      "type": ["object", "null"],
+      "description": "VS-23 — grounded closed-loop action recommendation; null unless a whitelisted safe action fits the anomaly on a grounded response.",
+      "required": ["action_id", "rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "action_id": { "type": "string", "minLength": 1 },
+        "params": { "type": "object" },
+        "rationale": { "type": "string", "minLength": 1 },
+        "inverse_action_id": { "type": ["string", "null"] }
+      }
+    },
     "risk_if_ignored": { "type": ["string", "null"] },
     "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
     "unknowns": {

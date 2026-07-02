@@ -55,6 +55,19 @@ class RecommendedAction(BaseModel):
     body: str = Field(min_length=1)
 
 
+class ActionPlan(BaseModel):
+    """VS-23 — a grounded, whitelisted closed-loop action fitting the detected
+    anomaly. Points at a dry-runnable safe action (SPEC-S006-VS21 §5.1); the UI
+    can preview it. Only emitted on grounded responses (never on INSUFFICIENT/
+    REFUSED) so an action is never suggested without evidence (ADR-004)."""
+
+    model_config = _STRICT
+    action_id: str
+    params: dict[str, Any] = Field(default_factory=dict)
+    rationale: str
+    inverse_action_id: str | None = None
+
+
 # ---------- top-level response ---------------------------------------------
 
 
@@ -67,6 +80,9 @@ class CopilotResponse(BaseModel):
     likely_cause: str | None = None
     evidence: Evidence
     recommended_actions: list[RecommendedAction] = Field(default_factory=list)
+    # VS-23: grounded closed-loop action recommendation (None when the response
+    # is not grounded or no safe action fits the anomaly).
+    action_plan: ActionPlan | None = None
     risk_if_ignored: str | None = None
     confidence: float = Field(ge=0.0, le=1.0, default=0.0)
     unknowns: list[str] = Field(default_factory=list)

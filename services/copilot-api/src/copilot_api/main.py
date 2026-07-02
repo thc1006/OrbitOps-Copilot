@@ -30,11 +30,18 @@ from ._auth import _JWTError, verify_jwt
 from ._logging import logger as _log
 from ._logging import setup_logging as _setup_logging
 from ._provider import FakeLLMProvider, LLMProvider
-from ._actions import ActionParamError, UnknownActionError, catalog, get_action
+from ._actions import (
+    ActionParamError,
+    UnknownActionError,
+    catalog,
+    get_action,
+    recommend_action,
+)
 from .models import (
     ActionCatalog,
     ActionDryRunRequest,
     ActionDryRunResponse,
+    ActionPlan,
     AskRequest,
     CopilotResponse,
     Evidence,
@@ -389,6 +396,11 @@ def _ask_impl(req: AskRequest) -> CopilotResponse:
         )
 
     response = _grounded(raw=raw, evidence=evidence, include_actions=True)
+    # VS-23: attach a grounded closed-loop action recommendation for the
+    # classified anomaly (None when no safe action fits, e.g. Doppler).
+    plan = recommend_action(anomaly_type)
+    if plan is not None:
+        response.action_plan = ActionPlan(**plan)
     # If logs were unavailable (Loki down / 5xx), surface that fact to
     # the operator via `unknowns`. Don't fail the whole response — the
     # metrics evidence is still valid grounding.
@@ -531,4 +543,10 @@ def _explain_or_runbook(
             ),
         )
 
-    return _grounded(raw=raw, evidence=evidence, include_actions=include_actions)
+    resp = _grounded(raw=raw, evidence=evidence, include_actions=include_actions)
+    # VS-23: /runbook (include_actions) also carries the grounded action plan.
+    if include_actions:
+        plan = recommend_action(req.anomaly_type)
+        if plan is not None:
+            resp.action_plan = ActionPlan(**plan)
+    return resp

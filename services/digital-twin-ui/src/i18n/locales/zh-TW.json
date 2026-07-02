@@ -19,7 +19,9 @@
     "previewError": "乾跑失敗：{{message}}",
     "diffLabel": "Manifest 差異（乾跑）",
     "inverseLabel": "反向動作",
-    "noInverse": "無（僅單向）"
+    "noInverse": "無（僅單向）",
+    "recommendedTitle": "建議的閉環動作",
+    "recommendedHint": "在下方閉環面板預覽它的精確效果。"
   },
   "anomalies": {
     "empty": "目前無作用中的異常事件。模擬器情境時鐘處於正常範圍。",

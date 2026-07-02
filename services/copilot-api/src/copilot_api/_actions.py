@@ -173,6 +173,48 @@ def get_action(action_id: str) -> SafeAction:
         )
 
 
+# VS-23 — which safe action fits which detected anomaly. Keys are the anomaly_type
+# vocabulary from _retrieval.classify / _provider. doppler_compensation_warning
+# has NO entry: no cluster action mitigates a Doppler-residual issue, so no action
+# is recommended (honest — never suggest an action that wouldn't help).
+_ANOMALY_ACTION_MAP: dict[str, tuple[str, dict[str, Any], str]] = {
+    "snr_drop": (
+        "set_payload_mode",
+        {"mode": "regenerative"},
+        "Switch the payload to regenerative so the signal is re-generated on-board, "
+        "improving effective SNR on the degraded downlink.",
+    ),
+    "handover_failure": (
+        "restart_emulator_pod",
+        {},
+        "Rolling-restart clears stuck handover state; forward-only recovery with no "
+        "data loss (emulator state is reconstructable via /scenario/load).",
+    ),
+    "gateway_outage": (
+        "scale_copilot_api_replicas",
+        {"replicas": 2},
+        "Add a copilot-api replica to absorb the request surge caused by the gateway "
+        "fallback.",
+    ),
+}
+
+
+def recommend_action(anomaly_type: str) -> dict[str, Any] | None:
+    """Return a grounded ActionPlan-shaped dict for *anomaly_type*, or None when
+    no safe action fits. The action_id is always in the SPEC §5.1 whitelist."""
+    entry = _ANOMALY_ACTION_MAP.get(anomaly_type)
+    if entry is None:
+        return None
+    action_id, params, rationale = entry
+    action = _REGISTRY[action_id]
+    return {
+        "action_id": action_id,
+        "params": params,
+        "rationale": rationale,
+        "inverse_action_id": action.inverse_action_id,
+    }
+
+
 def catalog() -> list[dict[str, Any]]:
     """Serializable metadata for all safe actions — drives the UI form so the
     UI never hardcodes the action set or param bounds."""

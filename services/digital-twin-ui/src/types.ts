@@ -30,11 +30,23 @@ export interface RecommendedAction {
   body: string;
 }
 
+// VS-23 — grounded closed-loop action recommendation (null unless a safe
+// action fits the detected anomaly on a grounded response).
+export interface ActionPlan {
+  action_id: string;
+  params: Record<string, unknown>;
+  rationale: string;
+  inverse_action_id: string | null;
+}
+
 export interface CopilotResponse {
   summary: string | null;
   likely_cause: string | null;
   evidence: Evidence;
   recommended_actions: RecommendedAction[];
+  // Optional in the UI type so pre-VS-23 response fixtures still typecheck;
+  // the backend always emits it (null when no action fits).
+  action_plan?: ActionPlan | null;
   risk_if_ignored: string | null;
   confidence: number;
   unknowns: string[];

@@ -19,7 +19,9 @@
     "previewError": "Dry-run failed: {{message}}",
     "diffLabel": "Manifest diff (dry-run)",
     "inverseLabel": "Inverse",
-    "noInverse": "none (forward-only)"
+    "noInverse": "none (forward-only)",
+    "recommendedTitle": "Recommended closed-loop action",
+    "recommendedHint": "Preview its exact effect in the closed-loop panel below."
   },
   "anomalies": {
     "empty": "No active anomalies. The emulator scenario clock is in nominal range.",
