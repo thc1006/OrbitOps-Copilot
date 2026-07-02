@@ -6,7 +6,8 @@
       "password": "Password",
       "submit": "Log In",
       "loggingIn": "Logging in...",
-      "error": "Login failed. Please try again."
+      "error": "Login failed. Please try again.",
+      "devBypass": "Continue (dev mode)"
     }
   },
   "anomalies": {

@@ -6,7 +6,8 @@
       "password": "密碼",
       "submit": "登入",
       "loggingIn": "登入中...",
-      "error": "登入失敗，請再試一次。"
+      "error": "登入失敗，請再試一次。",
+      "devBypass": "繼續（開發模式）"
     }
   },
   "anomalies": {

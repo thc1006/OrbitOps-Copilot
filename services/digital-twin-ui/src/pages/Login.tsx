@@ -41,6 +41,11 @@ export default function Login() {
     }
   };
 
+  const handleDevBypass = () => {
+    setToken("dev-bypass-token");
+    navigate("/");
+  };
+
   return (
     <Box
       component="form"
@@ -72,6 +77,15 @@ export default function Login() {
       />
       <Button type="submit" variant="contained" disabled={loading}>
         {loading ? t("auth.login.loggingIn") : t("auth.login.submit")}
+      </Button>
+      <Button
+        variant="outlined"
+        color="secondary"
+        size="small"
+        onClick={handleDevBypass}
+        sx={{ mt: 1 }}
+      >
+        {t("auth.login.devBypass")}
       </Button>
     </Box>
   );
