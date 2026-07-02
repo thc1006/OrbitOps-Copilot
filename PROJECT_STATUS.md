@@ -2,9 +2,22 @@
 
 | Field | Value |
 |---|---|
-| Date | 2026-05-04 |
-| Sprint | 1 + 2 (substantively complete; Sprint-3 VS-13 pending) |
-| Tier | Sprint-2 P0 + Tier-0 security/EOL/drift all closed; live cluster reflects main; AC-S005-5 met on K8s path |
+| Date | 2026-07-02 |
+| Sprint | 4 (in-flight: VS-19 UI side done; backend side red committed) |
+| Tier | Sprint-4 Auth hardening — VS-19 UI auth shipped; copilot-api backend JWT auth pending green commit |
+
+## Sprint 4 progress (2026-07-02)
+
+### VS-19 — OIDC + JWT auth
+
+| Component | Status | Notes |
+|---|---|---|
+| copilot-api backend | RED committed (31e93c1) | `test_auth_jwt.py` 4 cases fail; `_auth.py` + `Depends(verify_jwt)` impl TBD |
+| digital-twin-ui | GREEN done (commits 45e6894 + 4eac964) | auth.ts + axiosInstance.ts + Login.tsx + ProtectedRoute; AC-S003-VS19.10/.11/.12 green; 152 vitest; `make verify` 5/5 green |
+
+ACs covered by UI green commit: AC-S003-VS19.10 (login flow stores token), AC-S003-VS19.11 (request interceptor injects Bearer), AC-S003-VS19.12 (401 response clears token + redirects).
+
+---
 
 ## Snapshot — current `main` state (after Phase A/B/VS-10c/U7)
 
