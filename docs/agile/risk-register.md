@@ -17,6 +17,8 @@
 | R-11 | open-source 授權衝突（AGPL: srsRAN/Open5GS/Grafana/Loki/Tempo） | 2 | 3 | 6 | 不發行 SaaS；docs/10 列各依賴授權 | security-reviewer | Open |
 | R-12 | hooks 誤刪檔 / 自動 push | 2 | 5 | 10 | settings.json 安全保守；CI 審 hook diff；禁止 rm/curl/git push hooks | security-reviewer | Mitigated |
 | R-13 | Single-contributor PR train review fatigue（PR #88 8-commit chase 為實證） | 4 | 3 | 12 | `docs/reviews/anti-pattern-checklist.md` 7+1 chain self-audit；`.github/pull_request_template.md` 強制 PR body 欄位；CLAUDE.md §13.3 hook；Chain #X process rule（visual-bug 先寫測試）；PR #89 是首次 dogfood 案例 | architect | Mitigated（2026-05-07，PR #89 引入） |
+| R-14 | copilot-api auth boundary requires JWKS IdP at call time — IdP outage = auth failure for all LLM endpoints | 2 | 4 | 8 | 1h grace TTL on last-known-good JWKS; `JWT_REQUIRED=false` dev escape; mock-oidc healthcheck gated in compose depends_on; /healthz stays public for K8s probes | llm-copilot-engineer | Open（2026-07-02，Sprint-4） |
+| S4-R4 | VS-19 先於 VS-20 land（perf 測 /ask 需 token）若反了進 transitional state | — | — | — | Resolved: perf-smoke uses JWT_REQUIRED=false transitional bypass; documented in docs/perf-slo.md | architect | Closed（2026-07-02，Sprint-4） |
 
 ## 退出條件
 

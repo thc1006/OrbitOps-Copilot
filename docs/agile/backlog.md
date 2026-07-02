@@ -74,9 +74,9 @@
 
 | ID | Vertical Slice | 切到的層 | Est | SPEC | AC | Status |
 |---|---|---|---|---|---|---|
-| **VS-19** | copilot-api OIDC + JWT auth (impl) | copilot-api(_auth.py + Depends) + UI(Login + axios interceptors + ProtectedRoute) + docker-compose(mock-oidc) + K8s overlay | 3d | SPEC-S003-VS19 | AC-S003-VS19 | **UI: ✅ done (2026-07-02)** — AC.10/11/12 green, 152 vitest pass; backend: red commit 31e93c1, green TBD |
-| **VS-20** | Perf SLO baselines + CI gate | k6 1.0 + scripts/perf-smoke.sh + docs/perf-slo.md | 2d | SPEC-S005-VS20 | AC-S005-VS20 | pending (depends on VS-19 backend green) |
-| **VS-21** | Closed-loop GitOps design | ADR-013 + SPEC-S006-VS21 + ADR-004 closed-loop clause | 1d (docs only) | SPEC-S006-VS21 | AC-S006-VS21 §A | pending |
+| **VS-19** | copilot-api OIDC + JWT auth (impl) | copilot-api(_auth.py + Depends) + UI(Login + axios interceptors + ProtectedRoute) + docker-compose(mock-oidc) + K8s overlay | 3d | SPEC-S003-VS19 | AC-S003-VS19 | ✅ done (2026-07-02) — 141 pytest + 152 vitest; all ACs green; `feat/vs-19-copilot-oidc-jwt-auth` |
+| **VS-20** | Perf SLO baselines + CI gate | k6 1.0 + scripts/perf-smoke.sh + docs/perf-slo.md | 2d | SPEC-S005-VS20 | AC-S005-VS20 | ✅ done (2026-07-02) — p99 measured + CI advisory gate |
+| **VS-21** | Closed-loop GitOps design | ADR-013 + SPEC-S006-VS21 + ADR-004 closed-loop clause | 1d (docs only) | SPEC-S006-VS21 | AC-S006-VS21 §A | ✅ done (2026-07-02) — ADR-012 + ADR-013 + ADR-004 extension committed |
 
 ## Backlog（暫不排，待 P2/P3）
 
