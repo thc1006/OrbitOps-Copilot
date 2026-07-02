@@ -80,9 +80,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    profiles:
-      - dev
-      - all
+    # No `profiles:` — copilot-api (core, always-on, JWT_REQUIRED=true by
+    # default) `depends_on` mock-oidc, so the IdP must be active whenever
+    # copilot is. Profile-gating it to [dev, all] made `docker compose config`
+    # reject the project ("copilot-api depends on undefined service mock-oidc")
+    # because copilot-api runs in the default profile but mock-oidc did not.
 
   copilot-api:
     build:
