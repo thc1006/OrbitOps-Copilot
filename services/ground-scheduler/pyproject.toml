@@ -1,0 +1,22 @@
+[project]
+name = "ground-scheduler"
+version = "0.0.1.dev0"
+description = "OrbitOps real-TLE contact-scheduling PoC (RunSpace-2026 finals kernel)."
+requires-python = ">=3.11"
+dependencies = [
+  "skyfield>=1.54",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=9.0", "ruff>=0.15"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
