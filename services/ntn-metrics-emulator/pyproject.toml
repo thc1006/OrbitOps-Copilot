@@ -8,6 +8,10 @@ dependencies = [
   "uvicorn>=0.46",
   "prometheus-client>=0.25",
   "pydantic>=2.13",
+  # main.py validates scenarios against tests/contracts schemas at load time
+  # (Draft202012Validator). Runtime dep, not just test — a clean install that
+  # omits it crashes uvicorn on startup (surfaced by the CI perf-smoke job).
+  "jsonschema>=4.23",
 ]
 
 [project.optional-dependencies]

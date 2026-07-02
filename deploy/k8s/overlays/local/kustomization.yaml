@@ -4,6 +4,8 @@ namespace: orbitops
 resources:
   - ../../base
   - nodeport-services.yaml
+  # VS-19: mock OIDC server for local JWT auth testing.
+  - mock-oidc.yaml
 patches:
   - target:
       kind: Deployment
@@ -19,3 +21,37 @@ patches:
       - op: replace
         path: /spec/replicas
         value: 1
+  # VS-19: inject JWT env vars into copilot-api so it validates RS256 tokens
+  # issued by the in-cluster mock-oidc. JWKS URL uses the ClusterIP Service
+  # name — resolves via K8s DNS in any namespace thanks to the search domain.
+  - target:
+      kind: Deployment
+      name: copilot-api
+    patch: |-
+      # ⚠️  AUTH IS DISABLED IN THIS OVERLAY (D2). JWT_REQUIRED=false means
+      #     /ask /explain /runbook accept requests with NO token — this is the
+      #     transitional dev state on the shared local cluster (commit 04b4bf4),
+      #     NOT the SPEC-S003-VS19 goal. copilot-api's own default is "true".
+      #     DO NOT copy this overlay to any real/exposed deployment as-is.
+      #     Sprint-5 re-enable condition: browser OIDC flow wired (D1/D3) →
+      #     flip to "true". Until then dev access is the Login dev-bypass button.
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: JWT_REQUIRED
+          value: "false"
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: JWT_JWKS_URL
+          value: "http://mock-oidc:9090/orbitops/jwks"
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: JWT_AUDIENCE
+          value: "orbitops-copilot"
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: JWT_ISSUER
+          value: "http://mock-oidc:9090/orbitops"

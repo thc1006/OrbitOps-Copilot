@@ -13,6 +13,7 @@ import type {
   MetricsSnapshot,
   PromSample,
 } from "./types";
+import { clearToken, getToken } from "./lib/auth";
 
 const env = (import.meta as ImportMeta & { env: Record<string, string> }).env;
 
@@ -87,12 +88,33 @@ export async function askCopilot(
   }
 
   try {
+    // AC-S003-VS19.11: attach the bearer token once the user has authenticated.
+    const token = getToken();
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
     const r = await fetch(`${COPILOT_BASE}/ask`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify(input),
       signal: controller.signal,
     });
+    // AC-S003-VS19.12: an expired/invalid token → drop it and bounce to
+    // /login, guarding against a redirect loop when already on the login page.
+    if (r.status === 401) {
+      clearToken();
+      if (
+        typeof window !== "undefined" &&
+        window.location.pathname !== "/login"
+      ) {
+        window.location.href = "/login";
+      }
+      return buildErrorResponse(
+        "copilot-api returned HTTP 401 (session expired)",
+        `HTTP ${r.status}`,
+      );
+    }
     if (!r.ok) {
       return buildErrorResponse(
         `copilot-api returned HTTP ${r.status}`,

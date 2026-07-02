@@ -12,6 +12,9 @@ dependencies = [
   # G6 — exposes /metrics for the Prom scrape job in
   # deploy/k8s/base/prometheus-configmap.yaml.
   "prometheus-fastapi-instrumentator>=7.0,<8.0",
+  # VS-19: OIDC/JWT auth. Pin >=2.12.1 — CVE-2026-32597 (CVSS 7.5) fix.
+  # [crypto] extra pulls in cryptography for RSA key parsing (from_jwk).
+  "PyJWT[crypto]>=2.12.1",
 ]
 
 [project.optional-dependencies]

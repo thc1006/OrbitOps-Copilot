@@ -64,6 +64,11 @@ afterAll(async () => {
 });
 
 beforeEach(() => {
+  // VS-19 AC-S003-VS19.10: ProtectedRoute reads localStorage.orbitops_token.
+  // Supply a fake token so all render paths reach the actual page content
+  // instead of redirecting to /login.
+  localStorage.setItem("orbitops_token", "test-token-for-zh-leak-tests");
+
   vi.spyOn(globalThis, "fetch").mockImplementation(
     async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : (input as URL).toString();
@@ -90,6 +95,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  localStorage.removeItem("orbitops_token");
 });
 
 const wrap = (path = "/") => (

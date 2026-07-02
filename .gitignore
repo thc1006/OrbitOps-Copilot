@@ -58,6 +58,9 @@ tmp/
 *.png
 !docs/**/*.png
 
+# k6 perf results (re-generated on each run; keep directory via .gitkeep)
+tests/perf/results/*.json
+
 # K8s
 kubeconfig
 .kube/

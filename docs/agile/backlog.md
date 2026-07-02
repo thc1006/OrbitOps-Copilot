@@ -70,6 +70,14 @@
 > - 🆕 **Post-tag adds**: anti-pattern checklist canonical registry (#1–#7 + #X), PR template, CLAUDE.md §13.3 enforcement hook（PR #89）
 > - Sprint-1 VS-8 (UI "Ready for Copilot" affordance, 上方表格內 line 36) — 不是同一個 VS-8；那個 ✅ done in PR #42
 
+## Sprint 4（Auth + Perf hardening — kicked off 2026-05-10）
+
+| ID | Vertical Slice | 切到的層 | Est | SPEC | AC | Status |
+|---|---|---|---|---|---|---|
+| **VS-19** | copilot-api OIDC + JWT auth (impl) | copilot-api(_auth.py + Depends) + UI(Login + axios interceptors + ProtectedRoute) + docker-compose(mock-oidc) + K8s overlay | 3d | SPEC-S003-VS19 | AC-S003-VS19 | ✅ done (2026-07-02) — 141 pytest + 152 vitest; all ACs green; `feat/vs-19-copilot-oidc-jwt-auth` |
+| **VS-20** | Perf SLO baselines + CI gate | k6 1.0 + scripts/perf-smoke.sh + docs/perf-slo.md | 2d | SPEC-S005-VS20 | AC-S005-VS20 | ✅ done (2026-07-02) — p99 measured + CI advisory gate |
+| **VS-21** | Closed-loop GitOps design | ADR-013 + SPEC-S006-VS21 + ADR-004 closed-loop clause | 1d (docs only) | SPEC-S006-VS21 | AC-S006-VS21 §A | ✅ done (2026-07-02) — ADR-012 + ADR-013 + ADR-004 extension committed |
+
 ## Backlog（暫不排，待 P2/P3）
 
 - 真 OAI / srsRAN NTN wrapper（emulator → real RAN stack）

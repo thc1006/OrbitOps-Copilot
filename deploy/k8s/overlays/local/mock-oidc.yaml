@@ -1,0 +1,103 @@
+# VS-19: Mock OIDC server (navikt/mock-oauth2-server) for local JWT auth testing.
+# Provides JWKS at http://mock-oidc:9090/orbitops/jwks (ClusterIP, in-cluster only).
+# copilot-api fetches JWKS LAZILY on the first authenticated request (cached 1h),
+# NOT at startup (D6 fix) — so mock-oidc being down at boot does not crash-loop
+# copilot-api (R-14): the pod starts fine and the first /ask just 401s until the
+# IdP is reachable.
+# Developer access via:  kubectl port-forward svc/mock-oidc 9091:9090 -n orbitops
+#
+# Image pinned to 2.1.10; SPEC-S003-VS19 cites 3.0.1 as the researched latest.
+# 2.1.10 is the tag validated on this cluster (D5) — bump + re-verify is Sprint-5.
+#
+# KNOWN LIMITATION (Sprint-5 — findings D1/D3): the requestMapping below only
+# matches grant_type=client_credentials, and only it injects `aud`. The browser
+# password-grant login (Login.tsx) is NOT wired end-to-end, and this server
+# derives `iss` from the request Host header (tokens fetched via localhost:19090
+# / port-forward 9091 carry an iss that won't match copilot's JWT_ISSUER). The
+# full browser OIDC flow is deferred; the server-side RS256 verify path is done.
+#
+# No NodePort — per CLAUDE.md hard rule "No NodePort to public networks".
+# For host access use port-forward as shown above.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mock-oidc
+  labels:
+    app.kubernetes.io/name: mock-oidc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mock-oidc
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mock-oidc
+    spec:
+      containers:
+        - name: mock-oidc
+          image: ghcr.io/navikt/mock-oauth2-server:2.1.10
+          ports:
+            - containerPort: 9090
+              name: http
+          env:
+            - name: SERVER_PORT
+              value: "9090"
+            - name: JSON_CONFIG
+              value: |
+                {
+                  "interactiveLogin": false,
+                  "httpServer": "NettyWrapper",
+                  "tokenCallbacks": [
+                    {
+                      "issuerId": "orbitops",
+                      "tokenExpiry": 3600,
+                      "requestMappings": [
+                        {
+                          "requestParam": "grant_type",
+                          "match": "client_credentials",
+                          "claims": {
+                            "sub": "orbitops-service",
+                            "aud": "orbitops-copilot"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          readinessProbe:
+            httpGet:
+              path: /orbitops/.well-known/openid-configuration
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /orbitops/.well-known/openid-configuration
+              port: 9090
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mock-oidc
+  labels:
+    app.kubernetes.io/name: mock-oidc
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: mock-oidc
+  ports:
+    - name: http
+      port: 9090
+      targetPort: 9090

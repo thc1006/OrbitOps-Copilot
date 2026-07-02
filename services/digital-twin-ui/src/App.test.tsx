@@ -15,6 +15,11 @@ orbitops_beam_snr_db{beam_id="beam-2"} 13.0
 `;
 
 beforeEach(() => {
+  // VS-19 AC-S003-VS19.10: App shell tests render the authenticated layout.
+  // ProtectedRoute reads localStorage.orbitops_token — supply a fake token so
+  // the tests don't redirect to /login (those tests live in Login.test.tsx).
+  localStorage.setItem("orbitops_token", "test-token-for-app-shell-tests");
+
   vi.spyOn(globalThis, "fetch").mockImplementation(
     async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : (input as URL).toString();
@@ -41,6 +46,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  localStorage.removeItem("orbitops_token");
 });
 
 const wrap = (path = "/") => (

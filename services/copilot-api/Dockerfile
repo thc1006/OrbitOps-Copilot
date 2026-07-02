@@ -5,14 +5,14 @@ FROM docker.io/library/python:3.13-slim
 
 WORKDIR /app
 
+# Install FROM pyproject.toml so the image's dependency set is a single source
+# of truth. A prior hand-typed pip list drifted from pyproject and shipped an
+# image missing PyJWT (crash on `import jwt`); installing the package itself
+# root-causes that class of bug so it cannot recur on the next dep addition.
 COPY services/copilot-api/pyproject.toml ./
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir 'fastapi>=0.115' 'uvicorn[standard]>=0.32' \
-                                'pydantic>=2.0' 'httpx>=0.27' \
-                                'prometheus-client>=0.21' \
-                                'prometheus-fastapi-instrumentator>=7.0,<8.0'
-
 COPY services/copilot-api/src/ ./src/
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir .
 
 ENV PYTHONPATH=/app/src
 EXPOSE 8001

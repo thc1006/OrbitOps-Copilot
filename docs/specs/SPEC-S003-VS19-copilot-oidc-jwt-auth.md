@@ -10,6 +10,20 @@
 | Related ACs | AC-S003-VS19 |
 | Research basis | `docs/00_research_2026_04.md` §"Sprint-4 技術選型 T1" (2026-05-08) |
 
+> **Implementation status (2026-07-02, post-adversarial-review).** The
+> server-side RS256 JWT verification path (§4.x below) is **done, tested, and
+> hardened**. Two design details below diverge from what actually shipped, and
+> are deferred to Sprint-5 (see `docs/agile/sprint-04-review.md` §Post-sprint
+> adversarial review, findings D1/D3/D5):
+> - **Image tag**: shipped `mock-oauth2-server:2.1.10` (validated on the live
+>   cluster), not the `3.0.1` cited below. Bump + re-verify is a Sprint-5 item.
+> - **Browser OIDC login (§ line "UI /login → POST …/token")** is **not wired
+>   end-to-end**: the deployed mock-oidc only maps `grant_type=client_credentials`
+>   (and only that injects `aud`), while `Login.tsx` sends `password`; the server
+>   also derives `iss` from the request Host header, so host-fetched tokens fail
+>   copilot's issuer check. In dev, auth is disabled (`JWT_REQUIRED=false`) and
+>   access is via the Login dev-bypass button (DEV builds only).
+
 ## 1. Goal
 
 copilot-api 從**全 public** 進入**auth-required** 狀態。所有 LLM-evidence-bearing endpoint（`/ask`、`/explain`、`/runbook`、`/providers`）必須驗證 valid RS256 JWT；K8s probe (`/healthz`) 與 Prometheus scrape (`/metrics`) 維持 public（否則破 ops infra）。digital-twin-ui 加 login flow + axios bearer interceptor，401 回應 → 清 token + redirect to login。

@@ -12,6 +12,8 @@ import Beams from "./pages/Beams";
 import Gateways from "./pages/Gateways";
 import Anomalies from "./pages/Anomalies";
 import Copilot from "./pages/Copilot";
+import Login from "./pages/Login";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 // VS-13 S3 (2026-05-04, addresses PR #77 review #1): SatelliteView is
 // lazy-loaded so cesium (~5 MB) only ships when the user navigates to
@@ -28,58 +30,71 @@ export default function App() {
   const data = poll.data;
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
-      <SideNav drawerWidth={DRAWER_WIDTH} />
-      <TopBar
-        scenarioId={data?.scenario_id ?? "(no scenario loaded)"}
-        tickT={data?.t_seconds ?? 0}
-        isLoading={poll.isLoading}
-        onRefresh={poll.refetch}
-        drawerWidth={DRAWER_WIDTH}
-      />
+    <Routes>
+      {/* Public: login page — no auth required */}
+      <Route path="/login" element={<Login />} />
 
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          minWidth: 0,
-          bgcolor: "background.default",
-          p: 4,
-        }}
-      >
-        <Toolbar variant="dense" sx={{ minHeight: 56, mb: 1 }} />
+      {/* Protected: main layout — requires orbitops_token in localStorage */}
+      <Route
+        path="*"
+        element={
+          <ProtectedRoute>
+            <Box sx={{ display: "flex", minHeight: "100vh" }}>
+              <SideNav drawerWidth={DRAWER_WIDTH} />
+              <TopBar
+                scenarioId={data?.scenario_id ?? "(no scenario loaded)"}
+                tickT={data?.t_seconds ?? 0}
+                isLoading={poll.isLoading}
+                onRefresh={poll.refetch}
+                drawerWidth={DRAWER_WIDTH}
+              />
 
-        <Routes>
-          <Route path="/" element={<Overview poll={poll} />} />
-          <Route path="/scenarios" element={<Scenarios refetchMetrics={poll.refetch} />} />
-          <Route path="/beams" element={<Beams data={data} />} />
-          <Route path="/gateways" element={<Gateways data={data} />} />
-          <Route path="/anomalies" element={<Anomalies data={data} />} />
-          <Route path="/copilot" element={<Copilot data={data} />} />
-          <Route
-            path="/satellite-view"
-            element={
-              <Suspense
-                fallback={
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      minHeight: "60vh",
-                    }}
-                  >
-                    <CircularProgress />
-                  </Box>
-                }
+              <Box
+                component="main"
+                sx={{
+                  flexGrow: 1,
+                  minWidth: 0,
+                  bgcolor: "background.default",
+                  p: 4,
+                }}
               >
-                <SatelliteView data={data} />
-              </Suspense>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Box>
-    </Box>
+                <Toolbar variant="dense" sx={{ minHeight: 56, mb: 1 }} />
+
+                <Routes>
+                  <Route path="/" element={<Overview poll={poll} />} />
+                  <Route path="/scenarios" element={<Scenarios refetchMetrics={poll.refetch} />} />
+                  <Route path="/beams" element={<Beams data={data} />} />
+                  <Route path="/gateways" element={<Gateways data={data} />} />
+                  <Route path="/anomalies" element={<Anomalies data={data} />} />
+                  <Route path="/copilot" element={<Copilot data={data} />} />
+                  <Route
+                    path="/satellite-view"
+                    element={
+                      <Suspense
+                        fallback={
+                          <Box
+                            sx={{
+                              display: "flex",
+                              justifyContent: "center",
+                              alignItems: "center",
+                              minHeight: "60vh",
+                            }}
+                          >
+                            <CircularProgress />
+                          </Box>
+                        }
+                      >
+                        <SatelliteView data={data} />
+                      </Suspense>
+                    }
+                  />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Box>
+            </Box>
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
   );
 }

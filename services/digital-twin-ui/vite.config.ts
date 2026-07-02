@@ -63,5 +63,15 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: "./src/test-setup.ts",
     css: false,
+    // VS-19 (2026-07-02): set a valid URL so axios's isURLSameOrigin helper
+    // doesn't throw "Invalid URL" when importing the module in tests.
+    // jsdom defaults to `about:blank` which fails new URL("about:blank")
+    // in axios v1 startup code. This is safe for all existing tests since
+    // none of them assert on window.location.href.
+    environmentOptions: {
+      jsdom: {
+        url: "http://localhost/",
+      },
+    },
   },
 });

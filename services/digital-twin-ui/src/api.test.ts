@@ -1,5 +1,14 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { computeBeams, parsePromText } from "./api";
+
+// Mock the token store so askCopilot's bearer/401 wiring can be driven
+// deterministically. parsePromText/computeBeams don't touch auth, so this
+// mock is inert for the rest of the file.
+vi.mock("./lib/auth", () => ({
+  getToken: vi.fn(),
+  setToken: vi.fn(),
+  clearToken: vi.fn(),
+}));
 
 describe("parsePromText", () => {
   test("parses a single sample with labels", () => {
@@ -200,5 +209,105 @@ describe("injectAnomaly timeout", () => {
     const elapsed = Date.now() - start;
     expect(elapsed).toBeGreaterThanOrEqual(40);
     expect(elapsed).toBeLessThan(500);
+  });
+});
+
+// ─── AC-S003-VS19.11/.12 — askCopilot auth wiring (REAL request path) ──
+// These drive the actual code path the app uses (askCopilot's fetch), not
+// an unused axios instance. They are the tests that would have caught the
+// "JWT never sent" bug: they assert the bearer is attached from storage and
+// that a 401 clears the token and redirects.
+import { askCopilot } from "./api";
+import * as auth from "./lib/auth";
+
+describe("askCopilot auth wiring (AC-S003-VS19.11/.12)", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.clearAllMocks();
+  });
+
+  function okResponse() {
+    return new Response(JSON.stringify({ status: "OK" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
+  test("AC-.11: attaches Authorization: Bearer when a token is stored", async () => {
+    vi.mocked(auth.getToken).mockReturnValue("live-token");
+    let captured: Record<string, string> = {};
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      captured = init.headers as Record<string, string>;
+      return okResponse();
+    }) as typeof fetch;
+
+    await askCopilot({ question: "status?" });
+    expect(captured.Authorization).toBe("Bearer live-token");
+  });
+
+  test("AC-.11: omits Authorization when no token is stored", async () => {
+    vi.mocked(auth.getToken).mockReturnValue(null);
+    let captured: Record<string, string> = {};
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      captured = init.headers as Record<string, string>;
+      return okResponse();
+    }) as typeof fetch;
+
+    await askCopilot({ question: "status?" });
+    expect(captured.Authorization).toBeUndefined();
+  });
+
+  test("AC-.12: on 401 clears the token and redirects to /login", async () => {
+    vi.mocked(auth.getToken).mockReturnValue("stale-token");
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+      })) as typeof fetch;
+
+    const orig = window.location;
+    Object.defineProperty(window, "location", {
+      value: { href: "http://localhost/", pathname: "/" },
+      writable: true,
+      configurable: true,
+    });
+
+    const res = await askCopilot({ question: "status?" });
+
+    expect(vi.mocked(auth.clearToken)).toHaveBeenCalledOnce();
+    expect(window.location.href).toBe("/login");
+    expect(res.status).toBe("ERROR");
+    expect(res.error).toBe("HTTP 401");
+
+    Object.defineProperty(window, "location", {
+      value: orig,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  test("AC-.12: does NOT redirect-loop when the 401 arrives on /login", async () => {
+    vi.mocked(auth.getToken).mockReturnValue("stale-token");
+    globalThis.fetch = (async () =>
+      new Response("{}", { status: 401 })) as typeof fetch;
+
+    const orig = window.location;
+    Object.defineProperty(window, "location", {
+      value: { href: "http://localhost/login", pathname: "/login" },
+      writable: true,
+      configurable: true,
+    });
+
+    await askCopilot({ question: "status?" });
+
+    // token still cleared, but href untouched (no bounce while already on /login)
+    expect(vi.mocked(auth.clearToken)).toHaveBeenCalledOnce();
+    expect(window.location.href).toBe("http://localhost/login");
+
+    Object.defineProperty(window, "location", {
+      value: orig,
+      writable: true,
+      configurable: true,
+    });
   });
 });
