@@ -78,12 +78,24 @@
 | **VS-20** | Perf SLO baselines + CI gate | k6 1.0 + scripts/perf-smoke.sh + docs/perf-slo.md | 2d | SPEC-S005-VS20 | AC-S005-VS20 | ✅ done (2026-07-02) — p99 measured + CI advisory gate |
 | **VS-21** | Closed-loop GitOps design | ADR-013 + SPEC-S006-VS21 + ADR-004 closed-loop clause | 1d (docs only) | SPEC-S006-VS21 | AC-S006-VS21 §A | ✅ done (2026-07-02) — ADR-012 + ADR-013 + ADR-004 extension committed |
 
+## Sprint 5（Closed-loop GitOps — dry_run core — 2026-07-02）
+
+> Sprint goal：**「異常 → copilot 建議 safe action → Preview → 看到精確 manifest diff（dry-run，不 apply/git/cluster）」**。主功能優先；apply/資安全部延後（owner directive）。分支 `feat/vs-22-closed-loop-dry-run`（已 push 備份，**未開 PR、未合併**）。詳見 `sprint-05-review.md`。
+
+| ID | Vertical Slice | 切到的層 | SPEC | AC | Status |
+|---|---|---|---|---|---|
+| **VS-22** | safe-action registry + `/action/dry-run` + `/action/catalog` | copilot-api(_actions + endpoints + models) | SPEC-S006-VS21 §5.1 | AC-S006-VS21.B6, B1 | ✅ done (2026-07-02) — 3 whitelisted actions；side-effect-free；unauth by design |
+| **VS-23** | grounded `action_plan` on `/ask` + `/runbook` | copilot-api(recommend_action) + contract schema | SPEC-S006-VS21 §2 | AC-S006-VS21.B1 | ✅ done (2026-07-02) — anomaly→action；只在 grounded 回應（ADR-004） |
+| **VS-24** | UI closed-loop 預覽面板 | digital-twin-ui(ClosedLoopPanel + Copilot render + i18n) | SPEC-S006-VS21 §2 | AC-S006-VS21.B2 (dry-run variant) | ✅ done (2026-07-02) — catalog-driven；**preview only, no Apply** |
+
+**Sprint-5 明確延後（記錄，未丟）**：apply/git commit/GitHub App token(B5)、Kargo + human-approval、observe MetricRipple(B7)、Undo(B8)、rate-limit(B4)、audit-log(B3)、`/action/*` JWT-gate、D1/D3 browser-OIDC + `JWT_REQUIRED=true`（risk-register R-15/R-17）。
+
 ## Backlog（暫不排，待 P2/P3）
 
 - 真 OAI / srsRAN NTN wrapper（emulator → real RAN stack）
 - Sionna RT v2.0.1 channel coefficient 注入
 - AODT 整合（待官方 GitHub repo URL 釋出後評估）
-- Closed-loop GitOps reconcile（copilot 建議 → ArgoCD apply → 觀察）
+- Closed-loop GitOps **apply** 半場（copilot 建議 → git commit → Kargo/human-approval → ArgoCD apply → observe → undo）—— dry_run 半場已於 Sprint-5 完成（VS-22/23/24）；此為 apply/observe/undo + 資安（rate-limit/audit/JWT）的延後部分
 - Multi-language UI（zh-TW、en、ja）
 - Real Nephio R5 mgmt cluster + Porch lifecycle
 - Production-grade authn/authz（OIDC + JWT）

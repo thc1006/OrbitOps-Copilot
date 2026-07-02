@@ -21,6 +21,7 @@
 | S4-R4 | VS-19 先於 VS-20 land（perf 測 /ask 需 token）若反了進 transitional state | — | — | — | Resolved: perf-smoke uses JWT_REQUIRED=false transitional bypass; documented in docs/perf-slo.md | architect | Closed（2026-07-02，Sprint-4） |
 | R-15 | VS-19 「auth-required」實際部署為 auth-OFF：`JWT_REQUIRED=false` 寫死 local overlay（唯一可部署 overlay），browser OIDC 登入鏈（UI form→mock-oidc→token→verify）從未 e2e 實測，被 auth-off 蓋住（adversarial review D1/D2/D3, 2026-07-02） | 3 | 3 | 9 | server 端 RS256 verify 已完整+78 測試+hardened；overlay patch 加 loud `⚠️ AUTH DISABLED` 註解；sprint-04-review 誠實記載;deferred D1/D3 列 Sprint-5 action item;dev 存取走 dev-bypass button（DEV build only） | llm-copilot-engineer | Open（2026-07-02，Sprint-4 post-review） |
 | R-16 | Dockerfile 手抄 pip 清單漂移 pyproject（曾致 shipped image 缺 PyJWT crash）；此類「tested-in-venv≠shipped-artifact」bug gate 掃不到 | 2 | 4 | 8 | Root-caused: copilot-api Dockerfile 改 `pip install .`（single source of truth）+ 建 image 實測 import；DoD 加「container build smoke」建議 | k8s-platform-engineer | Mitigated（2026-07-02，Sprint-4 post-review S6） |
+| R-17 | Closed-loop **apply** 尚未實作：UI 標「preview only」，但未來若有人接 apply 而漏掉 SPEC-S006-VS21 §5.3 的 human-approval + audit + rate-limit，會變成 LLM 直接改叢集（KubeCon EU 2026 反模式） | 2 | 4 | 8 | Sprint-5 只出 dry_run；無任何 `/action/*apply*` route；apply 由 §B ACs（B3/B4/B5/B8）+ ADR-013 human-approval 硬性 gate；Sprint-6 apply 必須 JWT-from-day-one | llm-copilot-engineer + k8s-platform-engineer | Open（2026-07-02，Sprint-5） |
 
 ## 退出條件
 
