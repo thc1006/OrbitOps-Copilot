@@ -113,3 +113,17 @@ class ActionDryRunResponse(BaseModel):
     # deferred). Kept explicit so a future apply endpoint can flip it.
     dry_run: bool = True
     note: str
+
+
+class ActionCatalogItem(BaseModel):
+    model_config = _STRICT
+    action_id: str
+    description: str
+    target_resource: str
+    inverse_action_id: str | None
+    params_spec: list[dict[str, Any]]
+
+
+class ActionCatalog(BaseModel):
+    model_config = _STRICT
+    actions: list[ActionCatalogItem]

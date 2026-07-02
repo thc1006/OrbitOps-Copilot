@@ -89,6 +89,10 @@ class SafeAction:
     target_name: str
     inverse_action_id: str | None
     build_patch: Callable[[dict[str, Any]], dict[str, Any]]
+    # UI form descriptor — single source of truth so the UI never hardcodes
+    # the action set / param ranges (Chain #1 anti-drift). Each entry:
+    #   {"name", "kind": "int"|"enum", ...bounds}
+    params_spec: tuple[dict[str, Any], ...]
 
     @property
     def target_resource(self) -> str:
@@ -126,6 +130,9 @@ _REGISTRY: dict[str, SafeAction] = {
         target_name="copilot-api",
         inverse_action_id="scale_copilot_api_replicas",
         build_patch=_build_scale,
+        params_spec=(
+            {"name": "replicas", "kind": "int", "min": 1, "max": 3, "default": 2},
+        ),
     ),
     "restart_emulator_pod": SafeAction(
         action_id="restart_emulator_pod",
@@ -134,6 +141,7 @@ _REGISTRY: dict[str, SafeAction] = {
         target_name="ntn-metrics-emulator",
         inverse_action_id=None,  # rolling restart is forward-only
         build_patch=_build_restart,
+        params_spec=(),
     ),
     "set_payload_mode": SafeAction(
         action_id="set_payload_mode",
@@ -142,6 +150,14 @@ _REGISTRY: dict[str, SafeAction] = {
         target_name="ntn-metrics-emulator",
         inverse_action_id="set_payload_mode",
         build_patch=_build_payload_mode,
+        params_spec=(
+            {
+                "name": "mode",
+                "kind": "enum",
+                "options": list(_PAYLOAD_MODES),
+                "default": "transparent",
+            },
+        ),
     ),
 }
 
@@ -155,3 +171,18 @@ def get_action(action_id: str) -> SafeAction:
         raise UnknownActionError(
             f"action_id {action_id!r} not in whitelist {list(SAFE_ACTION_IDS)}"
         )
+
+
+def catalog() -> list[dict[str, Any]]:
+    """Serializable metadata for all safe actions — drives the UI form so the
+    UI never hardcodes the action set or param bounds."""
+    return [
+        {
+            "action_id": a.action_id,
+            "description": a.description,
+            "target_resource": a.target_resource,
+            "inverse_action_id": a.inverse_action_id,
+            "params_spec": [dict(p) for p in a.params_spec],
+        }
+        for a in _REGISTRY.values()
+    ]

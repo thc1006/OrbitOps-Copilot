@@ -30,8 +30,9 @@ from ._auth import _JWTError, verify_jwt
 from ._logging import logger as _log
 from ._logging import setup_logging as _setup_logging
 from ._provider import FakeLLMProvider, LLMProvider
-from ._actions import ActionParamError, UnknownActionError, get_action
+from ._actions import ActionParamError, UnknownActionError, catalog, get_action
 from .models import (
+    ActionCatalog,
     ActionDryRunRequest,
     ActionDryRunResponse,
     AskRequest,
@@ -479,6 +480,14 @@ def action_dry_run(req: ActionDryRunRequest) -> ActionDryRunResponse:
             "Preview of the strategic-merge patch the closed-loop would produce."
         ),
     )
+
+
+# VS-24: catalog of safe actions so the UI renders its dry-run form from a
+# single source of truth (no hardcoded action list / param bounds in the UI).
+# Read-only, side-effect-free → unauthenticated like /action/dry-run.
+@app.get("/action/catalog", response_model=ActionCatalog)
+def action_catalog() -> ActionCatalog:
+    return ActionCatalog(actions=catalog())
 
 
 def _explain_or_runbook(

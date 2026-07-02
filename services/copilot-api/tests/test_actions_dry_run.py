@@ -152,3 +152,37 @@ def test_dry_run_is_side_effect_free_note(client: TestClient) -> None:
     body = resp.json()
     assert body["dry_run"] is True
     assert "no" in body["note"].lower()  # e.g. "no cluster mutation / no git"
+
+
+# ---------------------------------------------------------------------------
+# VS-24 — GET /action/catalog (single source of truth for the UI form)
+# ---------------------------------------------------------------------------
+
+
+def test_action_catalog_lists_three_actions_with_param_specs(
+    client: TestClient,
+) -> None:
+    resp = client.get("/action/catalog")
+    assert resp.status_code == 200
+    actions = {a["action_id"]: a for a in resp.json()["actions"]}
+    assert set(actions) == {
+        "scale_copilot_api_replicas",
+        "restart_emulator_pod",
+        "set_payload_mode",
+    }
+
+    scale = actions["scale_copilot_api_replicas"]
+    assert scale["target_resource"] == "Deployment/copilot-api"
+    assert scale["inverse_action_id"] == "scale_copilot_api_replicas"
+    replicas = next(p for p in scale["params_spec"] if p["name"] == "replicas")
+    assert replicas["kind"] == "int"
+    assert replicas["min"] == 1 and replicas["max"] == 3
+
+    # restart takes no params; forward-only (null inverse)
+    assert actions["restart_emulator_pod"]["params_spec"] == []
+    assert actions["restart_emulator_pod"]["inverse_action_id"] is None
+
+    # payload mode is an enum of the 3GPP Rel-19 payload types
+    mode = actions["set_payload_mode"]["params_spec"][0]
+    assert mode["kind"] == "enum"
+    assert set(mode["options"]) == {"regenerative", "transparent"}
