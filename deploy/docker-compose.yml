@@ -33,6 +33,50 @@ services:
       timeout: 2s
       retries: 6
 
+  # VS-19: mock OIDC server — issues RS256 JWTs for client_credentials flow.
+  # Internal port 9090 mapped to HOST port 19090 to avoid collision with
+  # prometheus (which already binds :9090 on the host).
+  # Service-to-service: http://mock-oidc:9090/orbitops/... (container DNS).
+  # Developer token fetch:
+  #   curl -s -X POST http://localhost:19090/orbitops/token \
+  #        -d 'grant_type=client_credentials&client_id=any&client_secret=any' | jq .
+  mock-oidc:
+    image: ghcr.io/navikt/mock-oauth2-server:2.1.10
+    container_name: orbitops-mock-oidc
+    ports:
+      - "${COMPOSE_BIND:-127.0.0.1}:19090:9090"
+    environment:
+      SERVER_PORT: "9090"
+      JSON_CONFIG: |
+        {
+          "interactiveLogin": false,
+          "httpServer": "NettyWrapper",
+          "tokenCallbacks": [
+            {
+              "issuerId": "orbitops",
+              "tokenExpiry": 3600,
+              "requestMappings": [
+                {
+                  "requestParam": "grant_type",
+                  "match": "client_credentials",
+                  "claims": {
+                    "sub": "orbitops-service",
+                    "aud": "orbitops-copilot"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/orbitops/.well-known/openid-configuration"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - dev
+      - all
+
   copilot-api:
     build:
       # Repo root: matches the Dockerfile's `COPY services/copilot-api/...` paths.
@@ -45,11 +89,22 @@ services:
     depends_on:
       ntn-metrics-emulator:
         condition: service_healthy
+      # VS-19: wait for JWKS endpoint before starting so the first /ask
+      # request doesn't fail with a key-fetch error. Docker Compose pulls
+      # mock-oidc into the graph automatically when this service starts
+      # (profile-gated dependencies are resolved transitively).
+      mock-oidc:
+        condition: service_healthy
     ports:
       - "${COMPOSE_BIND:-127.0.0.1}:8001:8001"
     environment:
       COPILOT_LLM_PROVIDER: mock
       ORBITOPS_EMULATOR_METRICS_URL: http://ntn-metrics-emulator:8000/metrics
+      # VS-19: JWT/OIDC auth. Disable with JWT_REQUIRED=false for offline dev.
+      JWT_REQUIRED: "true"
+      JWT_JWKS_URL: "http://mock-oidc:9090/orbitops/jwks"
+      JWT_AUDIENCE: "orbitops-copilot"
+      JWT_ISSUER: "http://mock-oidc:9090/orbitops"
 
   prometheus:
     image: prom/prometheus:v3.11.3

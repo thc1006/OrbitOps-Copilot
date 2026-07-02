@@ -4,6 +4,8 @@ namespace: orbitops
 resources:
   - ../../base
   - nodeport-services.yaml
+  # VS-19: mock OIDC server for local JWT auth testing.
+  - mock-oidc.yaml
 patches:
   - target:
       kind: Deployment
@@ -19,3 +21,30 @@ patches:
       - op: replace
         path: /spec/replicas
         value: 1
+  # VS-19: inject JWT env vars into copilot-api so it validates RS256 tokens
+  # issued by the in-cluster mock-oidc. JWKS URL uses the ClusterIP Service
+  # name — resolves via K8s DNS in any namespace thanks to the search domain.
+  - target:
+      kind: Deployment
+      name: copilot-api
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: JWT_REQUIRED
+          value: "true"
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: JWT_JWKS_URL
+          value: "http://mock-oidc:9090/orbitops/jwks"
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: JWT_AUDIENCE
+          value: "orbitops-copilot"
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: JWT_ISSUER
+          value: "http://mock-oidc:9090/orbitops"
