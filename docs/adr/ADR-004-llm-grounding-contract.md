@@ -31,3 +31,14 @@
 
 - 純 fine-tune：不可行（資料量、時間）。
 - 純 prompt 約束：不夠強；歷次研究顯示模型仍會幻想。否決。
+
+## Sprint-4 Extension: Closed-Loop Clause
+
+As of Sprint-4 (VS-21 design), `RecommendedAction` gains two new optional fields:
+
+- `action_type: "gitops_apply" | "manual" | "dry_run"` — `manual` is the Sprint-0–3 default; `gitops_apply` triggers the closed-loop controller (Sprint-5+); `dry_run` logs without executing.
+- `target_manifest_path: str | null` — for `gitops_apply` actions, the Kustomize overlay path to sync (e.g. `"deploy/k8s/overlays/beam-recovery"`).
+
+Evidence contract unchanged: LLM output is still validated against `tests/contracts/copilot-response.schema.json`. The new fields are additive and optional — existing responses without them are valid. The `action_type` field defaults to `"manual"` in the schema (`"default": "manual"`).
+
+The full design rationale for the closed-loop controller that consumes these fields is in ADR-013.
