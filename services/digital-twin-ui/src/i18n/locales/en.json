@@ -10,6 +10,17 @@
       "devBypass": "Continue (dev mode)"
     }
   },
+  "closedLoop": {
+    "title": "Closed-loop actions (dry-run)",
+    "subtitle": "Preview the exact manifest change a safe action would make — no apply, no cluster mutation.",
+    "preview": "Preview change (dry-run)",
+    "previewing": "Previewing…",
+    "loadError": "Failed to load action catalog: {{message}}",
+    "previewError": "Dry-run failed: {{message}}",
+    "diffLabel": "Manifest diff (dry-run)",
+    "inverseLabel": "Inverse",
+    "noInverse": "none (forward-only)"
+  },
   "anomalies": {
     "empty": "No active anomalies. The emulator scenario clock is in nominal range.",
     "injectButton": "Inject {{kind}}",

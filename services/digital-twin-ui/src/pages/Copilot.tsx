@@ -16,6 +16,7 @@ import AssistantRoundedIcon from "@mui/icons-material/AssistantRounded";
 import { useTranslation } from "react-i18next";
 
 import SectionHeader from "../components/SectionHeader";
+import ClosedLoopPanel from "../components/ClosedLoopPanel";
 import MetricSparkline from "../components/MetricSparkline";
 import type { BeamMetricKey } from "../components/BeamMetricChart";
 import { useMetricsHistory } from "../hooks/useMetricsHistory";
@@ -364,6 +365,11 @@ export default function Copilot({ data }: CopilotProps) {
           </Box>
         </Paper>
       )}
+
+      {/* VS-24: closed-loop dry-run preview — always available (manual action
+          console). When VS-23 lands, /runbook will pre-select the fitting
+          action; for now the operator picks + previews any safe action. */}
+      <ClosedLoopPanel />
     </Box>
   );
 }

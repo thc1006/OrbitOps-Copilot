@@ -113,3 +113,33 @@ export interface InjectAnomalyResult {
   duration_seconds: number;
   currently_active: string[];
 }
+
+// ── VS-21 closed-loop dry-run (Sprint-5) ──────────────────────────────────
+// Mirrors copilot-api GET /action/catalog + POST /action/dry-run.
+export interface ActionParamSpec {
+  name: string;
+  kind: "int" | "enum";
+  min?: number;
+  max?: number;
+  options?: string[];
+  default?: number | string;
+}
+
+export interface ActionCatalogItem {
+  action_id: string;
+  description: string;
+  target_resource: string;
+  inverse_action_id: string | null;
+  params_spec: ActionParamSpec[];
+}
+
+export interface ActionDryRun {
+  action_id: string;
+  params: Record<string, unknown>;
+  target_resource: string;
+  patch: Record<string, unknown>;
+  diff: string;
+  inverse_action_id: string | null;
+  dry_run: boolean;
+  note: string;
+}

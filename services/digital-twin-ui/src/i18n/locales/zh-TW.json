@@ -10,6 +10,17 @@
       "devBypass": "繼續（開發模式）"
     }
   },
+  "closedLoop": {
+    "title": "閉環動作（乾跑預覽）",
+    "subtitle": "預覽 safe action 會對 manifest 造成的精確變更——不套用、不變更叢集。",
+    "preview": "預覽變更（乾跑）",
+    "previewing": "預覽中…",
+    "loadError": "載入動作目錄失敗：{{message}}",
+    "previewError": "乾跑失敗：{{message}}",
+    "diffLabel": "Manifest 差異（乾跑）",
+    "inverseLabel": "反向動作",
+    "noInverse": "無（僅單向）"
+  },
   "anomalies": {
     "empty": "目前無作用中的異常事件。模擬器情境時鐘處於正常範圍。",
     "injectButton": "注入 {{kind}}",

@@ -410,3 +410,43 @@ export async function injectAnomaly(
     }
   }
 }
+
+// ── VS-21 closed-loop dry-run (Sprint-5) ──────────────────────────────────
+
+import type { ActionCatalogItem, ActionDryRun } from "./types";
+
+/**
+ * GET /action/catalog — the safe-action whitelist + param specs. Single
+ * source of truth so the UI never hardcodes the action set (Chain #1).
+ */
+export async function getActionCatalog(
+  signal?: AbortSignal,
+): Promise<ActionCatalogItem[]> {
+  const r = await fetch(`${COPILOT_BASE}/action/catalog`, { signal });
+  if (!r.ok) throw new Error(`action/catalog HTTP ${r.status}`);
+  const body = (await r.json()) as { actions: ActionCatalogItem[] };
+  return body.actions;
+}
+
+/**
+ * POST /action/dry-run — preview the strategic-merge patch a safe action
+ * would produce. Side-effect-free on the server (no apply/git). Surfaces the
+ * server's {status,error} body on 422 so the UI can show why.
+ */
+export async function dryRunAction(
+  actionId: string,
+  params: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<ActionDryRun> {
+  const r = await fetch(`${COPILOT_BASE}/action/dry-run`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ action_id: actionId, params }),
+    signal,
+  });
+  if (!r.ok) {
+    const body = (await r.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? `action/dry-run HTTP ${r.status}`);
+  }
+  return (await r.json()) as ActionDryRun;
+}
