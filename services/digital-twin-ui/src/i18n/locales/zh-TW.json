@@ -1,4 +1,14 @@
 {
+  "auth": {
+    "login": {
+      "title": "OrbitOps 登入",
+      "username": "使用者名稱",
+      "password": "密碼",
+      "submit": "登入",
+      "loggingIn": "登入中...",
+      "error": "登入失敗，請再試一次。"
+    }
+  },
   "anomalies": {
     "empty": "目前無作用中的異常事件。模擬器情境時鐘處於正常範圍。",
     "injectButton": "注入 {{kind}}",

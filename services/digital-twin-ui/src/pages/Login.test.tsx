@@ -1,10 +1,4 @@
-// AC-S003-VS19.10 — Login page: successful login stores token + navigates (RED phase)
-// These tests will fail until:
-//   1. axios is installed (npm install axios)
-//   2. src/lib/auth.ts is created
-//   3. src/lib/axiosInstance.ts is created
-//   4. src/pages/Login.tsx is created
-//   5. i18n auth.login.* keys are added to en.json + zh-TW.json
+// AC-S003-VS19.10 — Login page: successful login stores token + navigates
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -15,13 +9,22 @@ import axios from "axios";
 import { orbitopsTheme } from "../theme";
 import * as auth from "../lib/auth";
 
-// Mock axios module entirely
+// Mock axios so Login.tsx's POST call is interceptable without a real server.
 vi.mock("axios");
-// Mock auth so we can spy on setToken
+// Mock auth helpers so setToken side-effects are captured.
 vi.mock("../lib/auth");
+// Mock axiosInstance to avoid the axios.create() side-effect that tries to
+// register interceptors on a mocked (undefined) axios instance. Login.tsx
+// only uses the OIDC_BASE constant from axiosInstance; mocking the module
+// supplies that constant directly.
+vi.mock("../lib/axiosInstance", () => ({
+  copilotAxios: undefined,
+  COPILOT_BASE: "http://localhost:30081",
+  OIDC_BASE: "http://localhost:9090",
+}));
 
-// Login uses react-router navigate — MemoryRouter supplies it.
-// Keep the react-router mock-free to exercise the real redirect.
+import Login from "./Login";
+
 const wrap = (path = "/login") => (
   <ThemeProvider theme={orbitopsTheme}>
     <MemoryRouter initialEntries={[path]}>
@@ -30,10 +33,6 @@ const wrap = (path = "/login") => (
   </ThemeProvider>
 );
 
-// Lazy import Login so TypeScript reports missing module as an error
-// (ensures RED state is properly typed failure, not just runtime failure)
-import Login from "./Login";
-
 describe("Login page (AC-S003-VS19.10)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -41,7 +40,6 @@ describe("Login page (AC-S003-VS19.10)", () => {
 
   it("AC-S003-VS19.10: renders username, password fields and submit button", () => {
     render(wrap());
-    // The i18n keys must be present in en.json for these to show
     expect(screen.getByRole("textbox", { name: /username/i })).toBeInTheDocument();
     // password field has type="password" so getByLabelText is needed
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
@@ -59,7 +57,6 @@ describe("Login page (AC-S003-VS19.10)", () => {
 
     render(wrap());
 
-    // Fill in the form (pre-filled with "demo"/"demo" per Login.tsx spec)
     const usernameField = screen.getByRole("textbox", { name: /username/i });
     const passwordField = screen.getByLabelText(/password/i);
     const submitBtn = screen.getByRole("button", { name: /log in/i });
