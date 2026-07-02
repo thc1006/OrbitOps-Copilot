@@ -11,7 +11,7 @@ instead of silently dropping them.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -90,3 +90,26 @@ class ExplainRequest(BaseModel):
     anomaly_type: str = Field(min_length=1)
     metrics_snapshot: list[MetricCitation] = Field(default_factory=list)
     logs: list[LogCitation] = Field(default_factory=list)
+
+
+# ---------- VS-21 closed-loop dry-run (Sprint-5) ---------------------------
+
+
+class ActionDryRunRequest(BaseModel):
+    model_config = _STRICT
+    action_id: str = Field(min_length=1)
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
+class ActionDryRunResponse(BaseModel):
+    model_config = _STRICT
+    action_id: str
+    params: dict[str, Any]
+    target_resource: str
+    patch: dict[str, Any]
+    diff: str
+    inverse_action_id: str | None
+    # Always True this sprint — the endpoint has no apply path (apply/git/RBAC
+    # deferred). Kept explicit so a future apply endpoint can flip it.
+    dry_run: bool = True
+    note: str

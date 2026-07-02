@@ -30,7 +30,10 @@ from ._auth import _JWTError, verify_jwt
 from ._logging import logger as _log
 from ._logging import setup_logging as _setup_logging
 from ._provider import FakeLLMProvider, LLMProvider
+from ._actions import ActionParamError, UnknownActionError, get_action
 from .models import (
+    ActionDryRunRequest,
+    ActionDryRunResponse,
     AskRequest,
     CopilotResponse,
     Evidence,
@@ -55,6 +58,27 @@ async def _jwt_error_handler(request: Request, exc: _JWTError) -> JSONResponse:
     return JSONResponse(
         status_code=exc.status_code,
         content={"status": exc.status_str, "error": exc.error},
+    )
+
+
+# VS-21 dry-run validation errors → 422 with the AC-S006-VS21.B6 body shape.
+@app.exception_handler(UnknownActionError)
+async def _unknown_action_handler(
+    request: Request, exc: UnknownActionError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={"status": "unknown_action", "error": str(exc)},
+    )
+
+
+@app.exception_handler(ActionParamError)
+async def _action_param_handler(
+    request: Request, exc: ActionParamError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={"status": "invalid_params", "error": str(exc)},
     )
 
 
@@ -425,6 +449,35 @@ def runbook(
         req,
         _explain_or_runbook(req, include_actions=True),
         principal=principal.get("sub"),
+    )
+
+
+# VS-21 (Sprint-5) — closed-loop dry_run. Side-effect-free: validates the
+# action_id against the SPEC §5.1 whitelist and returns the strategic-merge
+# patch + diff the closed-loop WOULD produce. No git, no apply, no cluster
+# mutation → intentionally unauthenticated (apply/auth deferred). Returns
+# JSONResponse directly on validation failure to match the AC-S006-VS21.B6
+# body shape ({"status","error"}) instead of FastAPI's {"detail": ...}.
+@app.post("/action/dry-run", response_model=ActionDryRunResponse)
+def action_dry_run(req: ActionDryRunRequest) -> ActionDryRunResponse:
+    # UnknownActionError / ActionParamError are mapped to 422 by the exception
+    # handlers below (mirrors the _JWTError idiom), keeping the return type a
+    # single model so response_model validation works.
+    action = get_action(req.action_id)
+    patch = action.build_patch(req.params)
+    diff = action.render_diff(req.params)
+    return ActionDryRunResponse(
+        action_id=action.action_id,
+        params=req.params,
+        target_resource=action.target_resource,
+        patch=patch,
+        diff=diff,
+        inverse_action_id=action.inverse_action_id,
+        dry_run=True,
+        note=(
+            "dry-run only — no cluster mutation, no git commit, no apply. "
+            "Preview of the strategic-merge patch the closed-loop would produce."
+        ),
     )
 
 
