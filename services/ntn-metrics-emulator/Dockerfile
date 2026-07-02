@@ -5,13 +5,15 @@ FROM docker.io/library/python:3.13-slim
 
 WORKDIR /app
 
+# Install FROM pyproject.toml (single source of truth for deps). A prior
+# hand-typed pip list drifted — jsonschema lived only here, not in pyproject,
+# so a clean `pip install` (e.g. the CI perf-smoke job) crashed uvicorn on
+# startup. Installing the package itself prevents that class of drift.
 COPY services/ntn-metrics-emulator/pyproject.toml ./
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir 'fastapi>=0.115' 'uvicorn[standard]>=0.32' \
-                                'pydantic>=2.0' 'jsonschema>=4.0' \
-                                'prometheus-client>=0.21'
-
 COPY services/ntn-metrics-emulator/src/ ./src/
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir .
+
 COPY tests/contracts /app/tests/contracts
 
 ENV PYTHONPATH=/app/src
