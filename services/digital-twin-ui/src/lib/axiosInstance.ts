@@ -1,12 +1,18 @@
-// Axios instance for copilot-api requests.
-// AC-S003-VS19.11: request interceptor injects Authorization: Bearer <token>
-// AC-S003-VS19.12: response interceptor clears token + redirects on 401
-import axios from "axios";
-import { clearToken, getToken } from "./auth";
+// Resolved base URLs for copilot-api and the OIDC issuer, computed at runtime
+// against the page origin so one production bundle works from localhost, the
+// cluster node IP (e.g. 31.41.34.19), or a future ingress hostname. Override
+// via VITE_COPILOT_BASE_URL / VITE_OIDC_BASE_URL at build time.
+//
+// NOTE: the copilot request transport — bearer injection (AC-S003-VS19.11) and
+// 401 → clear-token + redirect (AC-S003-VS19.12) — lives in
+// src/api.ts::askCopilot, which is the path the app actually calls. This module
+// intentionally exports *only* the base URLs consumed by Login.tsx and api.ts;
+// an earlier axios instance here was never used to issue a request (dead code)
+// and has been removed so the auth wiring has a single source of truth.
 
 const env = (import.meta as ImportMeta & { env: Record<string, string> }).env;
 
-// Guard against jsdom's `about:blank` which produces an invalid URL.
+// Guard against jsdom's `about:blank` which produces an invalid protocol.
 // In real browsers window.location.protocol is always "http:" or "https:".
 const protocol =
   typeof window !== "undefined" && /^https?:$/.test(window.location.protocol)
@@ -20,28 +26,4 @@ const hostname =
 export const COPILOT_BASE =
   env.VITE_COPILOT_BASE_URL ?? `${protocol}//${hostname}:30081`;
 
-export const OIDC_BASE =
-  env.VITE_OIDC_BASE_URL ?? "http://localhost:9090";
-
-export const copilotAxios = axios.create({ baseURL: COPILOT_BASE });
-
-// AC-S003-VS19.11: inject bearer token on every request
-copilotAxios.interceptors.request.use((config) => {
-  const token = getToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// AC-S003-VS19.12: on 401, clear token and redirect to /login
-copilotAxios.interceptors.response.use(
-  (response) => response,
-  (error: { response?: { status: number } }) => {
-    if (error.response?.status === 401) {
-      clearToken();
-      window.location.href = "/login";
-    }
-    return Promise.reject(error);
-  },
-);
+export const OIDC_BASE = env.VITE_OIDC_BASE_URL ?? "http://localhost:9090";

@@ -10,6 +10,12 @@ import { useTranslation } from "react-i18next";
 import { setToken } from "../lib/auth";
 import { OIDC_BASE } from "../lib/axiosInstance";
 
+// Vite replaces `import.meta.env.DEV` with a boolean literal at build time; in a
+// production build it is `false`, so esbuild eliminates the dev-bypass handler
+// body and the button below. The cast matches the codebase idiom for reading
+// import.meta.env without vite/client global types (see api.ts/axiosInstance.ts).
+const IS_DEV = (import.meta as ImportMeta & { env: { DEV: boolean } }).env.DEV;
+
 export default function Login() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -41,7 +47,12 @@ export default function Login() {
     }
   };
 
+  // Dev-only escape hatch: skips the OIDC flow so contributors can reach the
+  // dashboard without a running IdP. `import.meta.env.DEV` is false in prod
+  // builds, so Vite tree-shakes both this handler body and the button below —
+  // the bypass never ships to production.
   const handleDevBypass = () => {
+    if (!IS_DEV) return;
     setToken("dev-bypass-token");
     navigate("/");
   };
@@ -78,15 +89,17 @@ export default function Login() {
       <Button type="submit" variant="contained" disabled={loading}>
         {loading ? t("auth.login.loggingIn") : t("auth.login.submit")}
       </Button>
-      <Button
-        variant="outlined"
-        color="secondary"
-        size="small"
-        onClick={handleDevBypass}
-        sx={{ mt: 1 }}
-      >
-        {t("auth.login.devBypass")}
-      </Button>
+      {IS_DEV && (
+        <Button
+          variant="outlined"
+          color="secondary"
+          size="small"
+          onClick={handleDevBypass}
+          sx={{ mt: 1 }}
+        >
+          {t("auth.login.devBypass")}
+        </Button>
+      )}
     </Box>
   );
 }

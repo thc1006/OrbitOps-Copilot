@@ -18,7 +18,6 @@ vi.mock("../lib/auth");
 // only uses the OIDC_BASE constant from axiosInstance; mocking the module
 // supplies that constant directly.
 vi.mock("../lib/axiosInstance", () => ({
-  copilotAxios: undefined,
   COPILOT_BASE: "http://localhost:30081",
   OIDC_BASE: "http://localhost:9090",
 }));
@@ -96,6 +95,20 @@ describe("Login page (AC-S003-VS19.10)", () => {
       // Must show an error alert (MUI Alert with role="alert")
       expect(screen.getByRole("alert")).toBeInTheDocument();
     });
+  });
+
+  it("dev-mode bypass button stores a placeholder token (DEV build only)", async () => {
+    // import.meta.env.DEV is true under vitest, so the gated button renders.
+    // In a production build Vite tree-shakes it away (see Login.tsx).
+    const user = userEvent.setup();
+    const mockSetToken = vi.mocked(auth.setToken);
+
+    render(wrap());
+
+    const devBtn = screen.getByRole("button", { name: /dev mode/i });
+    await user.click(devBtn);
+
+    expect(mockSetToken).toHaveBeenCalledWith("dev-bypass-token");
   });
 
   it("disables submit button while logging in", async () => {
