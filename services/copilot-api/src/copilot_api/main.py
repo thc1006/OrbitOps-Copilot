@@ -10,6 +10,9 @@ All endpoints return CopilotResponse (v2). Per ADR-004 every "ok" response
 must cite at least one piece of evidence; absence of evidence yields
 INSUFFICIENT_EVIDENCE; out-of-domain questions yield REFUSED. The default
 provider is FakeLLMProvider (deterministic, offline) — see ``_provider.py``.
+
+VS-19: /ask, /explain, /runbook require a valid RS256 JWT (SPEC-S003-VS19).
+       /healthz and /metrics stay public (K8s probe + Prometheus scrape).
 """
 
 from __future__ import annotations
@@ -17,11 +20,13 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from . import _grounding, _log_retrieval, _retrieval
+from ._auth import _JWTError, verify_jwt
 from ._logging import logger as _log
 from ._logging import setup_logging as _setup_logging
 from ._provider import FakeLLMProvider, LLMProvider
@@ -40,6 +45,18 @@ from .models import (
 _setup_logging()
 
 app = FastAPI(title="copilot-api", version="0.1.0")
+
+
+# VS-19: return the exact error body shape from SPEC-S003-VS19 §4.1.
+# FastAPI's default HTTPException handler wraps detail in {"detail": ...};
+# this handler returns the dict directly as the response body.
+@app.exception_handler(_JWTError)
+async def _jwt_error_handler(request: Request, exc: _JWTError) -> JSONResponse:
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"status": exc.status_str, "error": exc.error},
+    )
+
 
 # CORS allowlist driven by the `CORS_ALLOWED_ORIGINS` env var (comma-separated).
 # Defaults to `*` so local dev works out-of-box; deployment manifests in
@@ -229,19 +246,16 @@ def _log_ask(req: AskRequest, resp: CopilotResponse) -> CopilotResponse:
             "status": resp.status,
             "question_chars": len(req.question or ""),
             "scenario_id": resp.evidence.scenario_id if resp.evidence else None,
-            "metrics_used": (
-                len(resp.evidence.metrics_used) if resp.evidence else 0
-            ),
-            "logs_used": (
-                len(resp.evidence.logs_used) if resp.evidence else 0
-            ),
+            "metrics_used": (len(resp.evidence.metrics_used) if resp.evidence else 0),
+            "logs_used": (len(resp.evidence.logs_used) if resp.evidence else 0),
         },
     )
     return resp
 
 
+# VS-19: _ receives the JWT payload dict (unused by handler; auth side-effect only).
 @app.post("/ask", response_model=CopilotResponse)
-def ask(req: AskRequest) -> CopilotResponse:
+def ask(req: AskRequest, _: dict = Depends(verify_jwt)) -> CopilotResponse:
     return _log_ask(req, _ask_impl(req))
 
 
@@ -366,26 +380,23 @@ def _log_explain_or_runbook(
             "status": resp.status,
             "anomaly_type": req.anomaly_type,
             "scenario_id": resp.evidence.scenario_id if resp.evidence else None,
-            "metrics_used": (
-                len(resp.evidence.metrics_used) if resp.evidence else 0
-            ),
-            "logs_used": (
-                len(resp.evidence.logs_used) if resp.evidence else 0
-            ),
+            "metrics_used": (len(resp.evidence.metrics_used) if resp.evidence else 0),
+            "logs_used": (len(resp.evidence.logs_used) if resp.evidence else 0),
         },
     )
     return resp
 
 
+# VS-19: _ receives the JWT payload dict (unused by handler; auth side-effect only).
 @app.post("/explain", response_model=CopilotResponse)
-def explain(req: ExplainRequest) -> CopilotResponse:
+def explain(req: ExplainRequest, _: dict = Depends(verify_jwt)) -> CopilotResponse:
     return _log_explain_or_runbook(
         "explain", req, _explain_or_runbook(req, include_actions=False)
     )
 
 
 @app.post("/runbook", response_model=CopilotResponse)
-def runbook(req: ExplainRequest) -> CopilotResponse:
+def runbook(req: ExplainRequest, _: dict = Depends(verify_jwt)) -> CopilotResponse:
     return _log_explain_or_runbook(
         "runbook", req, _explain_or_runbook(req, include_actions=True)
     )
