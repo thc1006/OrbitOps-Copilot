@@ -26,4 +26,9 @@ const hostname =
 export const COPILOT_BASE =
   env.VITE_COPILOT_BASE_URL ?? `${protocol}//${hostname}:30081`;
 
-export const OIDC_BASE = env.VITE_OIDC_BASE_URL ?? "http://localhost:9090";
+// Default matches docker-compose's host mapping (host 19090 → container 9090);
+// 9090 would collide with Prometheus (D4). Override with VITE_OIDC_BASE_URL for
+// k8s port-forward (9091) or in-cluster access. NOTE: the browser OIDC login
+// flow is deferred (D1/D3) — this base is only used by the Login OIDC form,
+// which is not wired end-to-end yet; the dev access path is the dev-bypass button.
+export const OIDC_BASE = env.VITE_OIDC_BASE_URL ?? "http://localhost:19090";

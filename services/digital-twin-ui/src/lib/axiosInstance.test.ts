@@ -15,7 +15,8 @@ describe("axiosInstance base URLs", () => {
     expect(COPILOT_BASE).toMatch(/^https?:\/\/localhost:30081$/);
   });
 
-  it("OIDC_BASE falls back to the local mock-oidc default", () => {
-    expect(OIDC_BASE).toBe("http://localhost:9090");
+  it("OIDC_BASE falls back to the local mock-oidc default (compose host port)", () => {
+    // 19090 = docker-compose host mapping; 9090 would collide with Prometheus.
+    expect(OIDC_BASE).toBe("http://localhost:19090");
   });
 });

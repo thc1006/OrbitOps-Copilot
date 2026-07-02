@@ -116,3 +116,55 @@ Measured 2026-07-02 on loopback, single-worker uvicorn, k6 v1.0:
 - [ ] Upgrade perf-smoke CI gate from advisory to blocking (after 3 stable CI runs)
 - [ ] Capture login UI screenshot from live cluster for next release notes
 - [ ] Update memory sprint4_state to reflect review completion
+- [ ] **D1/D3 — wire browser OIDC login end-to-end** (password-grant requestMapping
+      injecting `aud`; pin mock-oauth2-server static issuer; live-verify
+      login→token→verify; add an integration test that spins up the real IdP).
+- [ ] **D5 — reconcile mock-oauth2-server pin** (bump 2.1.10 → 3.0.1 + re-verify,
+      or record 2.1.10 rationale in SPEC).
+- [ ] **Flip `JWT_REQUIRED=true`** on the local overlay once D1/D3 land (currently
+      auth-off for dev; see below).
+
+## Post-sprint adversarial review (2026-07-02)
+
+> Triggered because the shipped copilot-api container had crashed on
+> `import jwt` despite this review's "all green" claim — proof the original
+> 7+1 self-audit validated source/venv, not the built artifact. Three
+> parallel adversarial agents (copilot-api auth / UI auth / deploy) then
+> audited the branch; several findings were reproduced live.
+
+**Corrected honest status of VS-19:** the **server-side RS256 JWT verification
+path is complete, tested (78 pytest), and hardened.** The **browser OIDC login
+flow (UI form → mock-oidc → token → verify) is NOT wired end-to-end** and is
+deferred to Sprint-5. Auth is **disabled on the live cluster** (`JWT_REQUIRED=
+false`); the dev access path is the Login dev-bypass button (DEV builds only).
+The earlier "auth-required achieved" framing was overstated at the deployed
+layer — corrected here per §2.2 (不過度承諾).
+
+**Fixed this session (all re-verified):**
+
+| ID | Sev | Fix | Verify |
+|---|---|---|---|
+| U1 | HIGH | dev-bypass gated behind `import.meta.env.DEV` | prod build grep: token absent from JS |
+| U2 | HIGH | JWT actually sent — `askCopilot` fetch attaches Bearer + 401 handling; removed dead `copilotAxios` | new real-path vitest |
+| U3 | MED | replaced false-green interceptor tests; added ProtectedRoute + api-auth tests | 157 vitest pass |
+| S1 | CRIT | `get_unverified_header` except broadened to `InvalidTokenError` — crafted header no longer 500s | 4 regression tests |
+| S2 | HIGH | JWKS fetch moved outside the cache lock (was an auth-path DoS lever) | 78 pytest pass |
+| S3 | MED | removed write-only dead `_jwks_last_known` | — |
+| S4 | MED | verified `sub` principal now logged on /ask /explain /runbook | — |
+| S5 | LOW | decode catch-all → `jwt.PyJWTError` | — |
+| S6 | LOW | Dockerfile installs from pyproject (root-causes the PyJWT drift) | image builds + imports |
+| S7 | LOW | added call-time `JWT_REQUIRED` test (no reload) | — |
+| D2 | HIGH | loud `⚠️ AUTH DISABLED` comment on the overlay patch | — |
+| D4 | MED | `OIDC_BASE` default 9090→19090 (was colliding with Prometheus) | tsc/vitest |
+| D6 | LOW | mock-oidc.yaml comment corrected (JWKS is lazy per-request, not startup) | — |
+
+**Deferred to Sprint-5 (documented, not silently dropped):** D1 (password-grant
+mapping + `aud`), D3 (static issuer pinning), D5 (version reconcile), full
+browser-OIDC integration test. Env vars the deferred flow will need but that are
+not yet in `.env.example` (blocked by local perms): `VITE_OIDC_BASE_URL`
+(host default `http://localhost:19090`), `VITE_COPILOT_BASE_URL`.
+
+**Confirmed solid by the review (not just trusted):** alg-confusion double-gated
+(alg check pre-decode + `algorithms=["RS256"]`); only /ask /explain /runbook
+guarded, /healthz /metrics public; missing-claim handling returns clean 401;
+kid-rotation refetch is race-free; `JWT_REQUIRED` defaults to `true`.

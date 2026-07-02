@@ -33,13 +33,20 @@ services:
       timeout: 2s
       retries: 6
 
-  # VS-19: mock OIDC server — issues RS256 JWTs for client_credentials flow.
+  # VS-19: mock OIDC server — issues RS256 JWTs for the client_credentials flow.
   # Internal port 9090 mapped to HOST port 19090 to avoid collision with
   # prometheus (which already binds :9090 on the host).
   # Service-to-service: http://mock-oidc:9090/orbitops/... (container DNS).
-  # Developer token fetch:
-  #   curl -s -X POST http://localhost:19090/orbitops/token \
-  #        -d 'grant_type=client_credentials&client_id=any&client_secret=any' | jq .
+  # Developer token fetch (service-to-service form so `iss` matches JWT_ISSUER):
+  #   docker compose exec copilot-api sh -c \
+  #     "wget -qO- --post-data='grant_type=client_credentials&client_id=any&client_secret=any' \
+  #      http://mock-oidc:9090/orbitops/token"
+  # NOTE (D3, Sprint-5): mock-oauth2-server derives `iss` from the request Host
+  # header, so a token fetched from the HOST via localhost:19090 carries
+  # iss=http://localhost:19090/orbitops, which will NOT match copilot-api's
+  # JWT_ISSUER=http://mock-oidc:9090/orbitops (401 invalid_issuer). Fetch it
+  # in-network (as above) or pin a static issuer — deferred with the browser
+  # OIDC flow (D1/D3). Server-side RS256 verify itself is complete.
   mock-oidc:
     image: ghcr.io/navikt/mock-oauth2-server:2.1.10
     container_name: orbitops-mock-oidc
