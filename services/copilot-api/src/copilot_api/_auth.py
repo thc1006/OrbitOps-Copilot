@@ -41,7 +41,9 @@ _JWKS_GRACE_TTL: float = 3600.0  # extra seconds of grace on fetch failure
 _lock = threading.RLock()
 _jwks_cache: dict[str, Any] = {}  # kid → RSA public-key object
 _jwks_fetched_at: float = 0.0  # epoch of last *successful* fetch
-_jwks_last_known: dict[str, Any] = {}  # fallback used during IdP outage
+# Grace fallback on IdP outage is provided by NOT clearing _jwks_cache when
+# _do_fetch() fails (see _get_public_key) — there is no separate dict. An
+# earlier _jwks_last_known dict was write-only dead code and has been removed.
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +75,6 @@ def _reset_jwks_cache() -> None:
     global _jwks_fetched_at
     with _lock:
         _jwks_cache.clear()
-        _jwks_last_known.clear()
         _jwks_fetched_at = 0.0
 
 
@@ -87,8 +88,6 @@ def _inject_jwks(keys: dict[str, Any]) -> None:
     with _lock:
         _jwks_cache.clear()
         _jwks_cache.update(keys)
-        _jwks_last_known.clear()
-        _jwks_last_known.update(keys)
         _jwks_fetched_at = float("inf")
 
 
@@ -102,32 +101,37 @@ def _get_public_key(kid: str) -> Any | None:
     global _jwks_fetched_at
     now = time.time()
 
+    # Fast path under a short lock: fresh cache AND kid present → O(1) return.
     with _lock:
         cache_age = now - _jwks_fetched_at
-        cache_fresh = cache_age < _JWKS_CACHE_TTL
-
-        # Fast path: cache is fresh AND kid is present.
-        if cache_fresh and kid in _jwks_cache:
+        if cache_age < _JWKS_CACHE_TTL and kid in _jwks_cache:
             return _jwks_cache[kid]
 
-        # Slow path: stale cache OR kid absent (possible rotation) → fetch.
-        try:
-            new_keys = _do_fetch()
-            _jwks_cache.clear()
-            _jwks_cache.update(new_keys)
-            _jwks_last_known.clear()
-            _jwks_last_known.update(new_keys)
-            _jwks_fetched_at = now
-        except Exception as exc:
-            within_grace = cache_age < (_JWKS_CACHE_TTL + _JWKS_GRACE_TTL)
-            logger.warning(
-                "JWKS fetch failed (within_grace=%s); using last-known-good. err=%s",
-                within_grace,
-                exc,
-            )
-            if not within_grace:
-                raise
+    # Slow path: stale cache OR kid absent (possible rotation). Do the blocking
+    # HTTP fetch WITHOUT holding _lock — otherwise a slow/unreachable JWKS
+    # endpoint (up to the 5s httpx timeout) serializes every other auth request
+    # behind the global lock, an attacker-triggerable DoS (flood distinct kids).
+    # Concurrent fetches are idempotent, so racing them is harmless.
+    try:
+        new_keys = _do_fetch()
+    except Exception as exc:
+        within_grace = cache_age < (_JWKS_CACHE_TTL + _JWKS_GRACE_TTL)
+        logger.warning(
+            "JWKS fetch failed (within_grace=%s); using last-known-good. err=%s",
+            within_grace,
+            exc,
+        )
+        if not within_grace:
+            raise
+        # Grace period: fall back to whatever is still cached (not cleared).
+        with _lock:
+            return _jwks_cache.get(kid)
 
+    # Commit the fresh key set under the lock, then read the requested kid.
+    with _lock:
+        _jwks_cache.clear()
+        _jwks_cache.update(new_keys)
+        _jwks_fetched_at = now
         return _jwks_cache.get(kid)
 
 
@@ -170,9 +174,13 @@ def verify_jwt(authorization: str | None = Header(default=None)) -> dict:  # typ
     token = authorization[7:]
 
     # ── 2. Algorithm check BEFORE decode (prevents alg=none / HS256 attacks) ─
+    # NB: get_unverified_header() raises InvalidTokenError (the *parent* of
+    # DecodeError) for a non-str `kid` or a malformed `crit` — catching only
+    # DecodeError let those escape as an unauthenticated 500. Catch the base
+    # class so every malformed header returns a clean 401.
     try:
         header = jwt.get_unverified_header(token)
-    except jwt.DecodeError:
+    except jwt.InvalidTokenError:
         raise _JWTError(401, "unauthenticated", "malformed_token")
 
     alg = header.get("alg", "")
@@ -224,8 +232,10 @@ def verify_jwt(authorization: str | None = Header(default=None)) -> dict:  # typ
         raise _JWTError(401, "unauthenticated", f"missing_claim_{exc.claim}")
     except jwt.DecodeError:
         raise _JWTError(401, "unauthenticated", "malformed_token")
-    except jwt.InvalidTokenError as exc:
-        # Catch-all for any other PyJWT validation failure.
+    except jwt.PyJWTError as exc:
+        # Catch-all for any other PyJWT failure. PyJWTError is the true root
+        # (InvalidKeyError etc. extend it directly, NOT InvalidTokenError), so
+        # this guarantees a clean 401 rather than a 500 for any decode failure.
         raise _JWTError(401, "unauthenticated", str(exc))
 
     # ── 5. Chain #4 NaN / empty-string guard on sub ─────────────────────────

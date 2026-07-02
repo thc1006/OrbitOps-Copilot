@@ -559,3 +559,105 @@ class TestKidRotationTriggersRefetch:
         assert body.get("error") == "unknown_key_id", (
             f"Expected error='unknown_key_id', got {body!r}"
         )
+
+
+# ---------------------------------------------------------------------------
+# S1 (adversarial review) — crafted JWT header MUST 401, never crash to 500
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.usefixtures("_clean_jwks_cache")
+class TestCraftedHeaderReturns401NotCrash:
+    """Regression for adversarial-review finding S1: jwt.get_unverified_header
+    raises jwt.InvalidTokenError (the PARENT of DecodeError) when `kid` is a
+    non-string or `crit` is malformed. The original `except jwt.DecodeError`
+    let those propagate as an *unauthenticated* HTTP 500, defeating the
+    clean-401 contract of AC-S003-VS19.5 for a whole class of malformed input
+    the AC.5 tests never exercised. Tokens here are unsigned — they must fail
+    at header validation, before any signature/key work.
+    """
+
+    @staticmethod
+    def _craft(header: dict) -> str:
+        import base64
+        import json
+
+        def seg(obj: dict) -> str:
+            raw = json.dumps(obj).encode()
+            return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+        # header.payload.signature — signature is bogus; header validation
+        # (or kid lookup) fails first, so it never gets verified.
+        return f"{seg(header)}.{seg({'sub': 'x'})}.AAAA"
+
+    @pytest.mark.parametrize(
+        "header",
+        [
+            {"alg": "RS256", "kid": 12345},
+            {"alg": "RS256", "kid": ["a", "b"]},
+            {"alg": "RS256", "kid": {"x": 1}},
+            {"alg": "RS256", "kid": "k1", "crit": "not-a-list"},
+        ],
+        ids=["kid-int", "kid-list", "kid-dict", "crit-malformed"],
+    )
+    def test_crafted_header_returns_401_not_500(
+        self,
+        client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+        header: dict,
+    ) -> None:
+        monkeypatch.setenv("JWT_REQUIRED", "true")
+        monkeypatch.setenv("JWT_AUDIENCE", "orbitops-copilot")
+        monkeypatch.setenv("JWT_JWKS_URL", "")
+
+        token = self._craft(header)
+        resp = client.post(
+            "/ask",
+            json={"question": "anything"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        # Must be a clean 401 — never a 500 (S1). TestClient re-raises
+        # unhandled server exceptions, so a regression fails loudly here.
+        assert resp.status_code == 401, (
+            f"Crafted header {header!r} returned {resp.status_code}; expected "
+            f"a clean 401 (S1 regression — must never crash to 500). "
+            f"Body: {resp.text[:300]}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# S7 (adversarial review) — JWT_REQUIRED is read at CALL time, not import time
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.usefixtures("_clean_jwks_cache")
+class TestJwtRequiredReadAtCallTime:
+    """Regression for adversarial-review finding S7: verify_jwt reads
+    JWT_REQUIRED from os.environ on every call, NOT at module import. The
+    existing TestJwtRequiredFalseDisablesAuth tests importlib.reload() the
+    module, so they would keep passing even if a regression reintroduced
+    import-time caching (e.g. a module-scope `_JWT_REQUIRED = os.environ...`) —
+    which would silently break a long-running uvicorn process that never
+    reloads. This pins the contract by toggling the env on ONE already-built
+    app/client with no reload.
+    """
+
+    def test_toggle_without_reload_takes_effect(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("JWT_JWKS_URL", "")
+
+        # Auth ON: no token → enforced.
+        monkeypatch.setenv("JWT_REQUIRED", "true")
+        r_on = client.post("/ask", json={"question": "x"})
+        assert r_on.status_code in (401, 403), (
+            f"JWT_REQUIRED=true should enforce auth; got {r_on.status_code}"
+        )
+
+        # Flip to OFF on the SAME app object (no importlib.reload) → bypassed.
+        monkeypatch.setenv("JWT_REQUIRED", "false")
+        r_off = client.post("/ask", json={"question": "x"})
+        assert r_off.status_code not in (401, 403), (
+            "JWT_REQUIRED read at call time: flipping to false on the same "
+            f"running app must bypass auth; got {r_off.status_code}"
+        )

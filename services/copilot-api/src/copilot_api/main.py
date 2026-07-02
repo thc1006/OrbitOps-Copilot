@@ -232,18 +232,25 @@ def _with_time_window_note(
     return response
 
 
-def _log_ask(req: AskRequest, resp: CopilotResponse) -> CopilotResponse:
+def _log_ask(
+    req: AskRequest, resp: CopilotResponse, principal: str | None = None
+) -> CopilotResponse:
     """VS-10a: structured event log per /ask call.
 
     PRIVACY CONTRACT: question TEXT is NOT logged — only its character
     count. Prompt-injection attempts and PII in user questions must not
     leak into stdout-tailed log streams. The `status` + evidence-counts
     give enough audit trail for debugging.
+
+    VS-19: `principal` is the verified JWT `sub` (or None when
+    JWT_REQUIRED=false / "anonymous") so the audit trail records WHO asked,
+    not just what/whether — otherwise adding auth has no auditable payoff.
     """
     _log.info(
         "ask",
         extra={
             "status": resp.status,
+            "principal": principal,
             "question_chars": len(req.question or ""),
             "scenario_id": resp.evidence.scenario_id if resp.evidence else None,
             "metrics_used": (len(resp.evidence.metrics_used) if resp.evidence else 0),
@@ -253,10 +260,11 @@ def _log_ask(req: AskRequest, resp: CopilotResponse) -> CopilotResponse:
     return resp
 
 
-# VS-19: _ receives the JWT payload dict (unused by handler; auth side-effect only).
+# VS-19: `principal` is the verified JWT payload; we record its `sub` in the
+# audit log (S4). The handler logic itself is identity-agnostic.
 @app.post("/ask", response_model=CopilotResponse)
-def ask(req: AskRequest, _: dict = Depends(verify_jwt)) -> CopilotResponse:
-    return _log_ask(req, _ask_impl(req))
+def ask(req: AskRequest, principal: dict = Depends(verify_jwt)) -> CopilotResponse:
+    return _log_ask(req, _ask_impl(req), principal=principal.get("sub"))
 
 
 def _ask_impl(req: AskRequest) -> CopilotResponse:
@@ -365,7 +373,10 @@ def _ask_impl(req: AskRequest) -> CopilotResponse:
 
 
 def _log_explain_or_runbook(
-    msg: str, req: ExplainRequest, resp: CopilotResponse
+    msg: str,
+    req: ExplainRequest,
+    resp: CopilotResponse,
+    principal: str | None = None,
 ) -> CopilotResponse:
     """VS-10a /review B: structured event log per /explain or /runbook call.
 
@@ -373,11 +384,15 @@ def _log_explain_or_runbook(
     not user free-text. Logs anomaly_type so an operator can correlate
     "what was asked about" with the returned status. Mirrors _log_ask's
     response-object-only access pattern (no request body re-entry).
+
+    VS-19: `principal` is the verified JWT `sub` (S4) — records WHO invoked
+    the runbook/explain, not just what.
     """
     _log.info(
         msg,
         extra={
             "status": resp.status,
+            "principal": principal,
             "anomaly_type": req.anomaly_type,
             "scenario_id": resp.evidence.scenario_id if resp.evidence else None,
             "metrics_used": (len(resp.evidence.metrics_used) if resp.evidence else 0),
@@ -387,18 +402,29 @@ def _log_explain_or_runbook(
     return resp
 
 
-# VS-19: _ receives the JWT payload dict (unused by handler; auth side-effect only).
+# VS-19: `principal` is the verified JWT payload; its `sub` is recorded in the
+# audit log (S4). Handler logic is identity-agnostic.
 @app.post("/explain", response_model=CopilotResponse)
-def explain(req: ExplainRequest, _: dict = Depends(verify_jwt)) -> CopilotResponse:
+def explain(
+    req: ExplainRequest, principal: dict = Depends(verify_jwt)
+) -> CopilotResponse:
     return _log_explain_or_runbook(
-        "explain", req, _explain_or_runbook(req, include_actions=False)
+        "explain",
+        req,
+        _explain_or_runbook(req, include_actions=False),
+        principal=principal.get("sub"),
     )
 
 
 @app.post("/runbook", response_model=CopilotResponse)
-def runbook(req: ExplainRequest, _: dict = Depends(verify_jwt)) -> CopilotResponse:
+def runbook(
+    req: ExplainRequest, principal: dict = Depends(verify_jwt)
+) -> CopilotResponse:
     return _log_explain_or_runbook(
-        "runbook", req, _explain_or_runbook(req, include_actions=True)
+        "runbook",
+        req,
+        _explain_or_runbook(req, include_actions=True),
+        principal=principal.get("sub"),
     )
 
 
